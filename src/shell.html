@@ -44,8 +44,9 @@ button { font: inherit; color: inherit; }
   height: 100%;
   max-width: 520px;
   margin: 0 auto;
-  padding-inline: 16px;
-  padding-block: 10px 12px;
+  /* safe-area insets matter when installed (PWA standalone, native app with notch / gesture bar) */
+  padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+  padding-block: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -75,6 +76,11 @@ h1 .sea { color: var(--buoy-deep); }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
 .section-label h2 { font-size: 13px; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 500; }
 .section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapters { display: flex; flex-direction: column; gap: 8px; }
+.chapter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter-head:first-child { margin-top: 0; }
+.chapter-head b { font-family: var(--font-display); font-weight: 400; font-size: 17px; color: var(--text); margin-right: 4px; }
+.chapter-head.locked { opacity: .5; }
 .levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .lv {
   background: var(--harbor-2); border: 1px solid transparent; border-radius: 12px;
@@ -182,8 +188,8 @@ h1 .sea { color: var(--buoy-deep); }
     </div>
     <p class="lede">굽은 수로에 들어와 길을 잃은 상어 부캉이. 화면을 밀어 헤엄치게 하고, 숭어를 먹으며 <b>바다</b>로 보내 주세요.</p>
     <button class="btn primary" id="playBtn" type="button">이어서 하기</button>
-    <div class="section-label"><h2>수로 12곳</h2><span id="starTotal">★ 0 / 36</span></div>
-    <div class="levels" id="levelGrid"></div>
+    <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
+    <div class="chapters" id="levelGrid"></div>
     <div class="section-label"><h2>수로에 있는 것들</h2></div>
     <div class="legend" id="legend"></div>
     <p class="note">2026년 9월 부산 북항 친수공원 수로에 들어온 무태상어(약 3.5m)에서 착안한 팬 게임 프로토타입입니다. 실제 기관·캐릭터와 관련이 없습니다.</p>

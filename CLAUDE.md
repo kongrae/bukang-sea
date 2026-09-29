@@ -8,11 +8,16 @@
 ```bash
 npm run build            # src/ → dist/index.html (브라우저에서 바로 열리는 단일 파일)
 npm run build:artifact   # src/ → dist/artifact.html (<html>/<head> 없이, Claude 아티팩트 게시용)
+npm run build:web        # src/ → www/ (PWA: manifest, 서비스 워커, 아이콘. Capacitor webDir 겸용)
+npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 붙이면 같은 Wi-Fi 휴대폰에서 접속)
+npm run icons            # assets/icon.svg → assets/icons/*.png (Edge/Chrome 헤드리스 필요)
+npm run cap:sync         # build:web + Capacitor android 동기화 (npm install, npx cap add android 이후)
 npm run verify           # 모든 레벨이 풀리는지, par가 최적 이동 수와 같은지 검사 (실패 시 exit 1)
-npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기
+npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
+npm run difficulty       # 장별 난이도 곡선(bits) 출력, 앞 수로보다 쉬워지면 ▼ 표시
 ```
 
-외부 의존성 없음. Node 18+ 만 있으면 된다.
+게임과 tools/ 는 외부 의존성 없음(Node 18+). Capacitor(앱 빌드)만 npm 패키지와 Node 22+ 가 필요하다. 출시 절차는 docs/RELEASE.md.
 
 ## 구조
 
@@ -20,15 +25,22 @@ npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생�
 src/
   shell.html   마크업 + CSS (디자인 토큰은 :root 변수)
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
-  levels.js    LEVELS 배열 (12개 수로)
+  levels.js    LEVELS 배열 (36개 수로) + CHAPTERS (장 이름, 레벨 수)
   game.js      렌더링(canvas), 입력, 상태, UI. IIFE 하나
 tools/
   build.js     src 파일들을 이어 붙여 단일 HTML 생성
-  verify.js    레벨 검증
+  verify.js    레벨 검증 (난이도 bits도 함께 출력)
+  difficulty.js  난이도 지표: 무작위 플레이어가 별 3개를 받을 확률 P의 -log2 (그물은 무작위 칸에 친다고 가정)
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
+  icons.js     아이콘 PNG 렌더링
+  serve.js     로컬 정적 서버
+assets/        icon.svg(원본) + icons/*.png(생성물, 커밋)
+docs/RELEASE.md  웹/Android/iOS 출시 가이드
+capacitor.config.json  appId(임시값), webDir=www
+www/           build:web 결과 (gitignore)
 ```
 
-빌드는 단순 연결이라 `engine.js → levels.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `slide`, `plan` 등)을 공유한다.
+빌드는 단순 연결이라 `engine.js → levels.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -54,6 +66,12 @@ tools/
 
 기호: `#` 산책로 · `.` 물 · `S` 시작 · `E` 바다 출구(가장자리) · `f` 숭어 · `o` 부표 · `b` 구조정 · `^v<>` 물줄기
 
+장 구성: 1장 북항 수로(1–12) · 2장 친수공원 운하(13–24) · 3장 방파제 너머(25–36). 레벨은 배열 끝에만 추가한다(진행 상황이 인덱스로 저장되므로 중간 삽입·순서 변경 금지). 추가하면 `CHAPTERS`의 count도 맞춘다(verify가 검사). (출시 전이라 2026-09-30에 2·3장 순서를 한 번 재배치했다. 출시 후에는 순서 변경 금지.)
+
+난이도 곡선(톱니형 상승): 장 안에서는 bits가 계속 오르고, 다음 장은 앞 장 중간 난이도에서 다시 시작한다. 현재 1장 5→19, 2장 8.9→19.5, 3장 12.5→27.4.
+예외는 새 장치를 처음 소개하는 연습판(7 물대포, 10 그물 작전)뿐이다. 레벨을 바꾸면 `npm run difficulty`로 ▼(하락)가 생기지 않았는지 확인한다.
+bits는 그물 난이도를 과대평가하므로(사람은 추론해서 친다) 실제 기기 플레이 감각으로 보정할 것.
+
 **레벨을 추가·수정하면 반드시 `npm run verify`를 돌리고, 출력된 최적 이동 수로 `par`를 맞춘다.**
 par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 허용)다.
 그물 레벨은 그물 없이는 숭어를 전부 먹고 나갈 수 없어야 한다(verify가 검사함).
@@ -66,6 +84,8 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 - 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·부캉이는 매 프레임.
 - 힌트는 현재 상태에서 `plan()`을 돌려 첫 방향과 필요한 그물 위치를 보여준다.
 - 진행 상황은 `localStorage['bukang-sea-v1']` = `{ best: {레벨인덱스: 별}, last, sound }`. 접근 실패해도 동작해야 하므로 try/catch 유지.
+- 제목 화면 수로 목록은 CHAPTERS 단위로 묶어 그림. 장의 마지막 수로를 깨면 '○○ 통과!' / '다음 장으로'.
+- `window.Capacitor?.Plugins?.App`이 있으면(네이티브 앱) 하드웨어 뒤로가기 = 목록으로, 목록에서는 앱 종료.
 - `window.claude?.hot` 부분은 Claude 아티팩트 실시간 업데이트용 훅이다. 일반 브라우저에서는 없는 값이라 무해하다.
 - 사운드는 WebAudio로 합성(파일 없음). 첫 사용자 입력 후에만 재생.
 
@@ -83,8 +103,8 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 ## 다음 단계 후보
 
 1. 실제 기기 터치 테스트, 스와이프 감도(현재 22px) 조정
-2. 레벨 30~50개로 확장 (gen.js 활용, 새 마스크 추가) + 챕터 구분
+2. ~~레벨 30~50개로 확장 + 챕터 구분~~ (36개 · 3장 완료) → 플레이 테스트로 난이도 곡선 조정
 3. 새 장치: 움직이는 구조정(턴마다 이동), 한 번 지나면 사라지는 얇은 얼음/부유물 등 — engine.js와 풀이기 상태에 반영 필요
-4. 네이티브 전환: Capacitor로 웹 그대로 감싸기(가장 빠름) 또는 Unity/Flutter 포팅. engine.js 규칙과 levels 데이터는 그대로 옮기면 됨
+4. 네이티브 전환: Capacitor 설정 완료(docs/RELEASE.md). 남은 일: Node 22+·Android Studio 설치 → npm install → npx cap add android → 기기 테스트 → Play 비공개 테스트. 폰트 파일 로컬 포함 검토
 5. 수익화: 힌트를 보상형 광고로, 스테이지 사이 전면 광고, 스킨(계절 부캉이)
 6. 실제 방류 성공 시 "해피엔딩" 업데이트

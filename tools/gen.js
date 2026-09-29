@@ -2,8 +2,11 @@
 // whose optimal solution length is closest to the target.
 //   node tools/gen.js <mask> '<spec json>' <targetPar> [seed] [tries]
 //   e.g. node tools/gen.js basin '{"buoys":3,"jets":2,"fish":2}' 8 42 2000
-// spec keys: buoys, boats, jets, fish, nets (nets = how many the player gets; the level must need them)
+// spec keys: buoys, boats, jets, fish, nets (nets = how many the player gets; the level must need them),
+//            bits (optional target difficulty from tools/difficulty.js; when set it outranks targetPar)
+//   e.g. node tools/gen.js lagoon '{"buoys":3,"jets":2,"fish":3,"bits":16}' 11 7 800
 const E = require('../src/engine.js');
+const { measure } = require('./difficulty.js');
 
 // '#' promenade, '.' water, S start, E sea exit
 const masks = {
@@ -12,6 +15,16 @@ const masks = {
   wide:   ['#E#####', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '####S##'],
   scurve: ['######E', '#......', '#......', '#...###', '#...###', '###...#', '###...#', '#.....#', '#.....#', '##S####'],
   basin:  ['###E###', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  // chapter 2: 친수공원 운하
+  island: ['###E###', '#.....#', '#.....#', '#..#..#', '#..#..#', '#.....#', '#.....#', '#..#..#', '#.....#', '###S###'],
+  ring:   ['####E##', '#.....#', '#.....#', '#..##.#', '#..##.#', '#.....#', '#.....#', '##S####'],
+  zigzag: ['#####E#', '#.....#', '#.....#', '#...###', '#.....#', '###...#', '#.....#', '#...###', '#.....#', '#.....#', '#S#####'],
+  side:   ['#######', '#.....#', '#.....E', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  fork:   ['###E####', '#......#', '#......#', '#..##..#', '#..##..#', '#..##..#', '#......#', '#......#', '####S###'],
+  // chapter 3: 방파제 너머
+  harbor: ['####E####', '#.......#', '#.......#', '#..###..#', '#.......#', '#.......#', '#.......#', '##.....##', '#.......#', '#.......#', '####S####'],
+  breakwater: ['########', 'E......#', '#......#', '####...#', '#......#', '#......#', '#...####', '#......#', '#......#', '#......#', '#......#', '######S#'],
+  lagoon: ['#######E#', '#.......#', '#.......#', '#.##....#', '#.##....#', '#.......#', '#....##.#', '#....##.#', '#.......#', '#S#######'],
 };
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
@@ -52,8 +65,12 @@ function search(maskName, spec, target, seed = 1, tries = 2000) {
       if (nets === 2 && solve(map, 1, false)) continue;   // ...and with only one
     }
     const escape = solve(map, nets, false);
-    const score = -Math.abs(full.moves - target) * 10 + (full.moves - escape.moves);
-    if (!best || score > best.score) best = { score, map, par: full.moves, seq: full.seq, escapeOnly: escape.moves };
+    let score = -Math.abs(full.moves - target) * 10 + (full.moves - escape.moves), bits;
+    if (spec.bits != null) {
+      bits = measure({ map, nets, par: full.moves }).bits;
+      score = -Math.abs(bits - spec.bits) * 20 - Math.abs(full.moves - target) + (full.moves - escape.moves) * 0.5;
+    }
+    if (!best || score > best.score) best = { score, map, par: full.moves, seq: full.seq, escapeOnly: escape.moves, bits };
   }
   return best;
 }
@@ -63,7 +80,7 @@ if (require.main === module) {
   if (!maskName) { console.log('usage: node tools/gen.js <mask> \'<spec json>\' <targetPar> [seed] [tries]\nmasks:', Object.keys(masks).join(', ')); process.exit(1); }
   const best = search(maskName, JSON.parse(specJson), +target, +seed, +tries);
   if (!best) { console.log('no solvable candidate found; try another seed or fewer objects'); process.exit(1); }
-  console.log(`par ${best.par} (solution ${best.seq}), escape-only ${best.escapeOnly}\n`);
+  console.log(`par ${best.par} (solution ${best.seq}), escape-only ${best.escapeOnly}${best.bits != null ? `, bits ${best.bits}` : ''}\n`);
   console.log(`  { par: ${best.par}, name: '새 수로', tip: '', map: [\n${best.map.map(r => `    '${r}',`).join('\n')}\n  ] },`);
 }
 

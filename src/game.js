@@ -16,6 +16,16 @@ let save = { best: {}, last: 0, sound: true };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
+// chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
+function chapterOf(i) {
+  let start = 0;
+  for (let ci = 0; ci < CHAPTERS.length; ci++) {
+    const end = start + CHAPTERS[ci].count - 1;
+    if (i <= end) return { ci, start, end, name: CHAPTERS[ci].name };
+    start = end + 1;
+  }
+  return { ci: 0, start: 0, end: LEVELS.length - 1, name: '' };
+}
 
 /* ---------- sound ---------- */
 let actx = null;
@@ -200,7 +210,7 @@ function loadLevel(i, keep) {
   if (keep) g = parseLevel(LEVELS[i]);
   anim = null; bump = null; hint = null; cleared = false; particles.length = 0;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
-  $('lvNum').textContent = `수로 ${i + 1} / ${LEVELS.length}`;
+  $('lvNum').textContent = `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length}`;
   $('lvName').textContent = LEVELS[i].name;
   setTip(LEVELS[i].tip);
   $('clearOverlay').hidden = true;
@@ -295,14 +305,15 @@ function onClear() {
   $('clearStars').innerHTML = [true, allFish, inPar].map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '부캉이, 잘 가!'];
-  $('clearTitle').textContent = LVL === LEVELS.length - 1 ? '드디어 넓은 바다로!' : titles[stars - 1];
+  const chap = chapterOf(LVL), chapterEnd = LVL === chap.end;
+  $('clearTitle').textContent = LVL === LEVELS.length - 1 ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
     row('이동 기준', `${st.moves}번 / ${L.par}번`, inPar);
   const last = LVL === LEVELS.length - 1;
-  $('nextBtn').textContent = last ? '수로 목록' : '다음 수로';
+  $('nextBtn').textContent = last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => { if (cleared) { $('clearOverlay').hidden = false; $('nextBtn').focus(); } }, reduceMotion ? 50 : 550);
   renderLevelGrid();
 }
@@ -484,12 +495,20 @@ function drawHero(t) {
 /* ---------- UI wiring ---------- */
 function renderLevelGrid() {
   const grid = $('levelGrid'); let total = 0;
-  grid.innerHTML = LEVELS.map((L, i) => {
+  const button = (L, i) => {
     const b = save.best[i] || 0; total += b; const ok = unlocked(i);
     const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
     return `<button class="lv${i === save.last ? ' cur' : ''}" type="button" data-i="${i}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
       <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span><span class="st">${stars}</span></button>`;
+  };
+  let start = 0;
+  grid.innerHTML = CHAPTERS.map((ch, ci) => {
+    const idx = Array.from({ length: ch.count }, (_, k) => start + k); start += ch.count;
+    const before = total, buttons = idx.map(i => button(LEVELS[i], i)).join('');
+    return `<div class="chapter-head${unlocked(idx[0]) ? '' : ' locked'}"><span><b>${ci + 1}장</b> ${ch.name}</span><span>★ ${total - before} / ${ch.count * 3}</span></div>
+      <div class="levels">${buttons}</div>`;
   }).join('');
+  $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
   $('playBtn').textContent = Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
 }
@@ -559,6 +578,9 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'Escape') show('title');
 });
 window.addEventListener('resize', () => { resize(); heroW = 0; });
+// native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
+const capApp = window.Capacitor?.Plugins?.App;
+if (capApp) capApp.addListener('backButton', () => { if ($('gameScreen').hidden) capApp.exitApp(); else show('title'); });
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {

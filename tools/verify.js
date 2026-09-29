@@ -3,11 +3,14 @@
 const fs = require('fs');
 const path = require('path');
 const E = require('../src/engine.js');
+const { measure } = require('./difficulty.js');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
-const LEVELS = new Function(src + '; return LEVELS;')();
+const { LEVELS, CHAPTERS } = new Function(src + '; return { LEVELS, CHAPTERS };')();
 
 let failed = 0;
+const chapterTotal = CHAPTERS.reduce((n, c) => n + c.count, 0);
+if (chapterTotal !== LEVELS.length) { failed++; console.log(`FAIL chapters cover ${chapterTotal} levels but LEVELS has ${LEVELS.length}`); }
 LEVELS.forEach((lvl, i) => {
   const g = E.parseLevel(lvl);
   const problems = [];
@@ -31,6 +34,7 @@ LEVELS.forEach((lvl, i) => {
   if (problems.length) failed++;
   console.log(
     `${status} ${String(i + 1).padStart(2)} ${lvl.name.padEnd(10)} par ${lvl.par}` +
+    (full && !problems.length ? ` | bits ${measure(lvl).bits}` : '') +
     (full ? ` | solution ${full.seq}${full.add.length ? ' nets@' + full.add.map(k => `(${k % g.w},${Math.floor(k / g.w)})`).join('') : ''}` : '') +
     (escape ? ` | escape-only ${escape.moves}` : '') + netNote +
     (problems.length ? `\n     -> ${problems.join('; ')}` : '')

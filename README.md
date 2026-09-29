@@ -1,6 +1,6 @@
 # 부캉이 바다로
 
-부산 북항 수로에 갇힌 상어 부캉이를 바다로 보내는 슬라이드 퍼즐 게임 (웹 프로토타입, 12스테이지).
+부산 북항 수로에 갇힌 상어 부캉이를 바다로 보내는 슬라이드 퍼즐 게임 (웹 + PWA, 36스테이지 · 3장).
 
 ## 바로 해 보기
 
@@ -15,9 +15,11 @@ npx serve dist        # 또는 python3 -m http.server -d dist
 ```bash
 npm run build     # src/ 수정 후 dist/index.html 다시 만들기
 npm run verify    # 레벨 검증 (par 확인)
+npm run build:web # www/ PWA 빌드 (정적 호스팅에 그대로 업로드)
+npm run serve     # www/ 를 localhost:5173 으로 확인
 ```
 
-자세한 구조와 규칙은 `CLAUDE.md` 참고. Claude Code에서 이 폴더를 열면 자동으로 읽는다.
+출시(웹 · Android · iOS) 절차는 `docs/RELEASE.md`, 자세한 구조와 규칙은 `CLAUDE.md` 참고. Claude Code에서 이 폴더를 열면 자동으로 읽는다.
 
 ## Claude Code로 이어서 작업하기
 
