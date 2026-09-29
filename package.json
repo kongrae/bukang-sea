@@ -1,0 +1,13 @@
+{
+  "name": "bukang-sea",
+  "version": "0.1.0",
+  "private": true,
+  "description": "부캉이 바다로 - 부산 북항 수로 탈출 슬라이드 퍼즐 (웹 프로토타입)",
+  "scripts": {
+    "build": "node tools/build.js",
+    "build:artifact": "node tools/build.js --artifact",
+    "verify": "node tools/verify.js",
+    "gen": "node tools/gen.js"
+  },
+  "license": "UNLICENSED"
+}
