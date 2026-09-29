@@ -10,7 +10,8 @@ npm run serve          # http://localhost:5173 에서 확인
 ```
 
 - `www/` 폴더를 정적 호스팅(GitHub Pages, Netlify, Cloudflare Pages 등)에 그대로 올리면 된다. **HTTPS 필수**(서비스 워커 조건).
-- 한 번 열면 오프라인에서도 동작한다(앱 파일 + Google Fonts 캐시). 휴대폰 브라우저의 "홈 화면에 추가"로 앱처럼 설치된다.
+- 한 번 열면 오프라인에서도 동작한다(앱 파일 + 내장 폰트 캐시). 휴대폰 브라우저의 "홈 화면에 추가"로 앱처럼 설치된다.
+- 개인정보처리방침은 `www/privacy.html`로 함께 배포된다(원본 `assets/privacy.html`, [대괄호] 값 채울 것). 스토어 등록 문구·그래픽은 `docs/STORE.md`.
 - 새로 빌드하면 `sw.js`의 캐시 버전이 자동으로 바뀌어 다음 방문 때 갱신된다.
 - 아이콘을 바꾸려면 `assets/icon.svg`를 고친 뒤 `npm run icons` (Edge 또는 Chrome 필요) → PNG를 커밋.
 - Claude 아티팩트 링크로 공유할 때는 `npm run build:artifact`로 만든 `dist/artifact.html`을 게시한다(PWA 기능은 없음).
@@ -48,7 +49,7 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 ### 앱에서 확인할 것
 - 하드웨어 뒤로가기: 게임 화면 → 수로 목록, 목록 → 앱 종료 (`@capacitor/app` 사용, `src/game.js`)
 - 노치·제스처 바 여백: `shell.html`의 `.app`이 `env(safe-area-inset-*)`를 쓴다. 실제 기기에서 위아래가 가려지지 않는지 확인.
-- 폰트: 지금은 Google Fonts를 네트워크로 받는다. 오프라인 첫 실행에서는 시스템 폰트로 보인다. 필요하면 폰트 파일(OFL 라이선스)을 `www/`에 포함하도록 바꾼다.
+- 폰트: `www/fonts/`에 게임에서 쓰는 글자만 담은 서브셋 폰트가 들어 있어 네트워크 없이 표시된다. 새 글자(레벨 이름·안내문 등)를 추가했는데 빌드가 경고하면 `npm run fonts`로 다시 받는다.
 
 ## 3. iOS
 

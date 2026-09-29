@@ -8,6 +8,7 @@
     "build:artifact": "node tools/build.js --artifact",
     "build:web": "node tools/build.js --web",
     "icons": "node tools/icons.js",
+    "fonts": "node tools/fonts.js",
     "serve": "node tools/serve.js www 5173",
     "verify": "node tools/verify.js",
     "gen": "node tools/gen.js",

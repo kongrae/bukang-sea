@@ -11,6 +11,8 @@ npm run build:artifact   # src/ → dist/artifact.html (<html>/<head> 없이, Cl
 npm run build:web        # src/ → www/ (PWA: manifest, 서비스 워커, 아이콘. Capacitor webDir 겸용)
 npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 붙이면 같은 Wi-Fi 휴대폰에서 접속)
 npm run icons            # assets/icon.svg → assets/icons/*.png (Edge/Chrome 헤드리스 필요)
+npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 → assets/fonts/ (build:web 이 누락 글자를 경고하면 실행)
+node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
 npm run cap:sync         # build:web + Capacitor android 동기화 (npm install, npx cap add android 이후)
 npm run verify           # 모든 레벨이 풀리는지, par가 최적 이동 수와 같은지 검사 (실패 시 exit 1)
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
@@ -34,8 +36,9 @@ tools/
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
   icons.js     아이콘 PNG 렌더링
   serve.js     로컬 정적 서버
-assets/        icon.svg(원본) + icons/*.png(생성물, 커밋)
+assets/        icon.svg(원본) + icons/*.png, fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
+docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 capacitor.config.json  appId(임시값), webDir=www
 www/           build:web 결과 (gitignore)
 ```
@@ -92,7 +95,7 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 ## 디자인
 
 - 단일 테마(항구의 깊은 청록 바탕 + 콘크리트 산책로 + 구명부표 주황 강조색). 색은 모두 `shell.html`의 `:root` 토큰에서 읽어 캔버스에도 쓴다.
-- 폰트: 제목 Bagel Fat One, 본문 IBM Plex Sans KR (Google Fonts, 실패 시 시스템 폰트).
+- 폰트: 제목 Bagel Fat One, 본문 IBM Plex Sans KR. dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용(OFL 예약 이름 때문). 실패 시 시스템 폰트.
 - 상어는 코드로 그린 탑다운 무태상어. 기존 캐릭터를 닮게 만들지 말 것.
 
 ## 주의
@@ -105,6 +108,6 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 1. 실제 기기 터치 테스트, 스와이프 감도(현재 22px) 조정
 2. ~~레벨 30~50개로 확장 + 챕터 구분~~ (36개 · 3장 완료) → 플레이 테스트로 난이도 곡선 조정
 3. 새 장치: 움직이는 구조정(턴마다 이동), 한 번 지나면 사라지는 얇은 얼음/부유물 등 — engine.js와 풀이기 상태에 반영 필요
-4. 네이티브 전환: Capacitor 설정 완료(docs/RELEASE.md). 남은 일: Node 22+·Android Studio 설치 → npm install → npx cap add android → 기기 테스트 → Play 비공개 테스트. 폰트 파일 로컬 포함 검토
+4. 네이티브 전환: Capacitor 설정 완료(docs/RELEASE.md). 남은 일: Node 22+·Android Studio 설치 → npm install → npx cap add android → 기기 테스트 → Play 비공개 테스트 (폰트 내장·스토어 자료 초안 완료)
 5. 수익화: 힌트를 보상형 광고로, 스테이지 사이 전면 광고, 스킨(계절 부캉이)
 6. 실제 방류 성공 시 "해피엔딩" 업데이트

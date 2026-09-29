@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>feature graphic</title>
+<style>
+/* Google Play feature graphic, 1024x500. Rendered by tools/shots.js. Same layout idea as the title hero: canal above, promenade below. */
+@font-face { font-family: "Bukang Display"; src: url("../assets/fonts/bagel-fat-one-400.woff2") format("woff2"); }
+@font-face { font-family: "Bukang Body"; font-weight: 500; src: url("../assets/fonts/ibm-plex-sans-kr-500.woff2") format("woff2"); }
+:root { --water: #1e7482; --concrete: #d9d1c1; --concrete-2: #c4b9a3; --rail: #eef0ea; --ink: #0a232b; --buoy-deep: #c8441b; }
+html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; background: var(--water); }
+.water { position: absolute; inset: 0 0 180px 0; background: var(--water); }
+.ripples { position: absolute; inset: 0; }
+.promenade { position: absolute; left: 0; right: 0; bottom: 0; height: 180px; background: var(--concrete);
+  background-image: repeating-linear-gradient(90deg, transparent 0 63px, var(--concrete-2) 63px 64px), linear-gradient(transparent 89px, var(--concrete-2) 89px 90px, transparent 90px); }
+.promenade::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; height: 6px; background: rgba(6, 30, 38, .3); }
+.promenade::after { content: ""; position: absolute; left: 0; right: 0; top: 3px; height: 4px; background: var(--rail); }
+.shark { position: absolute; right: 30px; top: -60px; width: 440px; height: 440px; }
+.text { position: absolute; left: 56px; bottom: 26px; font-family: "Bukang Display", sans-serif; color: var(--ink); }
+.eyebrow { font-family: "Bukang Body", sans-serif; font-weight: 500; font-size: 22px; letter-spacing: .06em; opacity: .7; margin-bottom: 4px; }
+h1 { margin: 0; font-weight: 400; font-size: 104px; line-height: 1; letter-spacing: -.01em; }
+h1 span { color: var(--buoy-deep); }
+</style>
+</head>
+<body>
+  <div class="water"></div>
+  <svg class="ripples" viewBox="0 0 1024 500" aria-hidden="true">
+    <g fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="4" stroke-linecap="round">
+      <path d="M60 70 q30 -12 60 0 t60 0 t60 0"/>
+      <path d="M300 160 q30 -12 60 0 t60 0"/>
+      <path d="M120 250 q30 -12 60 0 t60 0 t60 0"/>
+    </g>
+  </svg>
+  <img class="shark" src="../assets/icon.svg" alt="">
+  <div class="promenade"></div>
+  <div class="text">
+    <div class="eyebrow">부산 북항 친수공원 · 수로 탈출 퍼즐</div>
+    <h1>부캉이 <span>바다로</span></h1>
+  </div>
+</body>
+</html>
