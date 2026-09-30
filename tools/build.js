@@ -47,7 +47,27 @@ function write(rel, content) {
   console.log(`built ${rel} (${(Buffer.byteLength(content) / 1024).toFixed(1)} KB)`);
 }
 
-if (process.argv.includes('--artifact')) {
+if (process.argv.includes('--playtest')) {
+  // A facilitator build only: stage selection and storage isolation must never enter the release builds.
+  const fingerprint = crypto.createHash('sha256').update(body).digest('hex').slice(0, 12);
+  const replaceOnce = (text, from, to) => {
+    if (text.split(from).length !== 2) throw new Error('playtest build hook changed: ' + from);
+    return text.replace(from, to);
+  };
+  let content = replaceOnce(body, "const STORE_KEY = 'bukang-sea-v1';", `const tester = new URLSearchParams(location.search).get('tester') || 'pilot';
+const testAll = new URLSearchParams(location.search).get('all') === '1';
+const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'core-') + (/^[A-Za-z0-9_-]{1,24}$/.test(tester) ? tester : 'pilot');`);
+  content = replaceOnce(content, 'const unlocked = i => i === 0 || save.best[i - 1] != null;', 'const unlocked = i => testAll || i === 0 || save.best[i - 1] != null;');
+  content = replaceOnce(content, '부산 북항 친수공원 · 수로 탈출 퍼즐', `PLAYTEST · ${fingerprint} · 기록 별도`);
+  content = replaceOnce(content, "$('lvNum').textContent = label;", "$('lvNum').textContent = label + ' · TEST';");
+  // Use local fonts so mobile test sessions do not depend on Google Fonts connectivity.
+  content = content.replace(/<link rel="preconnect" href="https:\/\/fonts\.[^\n]*\n/g, '').replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^\n]*\n/, '');
+  const fonts = FONTS.map(f => `@font-face { font-family: "${f.family}"; font-weight: ${f.weight}; src: url("fonts/${f.file}") format("woff2"); }`).join('\n');
+  write('playtest/index.html', page(`<title>플레이테스트 — 길 잃은 상어</title><style>${fonts}</style>\n`, '', content));
+  fs.mkdirSync(path.join(root, 'playtest', 'fonts'), { recursive: true });
+  FONTS.forEach(f => fs.copyFileSync(path.join(root, 'assets', 'fonts', f.file), path.join(root, 'playtest', 'fonts', f.file)));
+  console.log(`game build ${fingerprint}; use ?tester=P01 for normal progression, &all=1 for later-stage testing; separate records, no service worker`);
+} else if (process.argv.includes('--artifact')) {
   write('dist/artifact.html', body);
   // privacy policy as its own artifact page (its public link is the Play Console privacy policy URL)
   const privacy = fs.readFileSync(path.join(root, 'assets', 'privacy.html'), 'utf8');

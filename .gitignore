@@ -1,3 +1,5 @@
 node_modules/
 www/
+/playtest/
+/outputs/
 .DS_Store

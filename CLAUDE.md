@@ -23,6 +23,9 @@ npm run android:debug    # cap:sync + 디버그 APK 빌드(JDK 21: ~/.jdks/jdk-2
 npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-keys, 비밀번호는 android/keystore.properties, 둘 다 커밋 금지)
 npm run verify           # 모든 해법을 실제 규칙으로 재생하고 최소 이동 수 ≤ 별 기준(par)인지 검사
 npm test                 # 풀이기·일일 퍼즐 호환·구조정 연출·진행 복원·장치 안내 회귀 검사
+npm run build:playtest   # playtest/ 관찰용 빌드. 기본 정상 진행, ?tester=P01&all=1은 후반 수로 개방(기록 격리)
+npm run serve:playtest   # localhost:5175 (?tester=P01로 이용자별 기록, --host는 tools/serve.js로 실행)
+npm run playtest:report -- attempts.csv survey.csv --out results.md # 수동 실제 관찰 CSV만 분석
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
 npm run difficulty       # 실제 규칙의 최소 이동·탈출 이동·역할별 이동 여유 출력 (--fixed-nets로 보조 bits)
 npm run daily -- 365     # 오늘의 수로: 앞으로 N일 치를 미리 생성해 전부 풀리는지·생성 시간 확인
@@ -44,12 +47,15 @@ tools/
   verify.js    해법 재생·그물 필요성·역할별 별 기준 검증
   difficulty.js  실제 재배치 규칙의 이동 기준표. 고정 그물 bits는 생성기/선택 진단용
   render.test.js  실제 이동·프레임·저장 함수로 구조정 연출, 전체 수로 복원, 되돌리기, 장치 안내 검사
+  playtest-report.js  CSV 첫 시도/설문 집계. 빌드·core/lab·경험·기기 분리, 포기·초과 포함, 빈 관찰 제외
+  playtest.test.js    분석 분모·CSV 입력·테스트 빌드의 개방 조건/저장 격리 검사
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
   icons.js     아이콘 PNG 렌더링
   serve.js     로컬 정적 서버
 assets/        icon.svg(원본) + icons/*.png, fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
+docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
 capacitor.config.json  appId kr.hongrae.lostshark, webDir=www, SystemBars(DARK, insets→CSS 변수)
 android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정
 www/           build:web 결과 (gitignore)
@@ -135,6 +141,8 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 - 톤은 "집(바다)에 돌려보내기". 상어를 괴롭히거나 먹이를 던지는 요소는 넣지 않는다.
 
 ## 다음 단계 후보
+
+개선 1–4는 구현·자동/브라우저 검증 완료. 개선 5는 `docs/PLAYTEST.md`의 시험 절차·빈 기록 양식·분석 도구·격리된 테스트 빌드 준비 완료이며 실제 이용자 기록은 아직 0명이다. 다음 작업은 초보 5명의 실제 기기 시험과 후반 세션 후 CSV를 분석하는 일이다. 테스트 빌드의 바로 가기를 공개 배포에 포함하지 말고, 자동 해법/개발자 입력을 사람의 체감 난이도·재미 결과로 집계하지 않는다.
 
 1. 실제 기기 터치 테스트, 스와이프 감도(현재 18px, 이동 중 발동) 조정
 2. ~~레벨 30~50개로 확장 + 챕터 구분~~ (36개 · 3장 완료) → 플레이 테스트로 난이도 곡선 조정
