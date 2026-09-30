@@ -29,6 +29,36 @@ if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
   save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
 }
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
+// Compact lifetime stamps: 1 = participated, 2 = all three canals completed. Never prune these dates.
+function journalDateValid(date) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date + 'T00:00:00Z'))
+    && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date;
+}
+function normalizeJournal() {
+  const days = {};
+  if (save.journal?.version === 1 && save.journal.days && typeof save.journal.days === 'object') {
+    for (const [date, stamp] of Object.entries(save.journal.days)) {
+      if (journalDateValid(date) && (stamp === 1 || stamp === 2)) days[date] = stamp;
+    }
+  }
+  for (const [date, stars] of Object.entries(save.daily || {})) {
+    if (journalDateValid(date) && Number.isInteger(stars) && stars >= 1 && stars <= 3) days[date] = Math.max(days[date] || 0, 1);
+  }
+  for (const [date, record] of Object.entries(save.dailyOps)) {
+    if (!journalDateValid(date) || record?.version !== DAILY_OPERATION_VERSION || !Array.isArray(record.stars)) continue;
+    const cleared = record.stars.slice(0, 3).filter(n => Number.isInteger(n) && n >= 1 && n <= 3).length;
+    if (cleared) days[date] = Math.max(days[date] || 0, cleared === 3 ? 2 : 1);
+  }
+  save.journal = { version: 1, days }; persist();
+}
+function recordJournal(date, complete = false) {
+  if (journalDateValid(date)) save.journal.days[date] = Math.max(save.journal.days[date] || 0, complete ? 2 : 1);
+}
+function journalTotals() {
+  const stamps = Object.values(save.journal.days);
+  return { visits: stamps.length, operations: stamps.filter(n => n === 2).length };
+}
+normalizeJournal(); // Import only surviving records; old single-puzzle clears never become full operations.
 const unlocked = i => i === 0 || save.best[i - 1] != null;
 // chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
 function chapterOf(i) {
@@ -94,6 +124,17 @@ const SKINS = [
     deco: (ctx, L, W, T, t) => { ctx.globalAlpha *= 0.6 + 0.4 * Math.sin(t * 5); sparkle(ctx, L * 0.3, -W * 0.18, T * 0.07); ctx.globalAlpha = 1; } },
   { id: 'lighthouse', name: '등대 상어', need: { streak: 7 }, body: '#ece6dc', fin: '#c9c2b6',
     pattern: (ctx, L, W) => { ctx.fillStyle = '#cf3b33'; for (const x of [0.3, 0.02, -0.26]) ctx.fillRect(L * (x - 0.05), -W, L * 0.1, W * 2); } },
+  { id: 'coral', name: '산호 상어', need: { visits: 3 }, body: '#dc9b88', fin: '#ae6f66',
+    pattern: (ctx, L, W, T) => {
+      ctx.strokeStyle = '#ffe5c8'; ctx.lineWidth = Math.max(1.5, T * 0.025); ctx.lineCap = 'round';
+      for (const x of [-0.2, 0.08, 0.3]) {
+        ctx.beginPath(); ctx.moveTo(L * x, W * 0.4); ctx.lineTo(L * x, -W * 0.35);
+        ctx.moveTo(L * x, 0); ctx.lineTo(L * (x - 0.08), -W * 0.15);
+        ctx.moveTo(L * x, -W * 0.15); ctx.lineTo(L * (x + 0.07), -W * 0.3); ctx.stroke();
+      }
+    } },
+  { id: 'starsea', name: '별바다 상어', need: { operations: 7 }, body: '#7d83b9', fin: '#596390',
+    deco: (ctx, L, W, T) => { for (const [x, y] of [[0.3, -0.17], [0.02, 0.2], [-0.24, -0.1]]) sparkle(ctx, L * x, W * y, T * 0.065); } },
 ];
 const totalStars = () => Object.values(save.best).reduce((n, b) => n + b, 0);
 // longest run of consecutive daily clears in the kept history
@@ -107,7 +148,9 @@ function bestStreak() {
   }
   return best;
 }
-const skinEarned = s => s.need.streak ? bestStreak() >= s.need.streak : totalStars() >= s.need.stars;
+const skinEarned = s => s.need.visits ? journalTotals().visits >= s.need.visits
+  : s.need.operations ? journalTotals().operations >= s.need.operations
+  : s.need.streak ? bestStreak() >= s.need.streak : totalStars() >= s.need.stars;
 // adds newly earned skins to save.owned and returns them (owned skins never lock again)
 function refreshSkins() {
   const owned = new Set(save.owned || ['basic']), fresh = SKINS.filter(s => !owned.has(s.id) && skinEarned(s));
@@ -733,6 +776,7 @@ async function showHint() {
 }
 
 function onClear() {
+  const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
   delete save.sessions[DAILY ? dailySessionKey(DAILY) : 'story'];
   if (DAILY && Number.isInteger(DAILY.stage)) delete save.sessions.dailyStages[DAILY.stage];
@@ -743,6 +787,7 @@ function onClear() {
   if (DAILY) recordDailyStage(DAILY, stars);
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
+  const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
   sfx.win();
   const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
   $('clearStars').innerHTML = earned.map(starSvg).join('');
@@ -760,6 +805,8 @@ function onClear() {
     row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
     (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
+    (DAILY ? row('누적 기록', `참여 ${journalTotals().visits}일 · 작전 완료 ${journalTotals().operations}일`, true) : '') +
+    (freshBadges.length ? row('새 기념 배지', freshBadges.map(r => r.name).join(', '), true) : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('operationStamp').hidden = !operation || progress.count !== 3;
   $('nextBtn').textContent = DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
@@ -780,6 +827,7 @@ function dateLabel(date) {
   return `${m}월 ${d}일 ${WEEKDAY_KO[new Date(y, m - 1, d).getDay()]}요일`;
 }
 function recordDaily(date, stars) {
+  recordJournal(date);
   const done = Object.assign({}, save.daily);
   done[date] = Math.max(done[date] || 0, stars);
   const keys = Object.keys(done).sort();
@@ -793,10 +841,12 @@ function dailyProgress(date) {
   return { stars, count: stars.filter(Boolean).length, next: stars.findIndex(n => !n), total: stars.reduce((a, b) => a + b, 0) };
 }
 function recordDailyStage(daily, stars) {
+  if (!journalDateValid(daily.date) || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
   if (Number.isInteger(daily.stage) && daily.version === DAILY_OPERATION_VERSION && DAILY_STAGES[daily.stage]) {
     const progress = dailyProgress(daily.date);
     progress.stars[daily.stage] = Math.max(progress.stars[daily.stage], stars);
     save.dailyOps[daily.date] = { version: DAILY_OPERATION_VERSION, stars: progress.stars };
+    recordJournal(daily.date, progress.stars.every(n => n > 0));
     const days = Object.keys(save.dailyOps).sort();
     days.slice(0, Math.max(0, days.length - 120)).forEach(k => delete save.dailyOps[k]);
   }
@@ -830,6 +880,8 @@ function renderDaily() {
   $('dailyState').innerHTML = `<b>${progress.count} / 3</b><span>${progress.count === 3 ? '완료' : savedDailyStage(date) >= 0 || progress.count ? '이어서' : '도전'}</span>`;
   $('dailyBtn').classList.toggle('done', progress.count === 3);
   $('dailyBtn').setAttribute('aria-label', `오늘의 구조작전, ${dateLabel(date)}, ${progress.count} / 3 수로 완료`);
+  const totals = journalTotals();
+  $('journalSummary').textContent = `참여 ${totals.visits}일 · 작전 완료 ${totals.operations}일`;
 }
 function renderOperation() {
   const date = dailyDate(), progress = dailyProgress(date);
@@ -909,6 +961,68 @@ function continueDaily() {
   openDaily();
   if (date === dailyDate() && stage >= 0) startDaily(stage);
 }
+/* ---------- rescue journal: lifetime stamps and automatic milestone rewards ---------- */
+const JOURNAL_REWARDS = [
+  { id: 'first-visit', name: '첫 물길', metric: 'visits', goal: 1, mark: '≈' },
+  { id: 'first-operation', name: '구출 성공', metric: 'operations', goal: 1, mark: '✓' },
+  { id: 'coral', name: '산호 상어', metric: 'visits', goal: 3, mark: '✿', skin: 'coral' },
+  { id: 'starsea', name: '별바다 상어', metric: 'operations', goal: 7, mark: '✦', skin: 'starsea' },
+  { id: 'companion', name: '든든한 동행', metric: 'visits', goal: 30, mark: '≈' },
+  { id: 'veteran', name: '베테랑 구조대', metric: 'operations', goal: 30, mark: '✓' },
+];
+function earnedJournalRewards() {
+  const totals = journalTotals();
+  return JOURNAL_REWARDS.filter(r => totals[r.metric] >= r.goal || !!(r.skin && save.owned?.includes(r.skin)));
+}
+const journalOpen = () => !$('journalOverlay').hidden;
+let journalMonth = '', journalReturn = 'title';
+function journalMonthShift(month, delta) {
+  const [y, m] = month.split('-').map(Number), d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function renderJournal() {
+  const totals = journalTotals(), today = dailyDate(), currentMonth = today.slice(0, 7);
+  const dates = Object.keys(save.journal.days).sort();
+  const firstMonth = dates.length ? dates[0].slice(0, 7) : currentMonth;
+  if (!journalMonth || journalMonth > currentMonth) journalMonth = currentMonth;
+  $('journalTotals').textContent = `참여 ${totals.visits}일 · 작전 완료 ${totals.operations}일`;
+  const earnedIds = new Set(earnedJournalRewards().map(r => r.id)), nextReward = JOURNAL_REWARDS.find(r => !earnedIds.has(r.id));
+  $('journalGoal').textContent = nextReward ? `${nextReward.name}까지 ${nextReward.metric === 'visits' ? '참여' : '작전 완료'} ${nextReward.goal - totals[nextReward.metric]}일`
+    : '모든 기념품을 모았어요! 다음 구조 기록도 이어 가요.';
+  const [y, m] = journalMonth.split('-').map(Number), start = new Date(y, m - 1, 1).getDay(), count = new Date(y, m, 0).getDate();
+  $('journalMonth').textContent = `${y}년 ${m}월`;
+  $('journalPrev').disabled = journalMonth <= firstMonth;
+  $('journalNext').disabled = journalMonth >= currentMonth;
+  const monthDates = dates.filter(d => d.startsWith(journalMonth));
+  $('journalMonthSummary').textContent = `이달 참여 ${monthDates.length}일 · 작전 완료 ${monthDates.filter(d => save.journal.days[d] === 2).length}일`;
+  $('journalCalendar').innerHTML = Array.from('일월화수목금토', day => `<span class="journal-weekday" aria-hidden="true">${day}</span>`).join('')
+    + '<span aria-hidden="true"></span>'.repeat(start)
+    + Array.from({ length: count }, (_, i) => {
+      const date = `${journalMonth}-${String(i + 1).padStart(2, '0')}`, stamp = save.journal.days[date] || 0;
+      const state = stamp === 2 ? '세 수로 완료' : stamp ? '참여' : date > today ? '예정' : '기록 없음';
+      return `<span class="journal-day${stamp ? ' stamped' : ''}${stamp === 2 ? ' complete' : ''}${date === today ? ' today' : ''}" role="img" aria-label="${m}월 ${i + 1}일, ${state}${date === today ? ', 오늘' : ''}"><b>${i + 1}</b><small aria-hidden="true">${stamp === 2 ? '✓' : stamp ? '●' : '·'}</small></span>`;
+    }).join('');
+  $('journalRewards').innerHTML = JOURNAL_REWARDS.map(r => {
+    const value = totals[r.metric], earned = value >= r.goal || !!(r.skin && save.owned?.includes(r.skin));
+    const condition = `${r.metric === 'visits' ? '누적 참여' : '세 수로 완료'} ${r.goal}일`;
+    return `<li class="journal-reward${earned ? ' earned' : ''}"><span class="journal-mark" aria-hidden="true">${r.mark}</span><div><b>${r.name}</b><small>${r.skin ? '상어 외형' : '기념 배지'} · ${condition}</small><progress max="${r.goal}" value="${Math.min(value, r.goal)}" aria-label="${r.name}, ${condition}, ${earned ? '획득 완료' : `${value}일 달성`}"></progress></div><span class="journal-earned">${earned ? '획득' : `${value} / ${r.goal}`}</span></li>`;
+  }).join('');
+}
+function openJournal(from = 'title') {
+  journalReturn = from;
+  if (from === 'daily') closeDaily();
+  journalMonth = dailyDate().slice(0, 7); renderJournal();
+  $('app').inert = true; $('journalOverlay').hidden = false;
+  $('journalCard').scrollTop = 0; $('journalTitle').focus({ preventScroll: true });
+}
+function closeJournal() {
+  $('journalOverlay').hidden = true; $('app').inert = false;
+  if (journalReturn === 'daily') { openDaily(); $('dailyJournalBtn').focus({ preventScroll: true }); }
+  else $('journalBtn').focus({ preventScroll: true });
+}
+function journalToSkins() {
+  journalReturn = 'title'; closeJournal(); openSkins();
+}
 /* ---------- my shark: title card and skin picker ---------- */
 function drawSkinPreview(canvas, skin) {
   const r = canvas.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -927,6 +1041,8 @@ function renderSkinCard() {
   requestAnimationFrame(() => drawSkinPreview($('skinPreview'), skin));
 }
 function skinNeedText(skin) {
+  if (skin.need.visits) return `누적 참여 ${skin.need.visits}일 (지금 ${Math.min(journalTotals().visits, skin.need.visits)}일)`;
+  if (skin.need.operations) return `세 수로 완료 ${skin.need.operations}일 (지금 ${Math.min(journalTotals().operations, skin.need.operations)}일)`;
   if (skin.need.streak) return `오늘의 수로 ${skin.need.streak}일 연속 (최고 ${bestStreak()}일)`;
   return `별 ${skin.need.stars}개 (지금 ${Math.min(totalStars(), skin.need.stars)}개)`;
 }
@@ -938,7 +1054,7 @@ function renderSkinGrid() {
       <canvas aria-hidden="true"></canvas><span class="skin-name">${skin.name}</span>
       <span class="skin-need">${has ? (sel ? '사용 중' : '고르기') : skinNeedText(skin)}</span></button>`;
   }).join('');
-  $('skinsSub').textContent = `${owned.size} / ${SKINS.length} 모음 · 별을 모으면 새 상어가 열려요.`;
+  $('skinsSub').textContent = `${owned.size} / ${SKINS.length} 모음 · 별과 구조일지 기록으로 새 상어가 열려요.`;
   requestAnimationFrame(() => $('skinGrid').querySelectorAll('.skin').forEach(b => drawSkinPreview(b.querySelector('canvas'), SKINS.find(k => k.id === b.dataset.id))));
 }
 const skinsOpen = () => !$('skinsOverlay').hidden;
@@ -1397,6 +1513,13 @@ $('dailyStages').addEventListener('click', e => {
   if (b && !b.disabled) { ac(); startDaily(+b.dataset.stage); }
 });
 $('dailyDone').addEventListener('click', closeDaily);
+$('journalBtn').addEventListener('click', () => openJournal());
+$('dailyJournalBtn').addEventListener('click', () => openJournal('daily'));
+$('journalDone').addEventListener('click', closeJournal);
+$('journalSkinsBtn').addEventListener('click', journalToSkins);
+$('journalPrev').addEventListener('click', () => { journalMonth = journalMonthShift(journalMonth, -1); renderJournal(); });
+$('journalNext').addEventListener('click', () => { journalMonth = journalMonthShift(journalMonth, 1); renderJournal(); });
+$('journalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeJournal(); });
 $('dailyLegacyBtn').addEventListener('click', resumeLegacyDaily);
 $('dailyOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeDaily(); });
 $('skinBtn').addEventListener('click', openSkins);
@@ -1455,6 +1578,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
   if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
@@ -1474,7 +1598,8 @@ window.addEventListener('pagehide', pauseGame);
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
-  if (dailyOpen()) closeDaily();
+  if (journalOpen()) closeJournal();
+  else if (dailyOpen()) closeDaily();
   else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();

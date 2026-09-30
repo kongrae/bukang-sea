@@ -19,7 +19,8 @@ const functionSource = name => {
 function operation(stored = null) {
   const storage = source.slice(source.indexOf('const STORE_KEY'), source.indexOf('const unlocked'));
   const daily = source.slice(source.indexOf('/* ---------- daily canal: record'), source.indexOf('/* ---------- my shark:'));
-  const functions = ['levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'dailySessionRecord', 'dailySession', 'checkpoint', 'freshState', 'loadDaily', 'onClear'].map(functionSource).join('\n');
+  const skins = source.slice(source.indexOf('function flower('), source.indexOf('/* ---------- haptics:'));
+  const functions = ['levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'dailySessionRecord', 'dailySession', 'checkpoint', 'freshState', 'loadDaily', 'onClear', 'skinNeedText'].map(functionSource).join('\n');
   return new Function('stored', 'NativeDate', `
     ${engineSource}
     ${dailySource}
@@ -33,7 +34,8 @@ function operation(stored = null) {
     };
     const localStorage = {getItem:()=>written,setItem:(key,value)=>{written=value;}};
     ${storage}
-    const noop = () => {}, sfx = {win:noop}, haptic = noop, refreshSkins = () => [];
+    ${skins}
+    const noop = () => {}, sfx = {win:noop}, haptic = noop;
     const renderLevelGrid = noop, chapterOf = () => ({end:47,name:'외항'}), LEVELS = Array(48);
     const reduceMotion = true, setTimeout = cb => {if(tickHook){const hook=tickHook;tickHook=null;hook();}cb();};
     let DAILY = null, LVL = 0, g, st, anim = null, cleared = false, deco = 0;
@@ -42,9 +44,12 @@ function operation(stored = null) {
     const enter = (level,keep,label) => {st=keep||freshState(level);g=parseLevel(level);cleared=false;$('lvNum').textContent=label;checkpoint();};
     ${functions}
     ${daily}
+    refreshSkins();
     return {
       open:openDaily,close:closeDaily,start:startDaily,next:continueDaily,legacy:resumeLegacyDaily,
       progress:(date=today)=>dailyProgress(date),saved:()=>written,record:recordDailyStage,streak:dailyStreak,
+      totals:journalTotals,rewards:earnedJournalRewards,grant:refreshSkins,need:skinNeedText,
+      journal:openJournal,journalClose:closeJournal,month:month=>{journalMonth=month;renderJournal();},
       save:()=>JSON.parse(JSON.stringify(save)),element:id=>$ (id),
       active:()=>DAILY,state:()=>st,load:loadDaily,
       date:d=>{today=d;},onYield:hook=>{tickHook=hook;},
@@ -145,4 +150,77 @@ test('leaving or midnight during generation cancels entry; finishing yesterday c
   assert.equal(game.progress().count,0);assert.equal(game.progress('2026-10-01').count,1);
   assert.equal(game.element('nextBtn').textContent,'오늘의 작전');
   game.next();assert.equal(game.element('dailyOverlay').hidden,false);
+});
+
+test('journal migration merges valid retained history, distinguishes legacy participation, and keeps cosmetics', () => {
+  const game = operation(JSON.stringify({ best:{0:3}, skin:'gold', owned:['basic','gold'],
+    daily:{'2026-08-01':3,'2026-08-03':1,'2026-02-30':3,'garbage':3,'2026-08-05':0},
+    dailyOps:{'2026-08-01':{version:1,stars:[1,2,3]},'2026-08-04':{version:1,stars:[1,0,0]},
+      '2026-08-06':{version:0,stars:[3,3,3]},'2026-08-07':{version:1,stars:[0,4,'3']}},
+    journal:{version:1,days:{'2026-07-01':2,'2026-08-01':1,'2026-02-31':2,'2026-07-02':99}}
+  }));
+  assert.deepEqual(game.totals(),{visits:4,operations:2});
+  assert.equal(game.save().journal.days['2026-08-03'],1,'legacy three stars count as participation only');
+  assert.equal(game.save().journal.days['2026-08-01'],2,'same date merges into a full operation');
+  assert.equal(game.save().journal.days['2026-08-06'],undefined,'unknown operation version is not credited');
+  assert.equal(game.save().skin,'gold'); assert.ok(game.save().owned.includes('gold'));
+  assert.ok(game.save().owned.includes('coral'),'surviving existing history grants cumulative reward on boot');
+  const reload=operation(game.saved()); assert.deepEqual(reload.totals(),game.totals(),'migration is idempotent');
+});
+
+test('journal totals and earned rewards survive pruning, nonconsecutive days, replay, and out-of-order completion', () => {
+  const game=operation();
+  const dates=Array.from({length:140},(_,i)=>new Date(Date.UTC(2025,0,1+i*2)).toISOString().slice(0,10));
+  for(const date of dates) {
+    for(let stage=0;stage<3;stage++)game.record({date,stage,version:1},1);
+  }
+  game.grant();
+  assert.deepEqual(game.totals(),{visits:140,operations:140});
+  assert.equal(Object.keys(game.save().daily).length,120); assert.equal(Object.keys(game.save().dailyOps).length,120);
+  assert.equal(game.streak(),0,'missing recent days does not erase cumulative rewards');
+  assert.ok(game.save().owned.includes('coral')); assert.ok(game.save().owned.includes('starsea'));
+  assert.equal(game.rewards().length,6);
+  for(let stage=0;stage<3;stage++)game.record({date:dates[0],stage,version:1},3);
+  assert.deepEqual(game.totals(),{visits:140,operations:140},'pruned date replay is deduplicated by lifetime stamp');
+  game.record({date:'2024-12-15',stage:2,version:1},1);
+  assert.deepEqual(game.totals(),{visits:141,operations:140},'older date can arrive without a maximum-date shortcut');
+  const reload=operation(game.saved()); assert.deepEqual(reload.totals(),game.totals());
+  assert.ok(reload.save().owned.includes('starsea'));
+  const late=operation(JSON.stringify({best:{},dailyOps:{'2026-09-29':{version:1,stars:[1,1,0]}}}));
+  late.record({date:'2026-09-29',stage:2,version:1},1);
+  assert.deepEqual(late.totals(),{visits:1,operations:1},'finishing a previous date upgrades its existing stamp');
+});
+
+test('first clear badges and cumulative cosmetics require unique dates and correct completed-operation thresholds', async () => {
+  const game=operation();game.open();await game.start(0);game.clear(1);
+  assert.match(game.element('clearChecks').innerHTML,/첫 물길/);
+  game.open();await game.start(0);game.clear(3);
+  assert.doesNotMatch(game.element('clearChecks').innerHTML,/새 기념 배지/);
+  assert.deepEqual(game.totals(),{visits:1,operations:0});
+  for(const day of ['2026-09-20','2026-09-22'])game.record({date:day,stage:0,version:1},1);
+  assert.deepEqual(game.grant().map(s=>s.id),['coral']);
+  assert.ok(!game.save().owned.includes('starsea'));
+  for(let i=0;i<7;i++)for(let stage=0;stage<3;stage++)game.record({date:`2026-09-${String(1+i*2).padStart(2,'0')}`,stage,version:1},1);
+  assert.deepEqual(game.grant().map(s=>s.id),['starsea']); assert.deepEqual(game.grant(),[]);
+  assert.match(game.need({need:{visits:3}}),/누적 참여 3일/);
+  assert.match(game.need({need:{operations:7}}),/세 수로 완료 7일/);
+  assert.deepEqual(game.save().best,{}); assert.equal(game.save().skin,'basic');
+  game.record({date:'2026-02-30',stage:0,version:1},3);
+  game.record({date:'2026-09-28',stage:0,version:1},0);
+  assert.equal(game.save().journal.days['2026-02-30'],undefined); assert.equal(game.save().journal.days['2026-09-28'],undefined);
+});
+
+test('journal calendar handles empty history, leap February, completed stamps, and returning to the operation', () => {
+  const game=operation();game.journal();
+  assert.equal(game.element('journalPrev').disabled,true);assert.equal(game.element('journalNext').disabled,true);
+  assert.match(game.element('journalCalendar').innerHTML,/9월 30일, 기록 없음, 오늘/);
+  assert.match(game.element('journalGoal').textContent,/첫 물길까지 참여 1일/);
+  for(let stage=0;stage<3;stage++)game.record({date:'2024-02-29',stage,version:1},1);
+  game.month('2024-02');
+  assert.match(game.element('journalCalendar').innerHTML,/2월 29일, 세 수로 완료/);
+  assert.doesNotMatch(game.element('journalCalendar').innerHTML,/2월 30일/);
+  assert.equal(game.element('journalPrev').disabled,true);assert.equal(game.element('journalNext').disabled,false);
+  game.journalClose();game.open();game.journal('daily');
+  assert.equal(game.element('dailyOverlay').hidden,true);assert.equal(game.element('app').inert,true);
+  game.journalClose();assert.equal(game.element('dailyOverlay').hidden,false);assert.equal(game.element('app').inert,true);
 });
