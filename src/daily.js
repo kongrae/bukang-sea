@@ -60,7 +60,7 @@ const DAILY_TIERS = [
 ];
 
 // engine functions: globals in the browser build, required in node tools
-const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, plan, bfsFrom };
+const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, fixedNetPlan, bfsFrom };
 
 function dailySeed(text) {   // FNV-1a
   let h = 2166136261;
@@ -82,10 +82,11 @@ function makeDaily(date) {
       const map = place(mask, tier.spec, rand);
       if (map.some(r => /><|<>/.test(r))) continue;                         // facing jets read as a glitch
       const g = DE.parseLevel({ name: 'daily', map, nets });
-      const full = DE.plan(g, g.start, 0, new Set(), nets, true);
+      // Keep v2 puzzle selection and star targets stable; live hints use the movable-net solver.
+      const full = DE.fixedNetPlan(g, g.start, 0, new Set(), nets, true);
       if (!full) continue;
       if (nets && DE.bfsFrom(g, g.start, 0, new Set(), true, 60)) continue;  // the net must be needed
-      const escape = DE.plan(g, g.start, 0, new Set(), nets, false);
+      const escape = DE.fixedNetPlan(g, g.start, 0, new Set(), nets, false);
       if (full.moves < tier.par[0] - 1 || escape.moves < 2) continue;         // too easy / straight shot to the sea
       const inRange = full.moves >= tier.par[0] && full.moves <= tier.par[1], detour = full.moves - escape.moves;
       const score = (inRange ? 100 : -Math.abs(full.moves - mid) * 10) + detour * 3;

@@ -34,9 +34,12 @@ function search(maskName, spec, target, seed = 1, tries = 2000) {
     let score = -Math.abs(full.moves - target) * 10 + (full.moves - escape.moves), bits;
     if (spec.bits != null) {
       bits = measure({ map, nets, par: full.moves }).bits;
+      // A route that needs relocation may have no fixed-net solution at this par; it cannot
+      // be ranked against a finite fixed-net bits target. Omit bits to generate such levels.
+      if (!Number.isFinite(bits)) continue;
       score = -Math.abs(bits - spec.bits) * 20 - Math.abs(full.moves - target) + (full.moves - escape.moves) * 0.5;
     }
-    if (!best || score > best.score) best = { score, map, par: full.moves, seq: full.seq, escapeOnly: escape.moves, bits };
+    if (!best || score > best.score) best = { score, map, par: full.moves, seq: full.seq, steps: full.steps, escapeOnly: escape.moves, bits };
   }
   return best;
 }
@@ -47,7 +50,9 @@ if (require.main === module) {
   const best = search(maskName, JSON.parse(specJson), +target, +seed, +tries);
   if (!best) { console.log('no solvable candidate found; try another seed or fewer objects'); process.exit(1); }
   console.log(`par ${best.par} (solution ${best.seq}), escape-only ${best.escapeOnly}${best.bits != null ? `, bits ${best.bits}` : ''}\n`);
-  console.log(`  { par: ${best.par}, name: '새 수로', tip: '', map: [\n${best.map.map(r => `    '${r}',`).join('\n')}\n  ] },`);
+  const nets = JSON.parse(specJson).nets || 0;
+  if (nets) console.log('Nets before each swipe:', JSON.stringify(best.steps));
+  console.log(`  { par: ${best.par}, ${nets ? `nets: ${nets}, ` : ''}name: '새 수로', tip: '', map: [\n${best.map.map(r => `    '${r}',`).join('\n')}\n  ] },`);
 }
 
 module.exports = { masks, search };

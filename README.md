@@ -14,7 +14,8 @@ npx serve dist        # 또는 python3 -m http.server -d dist
 
 ```bash
 npm run build     # src/ 수정 후 dist/index.html 다시 만들기
-npm run verify    # 레벨 검증 (par 확인)
+npm run verify    # 해법 재생 검증 (실제 최소 이동 수와 별 기준을 따로 확인)
+npm test          # 그물 재배치 풀이기 회귀 검사
 npm run build:web # www/ PWA 빌드 (정적 호스팅에 그대로 업로드)
 npm run serve     # www/ 를 localhost:5173 으로 확인
 ```

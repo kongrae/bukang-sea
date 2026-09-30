@@ -362,6 +362,7 @@ const caustic = (() => {
 
 /* ---------- level state ---------- */
 let LVL = 0, g = null, st = null, anim = null, bump = null, hint = null, cleared = false;
+let hintRequest = 0;
 let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
@@ -400,6 +401,7 @@ function loadDaily(daily, keep) {
 }
 const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
+  hintRequest++;
   st = keep || freshState(level);
   if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
   anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
@@ -418,12 +420,11 @@ function enter(level, keep, label) {
 // shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
 function setupCoach() {
   coach = null;
-  if (st.moves || st.history.length) return;
-  if (!DAILY && LVL === 0 && !save.coachSwipe) {
+  if (!DAILY && LVL === 0 && !save.coachSwipe && !st.moves && !st.history.length) {
     const p = plan(g, st.pos, 0, new Set(), 0, true);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
-    const p = plan(g, st.pos, 0, new Set(), g.nets, true);
+    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats);
     if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
   }
 }
@@ -458,6 +459,7 @@ function pushHistory() {
 function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
+  hintRequest++;
   const r = slide(g, st.pos, d, netSet(), st.boats);
   hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
   if (!r.path.length) {
@@ -504,6 +506,7 @@ function finishAnim() {
   a.eats.forEach(e => { if (!st.fish.includes(e.fi)) st.fish.push(e.fi); });
   updateHud();
   if (a.win) { onClear(); return; }
+  if (g.nets && !save.coachNet && !queued) setupCoach();
   if (cellAt(g, view.x, view.y) === 's') {
     settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
     if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x: view.x, y: view.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
@@ -519,6 +522,7 @@ function finishAnim() {
 }
 function undo() {
   if (anim || !st.history.length) return;
+  hintRequest++;
   const h = st.history.pop();
   Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
   view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
@@ -534,28 +538,56 @@ function tapTile(gx, gy) {
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
   const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
   const at = st.nets.indexOf(idx);
-  if (at >= 0) { pushHistory(); st.nets.splice(at, 1); netPop.delete(idx); sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); hint = null; updateHud(); return; }
+  if (at >= 0) {
+    hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
+    sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud();
+    if (hint) refreshHint(); else setTip(curLevel().tip);
+    return;
+  }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
-  pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
+  hintRequest++; pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
-  hint = null; setTip(curLevel().tip); updateHud();
+  updateHud();
+  if (hint) refreshHint(); else setTip(curLevel().tip);
 }
 
-function showHint() {
+// Keep the same next-move recipe while the player performs its free net edits. Replanning after
+// each tap could choose a different equally short solution and send the player back and forth.
+function refreshHint() {
+  hint.remove = st.nets.filter(i => !hint.target.includes(i));
+  hint.nets = hint.target.filter(i => !st.nets.includes(i));
+  const action = hint.remove.length ? '반짝이는 그물을 눌러 걷어요.'
+    : hint.nets.length ? '반짝이는 칸에 그물을 쳐요.' : `${DIR_KO[hint.dir]} 밀어 보세요.`;
+  const more = hint.partial ? ' 숭어를 모두 먹으려면 되돌리기가 필요해요.' : ` 앞으로 ${hint.moves}번이면 나가요.`;
+  setTip(`힌트: ${action}${more}`, true);
+}
+async function showHint() {
   if (anim || cleared) return;
+  if (hint) { haptic('tick'); refreshHint(); return; }
+  const request = ++hintRequest, state = st, map = g;
+  const current = () => request === hintRequest && st === state && g === map && !anim && !cleared
+    && !$('gameScreen').hidden && !settingsOpen();
   haptic('tick');
   setTip('길을 찾는 중…', true);
-  setTimeout(() => {
-    const ns = netSet(), left = g.nets - st.nets.length;
-    let p = plan(g, st.pos, fishMask(), ns, left, true, st.boats), partial = false;
-    if (!p) { p = plan(g, st.pos, fishMask(), ns, left, false, st.boats); partial = true; }
-    if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
-    hint = { dir: p.seq[0], nets: p.add };
-    const netTxt = p.add.length ? `반짝이는 칸에 그물을 치고, ` : '';
-    const more = partial ? ' 숭어를 다 먹기는 어려워졌어요.' : ` 앞으로 ${p.moves}번이면 나가요.`;
-    setTip(`힌트: ${netTxt}${DIR_KO[p.seq[0]]} 밀어 보세요.${more}`, true);
-  }, 30);
+  await new Promise(resolve => setTimeout(resolve, 30));
+  if (!current()) return;
+  const ns = netSet(), left = g.nets - st.nets.length;
+  const find = async needAll => {
+    const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats);
+    while (current()) {
+      const step = search.next();
+      if (step.done) return step.value;
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    return undefined; // cancelled; null means the complete search found no route
+  };
+  let p = await find(true), partial = false;
+  if (p === null) { p = await find(false); partial = true; }
+  if (!current() || p === undefined) return;
+  if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
+  hint = { dir: p.seq[0], target: p.steps[0].nets, moves: p.moves, partial };
+  refreshHint();
 }
 
 function onClear() {
@@ -878,7 +910,17 @@ function draw(t) {
     const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;
     drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
   });
-  if (hint) hint.nets.forEach(i => drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, true, t));
+  if (hint) {
+    if (!hint.remove.length) hint.nets.forEach(i => drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, true, t));
+    hint.remove.forEach(i => {
+      const x = (i % g.w + 0.5) * T, y = (Math.floor(i / g.w) + 0.5) * T;
+      ctx.save(); ctx.strokeStyle = C.star; ctx.lineWidth = Math.max(2, T * 0.05);
+      ctx.globalAlpha = 0.7 + Math.sin(t * 6) * 0.25;
+      ctx.beginPath(); ctx.arc(x, y, T * 0.43, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - T * 0.16, y - T * 0.16); ctx.lineTo(x + T * 0.16, y + T * 0.16);
+      ctx.moveTo(x + T * 0.16, y - T * 0.16); ctx.lineTo(x - T * 0.16, y + T * 0.16); ctx.stroke(); ctx.restore();
+    });
+  }
   g.fish.forEach(([fx, fy], i) => { if (!eatenNow.has(i)) drawFish(ctx, fx * T + T / 2, fy * T + T / 2, T, t, hash(i * 17 + deco)); });
   for (const p of particles) if (p.kind === 'fish') drawFish(ctx, p.x * T + T / 2, p.y * T + T / 2, T, t * 4, hash(p.fi * 17 + deco), Math.max(0.05, p.life));
   // bubbles under shark
@@ -899,7 +941,7 @@ function draw(t) {
   const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
   drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
-  if (hint && !anim) {
+  if (hint && !anim && !hint.remove.length && !hint.nets.length) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
     ctx.save(); ctx.translate((sx + dx * pulse) * T + T / 2, (sy + dy * pulse) * T + T / 2); ctx.rotate(ANG[hint.dir]);
     ctx.fillStyle = C.star; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;

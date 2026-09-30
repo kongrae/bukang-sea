@@ -1,7 +1,8 @@
 // Difficulty metric (proxy for how hard a level feels).
 //   bits = -log2(P), P = chance that a random player gets 3 stars: nets dropped on random free water tiles,
 //          then random valid swipes, at most `par` moves. +1 bit = half the chance.
-//   Also: sols (distinct optimal move sequences), netOK (net placements that still allow 3 stars).
+//   Also: sols (distinct sequences of exactly par swipes), netOK (placements with those sequences).
+// FIXED-NET proxy only: does not model free net relocation and is NOT the gameplay minimum.
 // It overstates net difficulty (people reason about where to stop, they don't place nets at random),
 // so compare net levels with each other and confirm the curve by playing on a phone.
 //   node tools/difficulty.js        -> table for every level, grouped by chapter
@@ -61,6 +62,7 @@ if (require.main === module) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
   const { LEVELS, CHAPTERS } = new Function(src + '; return { LEVELS, CHAPTERS };')();
   let i = 0;
+  console.log('Fixed-net difficulty proxy only; run verify for the actual reusable-net minimum.');
   for (const [ci, ch] of CHAPTERS.entries()) {
     console.log(`\n${ci + 1}장 ${ch.name}`);
     let prev = null;
