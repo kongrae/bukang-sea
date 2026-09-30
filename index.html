@@ -158,6 +158,21 @@ h1 .sea { color: var(--title-alert); }
 .daily-stage:focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 2px; }
 .operation-note, .operation-status { font-size: 14px; line-height: 1.5; margin: 0; }
 .operation-status:empty { display: none; }
+.free-link { margin-top: -4px; }
+.free-tier { padding: 12px; border: 1px solid #b5ad9b; border-radius: 14px; background: #f7f1e5; text-align: left; }
+.free-tier-copy { display: flex; flex-direction: column; gap: 4px; }
+.free-tier-copy b { font-size: 18px; }
+.free-tier-copy small { margin-left: 5px; font-size: 13px; font-weight: 500; }
+.free-tier-copy > span { color: #42575a; font-size: 13px; }
+.free-actions { display: flex; gap: 8px; margin-top: 10px; }
+.free-actions .btn { flex: 1; min-height: 44px; padding: 10px 6px; font-size: 14px; }
+.free-actions .btn:disabled { opacity: .55; cursor: default; }
+.card.free-dialog { overflow: hidden; }
+.free-dialog > .operation-status { flex-shrink: 0; }
+.free-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.free-heading .icon-btn { color: var(--text); font-size: 24px; }
+.free-scroll { display: grid; gap: 14px; overflow-y: auto; min-height: 0; padding: 2px 3px 8px; }
+.card.free-dialog .free-actions .btn { min-height: 44px; }
 .operation-stamp { color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; font: 21px var(--font-display); }
 .journal-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 12px 14px; border: 1px solid var(--rail); border-radius: 14px; color: var(--text); background: var(--harbor); cursor: pointer; text-align: left; }
 .journal-link b { font-size: 15px; }
@@ -461,6 +476,9 @@ h1 .sea { color: var(--title-alert); }
       </span>
       <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
     </button>
+    <button class="journal-link free-link" id="freeBtn" type="button">
+      <span><b>자유 수로</b><small id="freeSummary">쉬움 · 보통 · 도전 · 원하는 만큼</small></span><span aria-hidden="true">고르기 ›</span>
+    </button>
     <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
     <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
     <div class="chapters" id="levelGrid"></div>
@@ -545,6 +563,19 @@ h1 .sea { color: var(--title-alert); }
     <button class="btn" id="dailyLegacyBtn" type="button" hidden>이전 수로 이어하기</button>
     <button class="btn" id="dailyJournalBtn" type="button">구조일지 · 누적 보상</button>
     <button class="btn primary" id="dailyDone" type="button">닫기</button>
+  </div>
+</div>
+
+<div class="overlay" id="freeOverlay" hidden>
+  <div class="card operation free-dialog" role="dialog" aria-modal="true" aria-labelledby="freeTitle">
+    <div class="free-heading"><h3 id="freeTitle">자유 수로</h3><button class="icon-btn" id="freeDone" type="button" aria-label="닫기">✕</button></div>
+    <p class="operation-status" id="freeStatus" role="status" aria-live="polite"></p>
+    <div class="free-scroll">
+      <p class="sub">원하는 난이도로, 한 판 더!</p>
+      <div class="operation-stages" id="freeTiers"></div>
+      <p class="operation-note">난이도별로 한 판씩 이어 할 수 있어요.<br>새 수로를 뽑으면 해당 난이도의 진행 중인 판이 바뀌어요. 완료 기록은 남아요.</p>
+      <p class="operation-note">별과 완료 기록은 자유 수로 안에서 따로 모아요.</p>
+    </div>
   </div>
 </div>
 
@@ -1589,7 +1620,50 @@ function makeDailyStage(date, stage) {
   return step.value;
 }
 if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
-  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage };
+  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan };
+
+/* ---------- Free canals: seeded puzzles, independent of calendar dates ---------- */
+const FREE_VERSION = 1;
+const FE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel };
+const FD = typeof module !== 'undefined' && typeof require === 'function' ? require('./daily.js')
+  : { MASKS, rng, place, dailySeed, operationPlan, DAILY_STAGES, DAILY_FALLBACKS };
+const FREE_TIERS = FD.DAILY_STAGES.map((tier, difficulty) => ({ ...tier,
+  name: ['느긋한 물길', '굽이진 물길', '거센 물길'][difficulty],
+  description: ['기본 이동과 숭어 수집', '물줄기·구조정·모래톱', '소용돌이와 그물까지'][difficulty],
+  tip: ['가볍게 한 판! 숭어를 챙기며 길을 찾아요.', '장치가 있는 물길이에요. 멈출 자리를 살펴보세요.', '장치를 함께 이용해 바다로 가는 길을 열어 주세요.'][difficulty],
+}));
+function freeId(run) { return `free:v${run.version}:${run.difficulty}:${run.serial}:${run.seed}`; }
+// Each seed regenerates the same map. Work limits and yields are shared with the verified operation solver.
+function* makeFreeSearch(seed, difficulty) {
+  const tier = FREE_TIERS[difficulty];
+  if (!Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  const rand = FD.rng(FD.dailySeed(`shark-sos-free-v${FREE_VERSION}-${difficulty}-${seed}`));
+  const variant = Math.floor(rand() * 4), nets = difficulty === 2 && variant === 0 ? 1 : 0;
+  const spec = difficulty === 0 ? { buoys: 3, fish: 2 }
+    : difficulty === 1 ? { buoys: 3, fish: 2, jets: variant % 2, boats: +(variant === 2), sand: 1 }
+    : { buoys: 3, fish: 3, jets: 1, sand: 1, whirls: +(variant >= 2), boats: nets ? 0 : 1 };
+  for (let attempt = 0; attempt < 240; attempt++) {
+    yield;
+    const map = FD.place(FD.MASKS[tier.masks[Math.floor(rand() * tier.masks.length)]], spec, rand);
+    if (map.some(row => /><|<>/.test(row))) continue;
+    const g = FE.parseLevel({ map, nets }), full = yield* FD.operationPlan(g, nets, true);
+    if (!full || full.moves < tier.min || full.moves > tier.max) continue;
+    const escape = yield* FD.operationPlan(g, nets, false);
+    if (!escape || escape.moves < tier.escape || full.moves <= escape.moves) continue;
+    if (nets && (yield* FD.operationPlan(g, 0, true)) !== null) continue;
+    return { version: FREE_VERSION, seed, difficulty,
+      level: { name: tier.name, map, nets, par: full.moves + tier.slack, tip: tier.tip } };
+  }
+  const fallback = FD.DAILY_FALLBACKS[difficulty];
+  return { version: FREE_VERSION, seed, difficulty, fallback: true,
+    level: { ...fallback, map: fallback.map.slice(), name: tier.name, tip: tier.tip } };
+}
+function makeFree(seed, difficulty) {
+  const search = makeFreeSearch(seed, difficulty); let step;
+  do { step = search.next(); } while (!step.done);
+  return step.value;
+}
+if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_TIERS, freeId, makeFreeSearch, makeFree };
 
 /* ---------- Game ---------- */
 (() => {
@@ -1608,8 +1682,8 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
 // daily: dated attendance; dailyOps: three best stage stars per date; owned/skin: earned and equipped skins
-// sessions: one story canal, each daily stage, and a legacy daily; seenDevices: confirmed device guides
-// hintUsage: counts and last-use times per story canal or dated daily stage; not part of undo
+// sessions: story, daily stages/legacy, and free0/free1/free2; seenDevices: confirmed device guides
+// hintUsage: counts and last-use times per story canal, dated stage, or free run; not part of undo
 let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, dailyOps: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [], hintUsage: {} };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 if (!save.sessions || typeof save.sessions !== 'object' || Array.isArray(save.sessions)) save.sessions = {};
@@ -1617,6 +1691,10 @@ if (!save.sessions.dailyStages || typeof save.sessions.dailyStages !== 'object' 
 if (!Array.isArray(save.seenDevices)) save.seenDevices = [];
 if (!save.hintUsage || typeof save.hintUsage !== 'object' || Array.isArray(save.hintUsage)) save.hintUsage = {};
 if (!save.dailyOps || typeof save.dailyOps !== 'object' || Array.isArray(save.dailyOps)) save.dailyOps = {};
+if (!save.free || save.free.version !== 1) save.free = { version: 1, runs: [], completed: [0, 0, 0] };
+if (!Array.isArray(save.free.runs)) save.free.runs = [];
+save.free.runs = save.free.runs.slice(0, 3);
+save.free.completed = [0, 1, 2].map(i => Number.isSafeInteger(save.free.completed?.[i]) && save.free.completed[i] >= 0 ? save.free.completed[i] : 0);
 // Keep the previous single puzzle separately so starting an operation never overwrites it.
 if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
   save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
@@ -1726,7 +1804,8 @@ function closeEnding() {
 function endingToTitle() { endingReturn = 'title'; closeEnding(); show('title'); }
 function endingToDaily() { endingReturn = 'title'; closeEnding(); openDaily(); }
 function continueStory() {
-  if (DAILY) continueDaily();
+  if (FREE) { const difficulty = FREE.difficulty; openFree(); startFree(difficulty, true); }
+  else if (DAILY) continueDaily();
   else if (LVL === LEVELS.length - 1 && storyProgress().complete) openEnding('clear');
   else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1);
   else show('title');
@@ -2137,8 +2216,8 @@ let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind:
 const netPop = new Map(), jetFlash = new Map();
 let hudLast = { moves: -1, fish: -1 };
 // DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
-let DAILY = null, deco = 0;   // deco: seed for onlookers/trees so each canal gets its own crowd
-const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
+let DAILY = null, FREE = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
+const curLevel = () => FREE ? FREE.level : DAILY ? DAILY.level : LEVELS[LVL];
 
 function freshState(level) {
   g = parseLevel(level);
@@ -2186,7 +2265,8 @@ function checkpoint() {
   const state = Object.assign(copyTurn(st), { history: st.history.map(copyTurn) });
   // Position and boats commit at swipe time; include ALL fish on that path, even before their visual effects finish.
   if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
-  save.sessions[DAILY ? dailySessionKey(DAILY) : 'story'] = { version: 1, id: DAILY ? dailyStageId(DAILY) : LVL, layout: levelSignature(curLevel()), state };
+  save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : 'story'] = {
+    version: 1, id: FREE ? freeId(FREE) : DAILY ? dailyStageId(DAILY) : LVL, layout: levelSignature(curLevel()), state };
   if (DAILY && Number.isInteger(DAILY.stage)) {
     if (!save.sessions.dailyStages) save.sessions.dailyStages = {};
     save.sessions.dailyStages[DAILY.stage] = save.sessions.daily;
@@ -2211,16 +2291,20 @@ function splashAt(x, y, n, dir, force = 1) {
 }
 
 function loadLevel(i, keep) {
-  DAILY = null; LVL = i; save.last = i; deco = i;
+  DAILY = null; FREE = null; LVL = i; save.last = i; deco = i;
   const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
   enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
 }
 function loadDaily(daily, keep) {
-  DAILY = daily; deco = dailySeed(dailyStageId(daily)) % 997;
+  DAILY = daily; FREE = null; deco = dailySeed(dailyStageId(daily)) % 997;
   const label = Number.isInteger(daily.stage) ? `${+daily.date.slice(5, 7)}/${+daily.date.slice(8)} 구조작전 · ${daily.stage + 1} / 3 · ${daily.tier.label}` : '이전 수로 · 진행 이어하기';
   enter(daily.level, keep, label);
 }
-const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
+function loadFree(run, keep) {
+  FREE = run; DAILY = null; deco = run.seed % 997;
+  enter(run.level, keep, `자유 수로 · ${FREE_TIERS[run.difficulty].label} · ${run.serial}번째`);
+}
+const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
   hintRequest++;
   st = keep || freshState(level);
@@ -2243,7 +2327,7 @@ function enter(level, keep, label) {
 // shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
 function setupCoach() {
   coach = null;
-  if (!DAILY && LVL === 0 && !save.coachSwipe && !st.moves && !st.history.length) {
+  if (!DAILY && !FREE && LVL === 0 && !save.coachSwipe && !st.moves && !st.history.length) {
     const p = plan(g, st.pos, 0, new Set(), 0, true);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
@@ -2382,7 +2466,7 @@ function tapTile(gx, gy) {
 const HINT_INSTANT = 2, HINT_COOLDOWN_MS = 12000;
 let hintSearching = 0;
 function hintUsageRecord() {
-  const key = DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL;
+  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL;
   const record = save.hintUsage[key];
   return record && Number.isSafeInteger(record.count) && record.count >= 0
     && Number.isSafeInteger(record.lastUsed) && record.lastUsed >= 0 ? record : { count: 0, lastUsed: 0 };
@@ -2393,7 +2477,7 @@ function hintWait(now = Date.now()) {
   return Math.ceil(Math.max(0, record.lastUsed + HINT_COOLDOWN_MS - now) / 1000);
 }
 function recordHintUse() {
-  const key = DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL, record = hintUsageRecord();
+  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL, record = hintUsageRecord();
   save.hintUsage[key] = { count: Math.min(Number.MAX_SAFE_INTEGER, record.count + 1), lastUsed: Date.now() };
   const keys = Object.keys(save.hintUsage).filter(k => k.startsWith('daily:'));
   const days = [...new Set(keys.map(k => k.slice(6, 16)))].sort();
@@ -2464,13 +2548,14 @@ async function showHint() {
 function onClear() {
   const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
-  delete save.sessions[DAILY ? dailySessionKey(DAILY) : 'story'];
+  delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : 'story'];
   if (DAILY && Number.isInteger(DAILY.stage)) delete save.sessions.dailyStages[DAILY.stage];
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
   const stars = starsForClear(allFish, inPar);
   const earned = [true, stars >= 2, stars === 3];
-  if (DAILY) recordDailyStage(DAILY, stars);
+  if (FREE) recordFreeClear(FREE, stars);
+  else if (DAILY) recordDailyStage(DAILY, stars);
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
@@ -2479,15 +2564,15 @@ function onClear() {
   $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
-  const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
-  const journey = !DAILY && storyProgress(), rescueComplete = last && journey.complete;
+  const chap = chapterOf(LVL), chapterEnd = !DAILY && !FREE && LVL === chap.end, last = !DAILY && !FREE && LVL === LEVELS.length - 1;
+  const journey = !DAILY && !FREE && storyProgress(), rescueComplete = last && journey.complete;
   const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
   $('clearStory').hidden = !milestone;
   $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : '';
   $('clearTitle').classList.toggle('story-title', !!milestone);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
-  $('clearTitle').classList.toggle('operation-title', !!operation);
-  $('clearTitle').textContent = DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
+  $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
+  $('clearTitle').textContent = FREE ? '자유 수로 구출 성공!' : DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
     : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
@@ -2495,12 +2580,13 @@ function onClear() {
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
     row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
     (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
+    (FREE ? row(`${FREE_TIERS[FREE.difficulty].label} 수로`, `누적 ${save.free.completed[FREE.difficulty]}개 완료`, true) : '') +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (DAILY ? row('누적 기록', `참여 ${journalTotals().visits}일 · 작전 완료 ${journalTotals().operations}일`, true) : '') +
     (freshBadges.length ? row('새 기념 배지', freshBadges.map(r => r.name).join(', '), true) : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('operationStamp').hidden = !operation || progress.count !== 3;
-  $('nextBtn').textContent = DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
+  $('nextBtn').textContent = FREE ? '새 수로' : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
@@ -2751,6 +2837,100 @@ function renderSkinGrid() {
 const skinsOpen = () => !$('skinsOverlay').hidden;
 function openSkins() { $('skinsOverlay').hidden = false; renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
 function closeSkins() { $('skinsOverlay').hidden = true; renderSkinCard(); }
+
+/* ---------- free canals: one resumable puzzle per difficulty ---------- */
+let freeRequest = 0;
+const freeCache = new Map(), freeOpen = () => !$('freeOverlay').hidden;
+function freeRecord(difficulty) {
+  const run = save.free.runs[difficulty];
+  return run && run.version === FREE_VERSION && run.difficulty === difficulty
+    && Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
+    && Number.isSafeInteger(run.serial) && run.serial > 0
+    && Number.isInteger(run.stars) && run.stars >= 0 && run.stars <= 3
+    && typeof run.layout === 'string' && run.layout.length <= 4096 ? run : null;
+}
+function freeSession(run) { return restoreSession(save.sessions['free' + run.difficulty], run.level, freeId(run)); }
+function recordFreeClear(run, stars) {
+  const stored = freeRecord(run.difficulty);
+  if (!stored || freeId(stored) !== freeId(run) || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
+  if (!stored.stars) save.free.completed[run.difficulty] = Math.min(Number.MAX_SAFE_INTEGER, save.free.completed[run.difficulty] + 1);
+  stored.stars = Math.max(stored.stars, stars);
+  persist();
+}
+function renderFreeCard() {
+  const count = save.free.completed.reduce((a, b) => a + b, 0);
+  $('freeSummary').textContent = `쉬움 · 보통 · 도전${count ? ` · ${count}개 완료` : ' · 원하는 만큼'}`;
+}
+function renderFree() {
+  $('freeTiers').innerHTML = FREE_TIERS.map((tier, difficulty) => {
+    const run = freeRecord(difficulty), packet = save.sessions['free' + difficulty];
+    const resume = run && packet?.id === freeId(run) && Number.isSafeInteger(packet.state?.moves) && packet.state.moves >= 0;
+    const action = resume || run && !run.stars ? '이어하기' : run ? '새 수로' : '시작하기';
+    const state = resume ? `${run.serial}번째 · ${packet.state.moves}회 진행` : run ? `${run.serial}번째 · ${'★'.repeat(run.stars)}${'☆'.repeat(3 - run.stars)}` : '아직 시작하지 않았어요';
+    return `<div class="free-tier"><div class="free-tier-copy"><b>${tier.label} <small>${tier.name}</small></b><span>${tier.description}</span><span>${state} · 완료 ${save.free.completed[difficulty]}개</span></div>
+      <div class="free-actions"><button class="btn primary" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'new' : 'resume'}" aria-label="${tier.label} ${action}">${action}</button>
+      ${run ? `<button class="btn" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'replay' : 'new'}" aria-label="${tier.label} ${action === '새 수로' ? '다시 풀기' : '새 수로'}">${action === '새 수로' ? '다시 풀기' : '새 수로'}</button>` : ''}</div></div>`;
+  }).join('');
+  $('freeStatus').textContent = '';
+}
+function openFree() {
+  if (!$('gameScreen').hidden) show('title');
+  freeRequest++; renderFreeCard(); renderFree();
+  $('app').inert = true; $('freeOverlay').hidden = false;
+  $('freeDone').focus({ preventScroll: true });
+}
+function closeFree() {
+  freeRequest++; $('freeOverlay').hidden = true; $('app').inert = false;
+  $('freeBtn').focus({ preventScroll: true });
+}
+function newFreeSeed() {
+  return globalThis.crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 0x100000000);
+}
+async function startFree(difficulty, fresh = false, replayRun = false) {
+  if (!Number.isInteger(difficulty) || !FREE_TIERS[difficulty]) return;
+  const request = ++freeRequest, previous = freeRecord(difficulty), create = fresh || !previous;
+  $('freeTiers').querySelectorAll('button').forEach(b => { b.disabled = true; });
+  $('freeStatus').textContent = '새 물길을 준비하고 있어요…';
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    if (request !== freeRequest) return;
+    let run = !create && freeCache.get(freeId(previous));
+    if (!run) {
+      const serial = create ? (previous?.serial || 0) + 1 : previous.serial;
+      if (!Number.isSafeInteger(serial)) throw new Error('free serial exhausted');
+      for (let attempt = 0; attempt < (create ? 5 : 1); attempt++) {
+        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty);
+        let step;
+        do {
+          if (request !== freeRequest) return;
+          const deadline = performance.now() + 8;
+          do { step = search.next(); } while (!step.done && performance.now() < deadline);
+          if (!step.done) await new Promise(resolve => setTimeout(resolve, 0));
+        } while (!step.done);
+        if (!step.value) throw new Error('free generation failed');
+        const candidate = { ...step.value, serial }, layout = levelSignature(candidate.level);
+        if (create && previous?.layout === layout) continue;
+        if (!create && previous.layout !== layout) throw new Error('free layout changed');
+        run = candidate; break;
+      }
+    }
+    if (request !== freeRequest) return;
+    if (!run) throw new Error('no different free layout');
+    // Commit only a finished, distinct puzzle. Cancellation and failed searches preserve the previous turn.
+    if (create) {
+      save.free.runs[difficulty] = { version: FREE_VERSION, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level) };
+      delete save.sessions['free' + difficulty];
+      for (const key of Object.keys(save.hintUsage)) if (key.startsWith(`free:v${FREE_VERSION}:${difficulty}:`)) delete save.hintUsage[key];
+      if (previous) freeCache.delete(freeId(previous));
+      persist();
+    }
+    freeCache.set(freeId(run), run);
+    const keep = !create && !replayRun ? freeSession(run) : null;
+    closeFree(); show('game'); loadFree(run, keep);
+  } catch (e) {
+    if (request === freeRequest) { renderFree(); $('freeStatus').textContent = '다른 물길을 준비하지 못했어요. 다시 눌러 주세요. 기존 진행은 남아 있어요.'; }
+  }
+}
 
 /* ---------- rendering ---------- */
 const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx = cvs.getContext('2d');
@@ -3193,7 +3373,7 @@ function show(which, animate = true) {
   $('gameScreen').hidden = which !== 'game';
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
-  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderSkinCard(); $('titleScreen').scrollTop = 0; heroW = 0; }
+  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; heroW = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
@@ -3216,6 +3396,13 @@ $('endingHomeBtn').addEventListener('click', endingToTitle);
 $('endingDailyBtn').addEventListener('click', endingToDaily);
 $('endingOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEnding(); });
 $('dailyBtn').addEventListener('click', () => { ac(); openDaily(); });
+$('freeBtn').addEventListener('click', () => { ac(); openFree(); });
+$('freeDone').addEventListener('click', closeFree);
+$('freeOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeFree(); });
+$('freeTiers').addEventListener('click', e => {
+  const b = e.target.closest('[data-free]');
+  if (b && !b.disabled) { ac(); startFree(+b.dataset.free, b.dataset.action === 'new', b.dataset.action === 'replay'); }
+});
 $('dailyStages').addEventListener('click', e => {
   const b = e.target.closest('[data-stage]');
   if (b && !b.disabled) { ac(); startDaily(+b.dataset.stage); }
@@ -3290,6 +3477,7 @@ window.addEventListener('keydown', e => {
   if (journeyOpen()) { if (e.key === 'Escape') closeJourney(); return; }
   if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
   if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
+  if (freeOpen()) { if (e.key === 'Escape') closeFree(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
@@ -3312,6 +3500,7 @@ if (capApp) capApp.addListener('backButton', () => {
   else if (journeyOpen()) closeJourney();
   else if (journalOpen()) closeJournal();
   else if (dailyOpen()) closeDaily();
+  else if (freeOpen()) closeFree();
   else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();
@@ -3328,12 +3517,18 @@ function start(data) {
   const level = resumeDaily ? resumeDaily.level : data && LEVELS[data.lvl];
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
+  else if (data && data.free && data.screen === 'game') {
+    show('title', false);
+    const run = freeRecord(data.free.difficulty);
+    if (run && freeId(run) === data.free.id) { openFree(); startFree(run.difficulty); }
+  }
   else if (data && !data.daily && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
   else show('title', false);
   requestAnimationFrame(frame);
 }
-window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
-  dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }));
+window.claude?.hot?.snapshot?.(() => { pauseGame(); return { screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
+  free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null,
+  dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }; });
 const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
 })();
