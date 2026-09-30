@@ -11,7 +11,7 @@
     "fonts": "node tools/fonts.js",
     "serve": "node tools/serve.js www 5173",
     "verify": "node tools/verify.js",
-    "test": "node --test tools/solver.test.js tools/render.test.js tools/playtest.test.js",
+    "test": "node --test tools/solver.test.js tools/render.test.js tools/playtest.test.js tools/hint.test.js",
     "build:playtest": "node tools/build.js --playtest",
     "serve:playtest": "node tools/serve.js playtest 5175",
     "playtest:report": "node tools/playtest-report.js",

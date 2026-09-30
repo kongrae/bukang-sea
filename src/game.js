@@ -16,10 +16,12 @@ const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
 // daily: { YYYY-MM-DD: stars } for the daily canal; owned/skin: earned shark skins and the one in use
 // sessions: one unfinished story canal and today's daily; seenDevices: rules confirmed in the guide sheet
-let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [] };
+// hintUsage: cumulative counts and last-use times per story canal / daily date; not part of undo
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [], hintUsage: {} };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 if (!save.sessions || typeof save.sessions !== 'object' || Array.isArray(save.sessions)) save.sessions = {};
 if (!Array.isArray(save.seenDevices)) save.seenDevices = [];
+if (!save.hintUsage || typeof save.hintUsage !== 'object' || Array.isArray(save.hintUsage)) save.hintUsage = {};
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
 // chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
@@ -486,7 +488,7 @@ function enter(level, keep, label) {
   setTip(level.tip);
   $('clearOverlay').hidden = true;
   hudLast = { moves: -1, fish: -1 };
-  resize(); updateHud();
+  resize(); updateHud(); updateHintButton();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
@@ -631,6 +633,37 @@ function tapTile(gx, gy) {
   if (hint) refreshHint(); else setTip(curLevel().tip);
 }
 
+/* ---------- hint allowance (separate from undoable turns and star rewards) ---------- */
+const HINT_INSTANT = 2, HINT_COOLDOWN_MS = 12000;
+let hintSearching = 0;
+function hintUsageRecord() {
+  const key = DAILY ? 'daily:' + DAILY.date : 'story:' + LVL;
+  const record = save.hintUsage[key];
+  return record && Number.isSafeInteger(record.count) && record.count >= 0
+    && Number.isSafeInteger(record.lastUsed) && record.lastUsed >= 0 ? record : { count: 0, lastUsed: 0 };
+}
+function hintWait(now = Date.now()) {
+  const record = hintUsageRecord();
+  if (record.count < HINT_INSTANT || record.lastUsed > now) return 0;
+  return Math.ceil(Math.max(0, record.lastUsed + HINT_COOLDOWN_MS - now) / 1000);
+}
+function recordHintUse() {
+  const key = DAILY ? 'daily:' + DAILY.date : 'story:' + LVL, record = hintUsageRecord();
+  save.hintUsage[key] = { count: Math.min(Number.MAX_SAFE_INTEGER, record.count + 1), lastUsed: Date.now() };
+  const days = Object.keys(save.hintUsage).filter(k => k.startsWith('daily:')).sort();
+  days.slice(0, Math.max(0, days.length - 120)).forEach(k => delete save.hintUsage[k]);
+  persist();
+}
+function updateHintButton() {
+  if (!st) return;
+  const button = $('hintBtn'), label = $('hintStatus'), record = hintUsageRecord();
+  const waiting = hint ? 0 : hintWait(), searching = hintSearching !== 0 && hintSearching === hintRequest;
+  const text = searching ? '찾는 중' : hint ? '다시 보기' : waiting ? `${waiting}초 후`
+    : record.count < HINT_INSTANT ? `바로 ${HINT_INSTANT - record.count}회` : '사용 가능';
+  if (label.textContent !== text) label.textContent = text;
+  button.disabled = !!(anim || cleared || searching || waiting);
+}
+
 // Keep the same next-move recipe while the player performs its free net edits. Replanning after
 // each tap could choose a different equally short solution and send the player back and forth.
 function refreshHint() {
@@ -640,33 +673,45 @@ function refreshHint() {
     : hint.nets.length ? '반짝이는 칸에 그물을 쳐요.' : `${DIR_KO[hint.dir]} 밀어 보세요.`;
   const more = hint.partial ? ' 숭어를 모두 먹으려면 되돌리기가 필요해요.' : ` 앞으로 ${hint.moves}번이면 나가요.`;
   setTip(`힌트: ${action}${more}`, true);
+  updateHintButton();
 }
 async function showHint() {
-  if (anim || cleared) return;
+  if (anim || cleared || $('gameScreen').hidden || settingsOpen() || guideOpen()) return;
   if (hint) { haptic('tick'); refreshHint(); return; }
+  if (hintSearching !== 0 && hintSearching === hintRequest) return;
+  const waiting = hintWait();
+  if (waiting) { setTip(`힌트는 ${waiting}초 후에 다시 볼 수 있어요.`, true); updateHintButton(); return; }
   const request = ++hintRequest, state = st, map = g;
+  hintSearching = request;
   const current = () => request === hintRequest && st === state && g === map && !anim && !cleared
-    && !$('gameScreen').hidden && !settingsOpen();
+    && !$('gameScreen').hidden && !settingsOpen() && !guideOpen();
   haptic('tick');
   setTip('길을 찾는 중…', true);
-  await new Promise(resolve => setTimeout(resolve, 30));
-  if (!current()) return;
-  const ns = netSet(), left = g.nets - st.nets.length;
-  const find = async needAll => {
-    const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats);
-    while (current()) {
-      const step = search.next();
-      if (step.done) return step.value;
-      await new Promise(resolve => setTimeout(resolve, 0));
-    }
-    return undefined; // cancelled; null means the complete search found no route
-  };
-  let p = await find(true), partial = false;
-  if (p === null) { p = await find(false); partial = true; }
-  if (!current() || p === undefined) return;
-  if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
-  hint = { dir: p.seq[0], target: p.steps[0].nets, moves: p.moves, partial };
-  refreshHint();
+  updateHintButton();
+  try {
+    await new Promise(resolve => setTimeout(resolve, 30));
+    if (!current()) return;
+    const ns = netSet(), left = g.nets - st.nets.length;
+    const find = async needAll => {
+      const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats);
+      while (current()) {
+        const step = search.next();
+        if (step.done) return step.value;
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      return undefined; // cancelled; null means the complete search found no route
+    };
+    let p = await find(true), partial = false;
+    if (p === null) { p = await find(false); partial = true; }
+    if (!current() || p === undefined) return;
+    if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
+    hint = { dir: p.seq[0], target: p.steps[0].nets, moves: p.moves, partial };
+    recordHintUse();
+    refreshHint();
+  } finally {
+    if (hintSearching === request) hintSearching = 0;
+    updateHintButton();
+  }
 }
 
 function onClear() {
@@ -899,6 +944,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   if (!$('gameScreen').hidden && g && staticLayer) {
+    updateHintButton();
     if (!guideOpen()) step(dt);
     draw(t);
   }

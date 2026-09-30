@@ -238,6 +238,8 @@ h1 .sea { color: var(--buoy-deep); }
   transition: background .15s, transform .2s var(--ease-spring), opacity .15s;
 }
 .ctrl svg.i { width: 24px; height: 24px; }
+.hint-label { display: flex; flex-direction: column; gap: 2px; line-height: 1.15; }
+.hint-label small { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 .ctrl:active { transform: scale(.92); transition-duration: .08s; }
 .ctrl[disabled] { opacity: .35; cursor: default; }
 .ctrl[disabled]:active { transform: none; }
@@ -401,7 +403,7 @@ h1 .sea { color: var(--buoy-deep); }
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7"/><path d="M20.5 4v4.5H16"/></svg>처음부터
       </button>
       <button class="ctrl" id="hintBtn" type="button">
-        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg>힌트
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg><span class="hint-label"><span>힌트</span><small id="hintStatus">바로 2회</small></span>
       </button>
     </div>
     <p class="kbd">방향키·WASD로 이동 · Z 되돌리기 · R 처음부터 · H 힌트</p>

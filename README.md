@@ -29,6 +29,8 @@ npm run playtest:report -- attempts.csv survey.csv --out results.md
 
 실제 이용자 시험 절차는 [docs/PLAYTEST.md](docs/PLAYTEST.md), 빈 기록 양식은 [RECORDS.xlsx](docs/playtest/RECORDS.xlsx), 현재 결과는 [RESULTS.md](docs/playtest/RESULTS.md)다. 아직 실제 이용자 결과는 없으며 테스트 준비·개발 검증까지 완료했다.
 
+힌트는 수로마다 처음 2회 즉시 제공하고, 이후에는 12초 간격으로 계속 사용할 수 있다. 사용에 따른 별 감점은 없다. [힌트 정책](docs/HINT-POLICY.md) 참고.
+
 ## Claude Code로 이어서 작업하기
 
 ```bash
