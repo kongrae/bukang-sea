@@ -13,7 +13,8 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 
 /* ---------- storage (per-viewer convenience only) ---------- */
 const STORE_KEY = 'bukang-sea-v1';
-let save = { best: {}, last: 0, sound: true };
+// vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
@@ -32,6 +33,7 @@ function chapterOf(i) {
 const Hap = window.Capacitor?.Plugins?.Haptics;
 const VIB = { tick: 4, light: 9, medium: 16, heavy: 26, success: [12, 60, 20, 60, 28] };
 function haptic(kind) {
+  if (!save.vibe) return;
   try {
     if (Hap) {
       const p = kind === 'success' ? Hap.notification({ type: 'SUCCESS' })
@@ -244,6 +246,7 @@ let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
+let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 let hudLast = { moves: -1, fish: -1 };
 
@@ -279,6 +282,25 @@ function loadLevel(i, keep) {
   resize(); updateHud();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
+  setupCoach();
+}
+// shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
+function setupCoach() {
+  coach = null;
+  if (st.moves || st.history.length) return;
+  if (LVL === 0 && !save.coachSwipe) {
+    const p = plan(g, st.pos, 0, new Set(), 0, true);
+    if (p) coach = { kind: 'swipe', dir: p.seq[0] };
+  } else if (g.nets && !save.coachNet) {
+    const p = plan(g, st.pos, 0, new Set(), g.nets, true);
+    if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
+  }
+}
+function coachDone(kind) {
+  if (!coach || coach.kind !== kind) return;
+  coach = null;
+  if (kind === 'swipe') save.coachSwipe = true; else save.coachNet = true;
+  persist();
 }
 function setTip(text, isHint) {
   const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
@@ -330,7 +352,7 @@ function tryMove(d) {
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(); haptic('tick'); updateHud();
+  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe');
 }
 function eatFish(fi) {
   anim.eaten.add(fi); sfx.eat(); haptic('light');
@@ -375,7 +397,7 @@ function tapTile(gx, gy) {
   if (at >= 0) { pushHistory(); st.nets.splice(at, 1); netPop.delete(idx); sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); hint = null; updateHud(); return; }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
-  pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium');
+  pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
   hint = null; setTip(LEVELS[LVL].tip); updateHud();
 }
@@ -640,6 +662,7 @@ function draw(t) {
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
   const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
   drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
+  if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
     ctx.save(); ctx.translate((sx + dx * pulse) * T + T / 2, (sy + dy * pulse) * T + T / 2); ctx.rotate(ANG[hint.dir]);
@@ -665,6 +688,38 @@ function draw(t) {
       ctx.restore();
     }
   });
+}
+
+// fingertip: soft white disc with a ring; `press` 0..1 shrinks it like a finger touching glass
+function drawFinger(x, y, press, alpha) {
+  const r = T * 0.2 * (1 - press * 0.18);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.beginPath(); ctx.arc(x + 2, y + 4, r, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.star; ctx.lineWidth = Math.max(2, T * 0.05); ctx.beginPath(); ctx.arc(x, y, r + T * 0.07, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function drawCoach(sx, sy, t) {
+  if (coach.kind === 'swipe') {
+    // finger lands beside the shark, drags one and a half tiles in the move direction, lifts, repeats
+    const [dx, dy] = DIRS[coach.dir], cyc = (t % 1.6) / 1.6;
+    const move = clamp01((cyc - 0.15) / 0.45), e = 1 - Math.pow(1 - move, 3);
+    const alpha = cyc < 0.1 ? cyc / 0.1 : cyc > 0.75 ? clamp01((0.95 - cyc) / 0.2) : 1;
+    const bx = (sx + 0.5) * T + dy * T * 0.55, by = (sy + 0.5) * T - dx * T * 0.55;   // start just to the side of the shark
+    const x = bx + dx * T * 1.5 * e, y = by + dy * T * 1.5 * e;
+    if (move > 0) {
+      ctx.save(); ctx.globalAlpha = alpha * 0.5; ctx.strokeStyle = '#fff'; ctx.lineWidth = T * 0.12; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+    }
+    drawFinger(x, y, move > 0 && move < 1 ? 1 : 0, alpha);
+  } else {
+    // finger taps the tile where the net should go
+    const cyc = (t % 1.2) / 1.2, cx = (coach.x + 0.5) * T, cy = (coach.y + 0.5) * T;
+    const press = cyc < 0.25 ? cyc / 0.25 : cyc < 0.4 ? 1 : clamp01(1 - (cyc - 0.4) / 0.2);
+    ctx.save(); ctx.strokeStyle = C.star; ctx.lineWidth = 2; ctx.globalAlpha = clamp01(1 - cyc) * 0.8;
+    ctx.beginPath(); ctx.arc(cx, cy, T * (0.25 + cyc * 0.35), 0, 7); ctx.stroke(); ctx.restore();
+    drawFinger(cx + T * 0.18, cy + T * 0.22 - press * T * 0.1, press, 1);
+  }
 }
 
 /* ---------- title hero ---------- */
@@ -754,13 +809,16 @@ $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
 $('againBtn').addEventListener('click', () => loadLevel(LVL));
 $('nextBtn').addEventListener('click', () => { if (LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
-function syncSound() {
-  const b = $('soundBtn');
-  b.classList.toggle('muted', !save.sound); b.setAttribute('aria-pressed', String(save.sound));
-  b.setAttribute('aria-label', save.sound ? '소리 끄기' : '소리 켜기');
-}
-$('soundBtn').addEventListener('click', () => { save.sound = !save.sound; persist(); syncSound(); if (save.sound) sfx.eat(); });
-syncSound();
+// settings sheet (sound, vibration) — opened from the gear on the title and in a level
+const settingsOpen = () => !$('settingsOverlay').hidden;
+function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
+function closeSettings() { $('settingsOverlay').hidden = true; }
+$('settingsBtn').addEventListener('click', openSettings);
+$('titleSettingsBtn').addEventListener('click', openSettings);
+$('settingsDone').addEventListener('click', closeSettings);
+$('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
+$('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
+$('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });
 // light tick on every enabled button press, like native controls
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -770,7 +828,7 @@ const gameScreen = $('gameScreen');
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
-  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden) return;
+  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen()) return;
   gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
   ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
 });
@@ -792,6 +850,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (!$('clearOverlay').hidden) { if (e.key === 'Escape') loadLevel(LVL); return; }
   if ($('gameScreen').hidden) return;
   const map = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R', w: 'U', s: 'D', a: 'L', d: 'R', W: 'U', S: 'D', A: 'L', D: 'R' };
@@ -804,7 +863,10 @@ window.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { resize(); heroW = 0; });
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
-if (capApp) capApp.addListener('backButton', () => { if ($('gameScreen').hidden) capApp.exitApp(); else show('title'); });
+if (capApp) capApp.addListener('backButton', () => {
+  if (settingsOpen()) closeSettings();
+  else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
+});
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {

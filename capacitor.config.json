@@ -1,6 +1,12 @@
 {
-  "appId": "kr.lostshark.app",
+  "appId": "kr.hongrae.lostshark",
   "appName": "길 잃은 상어",
   "webDir": "www",
-  "backgroundColor": "#0c3340"
+  "backgroundColor": "#0c3340",
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK",
+      "insetsHandling": "css"
+    }
+  }
 }

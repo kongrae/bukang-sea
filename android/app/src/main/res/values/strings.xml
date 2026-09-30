@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">길 잃은 상어</string>
+    <string name="title_activity_main">길 잃은 상어</string>
+    <string name="package_name">kr.hongrae.lostshark</string>
+    <string name="custom_url_scheme">kr.hongrae.lostshark</string>
+</resources>

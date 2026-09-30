@@ -67,9 +67,10 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
   height: 100%;
   max-width: 560px;
   margin: 0 auto;
-  /* safe-area insets matter when installed (PWA standalone, native app with notch / gesture bar) */
-  padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
-  padding-block: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-bottom));
+  /* safe-area insets matter when installed (PWA standalone, native app with notch / gesture bar).
+     Capacitor 8 on Android reports them as --safe-area-inset-* variables (SystemBars insetsHandling "css"); browsers use env(). */
+  padding-inline: max(12px, var(--safe-area-inset-left, env(safe-area-inset-left))) max(12px, var(--safe-area-inset-right, env(safe-area-inset-right)));
+  padding-block: max(8px, var(--safe-area-inset-top, env(safe-area-inset-top))) max(10px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
   display: flex;
   flex-direction: column;
   position: relative;
@@ -149,10 +150,7 @@ h1 .sea { color: var(--buoy-deep); }
   display: inline-flex; align-items: center; justify-content: center; transition: background .15s, transform .2s var(--ease-spring);
 }
 .icon-btn:active { transform: scale(.9); transition-duration: .08s; }
-#soundBtn .off { display: none; }
-#soundBtn.muted .on { display: none; }
-#soundBtn.muted .off { display: inline; }
-#soundBtn.muted { color: var(--muted); }
+.hero .icon-btn { position: absolute; top: 12px; right: 12px; background: rgba(10,35,43,.28); color: #fff; z-index: 1; }
 @media (hover: hover) {
   .lv:not([disabled]):hover, .btn:not(.primary):hover, .icon-btn:hover, .ctrl:hover { background: var(--harbor-3); }
   .btn.primary:hover { filter: brightness(1.06); }
@@ -207,7 +205,7 @@ h1 .sea { color: var(--buoy-deep); }
 }
 .card {
   background: var(--concrete); color: var(--ink); width: 100%; max-width: 520px;
-  border-radius: 28px 28px 0 0; padding: 10px 22px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0; padding: 10px 22px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
   display: flex; flex-direction: column; gap: 14px; text-align: center; animation: sheet-up .5s var(--ease-sheet) both;
   box-shadow: 0 -10px 40px rgba(0,0,0,.3);
 }
@@ -237,6 +235,18 @@ h1 .sea { color: var(--buoy-deep); }
 .card .row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; }
 .card .btn { background: #c8bea9; min-height: 56px; }
 .card .btn.primary { background: var(--buoy); }
+/* settings sheet: native-style switches */
+.settings { gap: 6px; }
+.settings h3 { margin-bottom: 6px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 4px 4px; border-bottom: 1px solid #c8bea9; font-size: 16.5px; font-weight: 500; text-align: left; cursor: pointer; }
+.switch small { display: block; font-size: 13px; font-weight: 400; color: #5b6a6c; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .track { flex-shrink: 0; width: 54px; height: 32px; border-radius: 16px; background: #b9ad95; position: relative; transition: background .2s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.25); transition: transform .25s var(--ease-spring); }
+.switch input:checked + .track { background: #1f8a6e; }
+.switch input:checked + .track::after { transform: translateX(22px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--buoy-deep); outline-offset: 2px; }
+.settings .btn { margin-top: 10px; }
 
 @keyframes fade { from { opacity: 0 } }
 @keyframes pop { from { transform: scale(.6); opacity: 0 } }
@@ -253,6 +263,7 @@ h1 .sea { color: var(--buoy-deep); }
   <section class="screen title-screen" id="titleScreen">
     <div class="hero">
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
       <div class="hero-text">
         <div class="eyebrow">부산 북항 친수공원 · 수로 탈출 퍼즐</div>
         <h1>길 잃은 <span class="sea">상어</span></h1>
@@ -273,10 +284,7 @@ h1 .sea { color: var(--buoy-deep); }
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="lvl-title"><div class="num" id="lvNum">1장 · 수로 1</div><div class="name" id="lvName">첫 굽이</div></div>
-      <button class="icon-btn" id="soundBtn" type="button" aria-pressed="true" aria-label="소리">
-        <svg class="i on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4.2 4.2 0 010 6M18 6.5a8 8 0 010 11"/></svg>
-        <svg class="i off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
-      </button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
     </div>
     <div class="stats" id="stats"></div>
     <p class="tip" id="tip"></p>
@@ -294,6 +302,15 @@ h1 .sea { color: var(--buoy-deep); }
     </div>
     <p class="kbd">방향키·WASD로 이동 · Z 되돌리기 · R 처음부터 · H 힌트</p>
   </section>
+</div>
+
+<div class="overlay" id="settingsOverlay" hidden>
+  <div class="card settings" role="dialog" aria-labelledby="settingsTitle">
+    <h3 id="settingsTitle">설정</h3>
+    <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
+    <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <button class="btn primary" id="settingsDone" type="button">닫기</button>
+  </div>
 </div>
 
 <div class="overlay" id="clearOverlay" hidden>
@@ -863,7 +880,8 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 
 /* ---------- storage (per-viewer convenience only) ---------- */
 const STORE_KEY = 'bukang-sea-v1';
-let save = { best: {}, last: 0, sound: true };
+// vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
@@ -882,6 +900,7 @@ function chapterOf(i) {
 const Hap = window.Capacitor?.Plugins?.Haptics;
 const VIB = { tick: 4, light: 9, medium: 16, heavy: 26, success: [12, 60, 20, 60, 28] };
 function haptic(kind) {
+  if (!save.vibe) return;
   try {
     if (Hap) {
       const p = kind === 'success' ? Hap.notification({ type: 'SUCCESS' })
@@ -1094,6 +1113,7 @@ let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
+let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 let hudLast = { moves: -1, fish: -1 };
 
@@ -1129,6 +1149,25 @@ function loadLevel(i, keep) {
   resize(); updateHud();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
+  setupCoach();
+}
+// shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
+function setupCoach() {
+  coach = null;
+  if (st.moves || st.history.length) return;
+  if (LVL === 0 && !save.coachSwipe) {
+    const p = plan(g, st.pos, 0, new Set(), 0, true);
+    if (p) coach = { kind: 'swipe', dir: p.seq[0] };
+  } else if (g.nets && !save.coachNet) {
+    const p = plan(g, st.pos, 0, new Set(), g.nets, true);
+    if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
+  }
+}
+function coachDone(kind) {
+  if (!coach || coach.kind !== kind) return;
+  coach = null;
+  if (kind === 'swipe') save.coachSwipe = true; else save.coachNet = true;
+  persist();
 }
 function setTip(text, isHint) {
   const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
@@ -1180,7 +1219,7 @@ function tryMove(d) {
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(); haptic('tick'); updateHud();
+  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe');
 }
 function eatFish(fi) {
   anim.eaten.add(fi); sfx.eat(); haptic('light');
@@ -1225,7 +1264,7 @@ function tapTile(gx, gy) {
   if (at >= 0) { pushHistory(); st.nets.splice(at, 1); netPop.delete(idx); sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); hint = null; updateHud(); return; }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
-  pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium');
+  pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
   hint = null; setTip(LEVELS[LVL].tip); updateHud();
 }
@@ -1490,6 +1529,7 @@ function draw(t) {
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
   const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
   drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
+  if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
     ctx.save(); ctx.translate((sx + dx * pulse) * T + T / 2, (sy + dy * pulse) * T + T / 2); ctx.rotate(ANG[hint.dir]);
@@ -1515,6 +1555,38 @@ function draw(t) {
       ctx.restore();
     }
   });
+}
+
+// fingertip: soft white disc with a ring; `press` 0..1 shrinks it like a finger touching glass
+function drawFinger(x, y, press, alpha) {
+  const r = T * 0.2 * (1 - press * 0.18);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.beginPath(); ctx.arc(x + 2, y + 4, r, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.star; ctx.lineWidth = Math.max(2, T * 0.05); ctx.beginPath(); ctx.arc(x, y, r + T * 0.07, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function drawCoach(sx, sy, t) {
+  if (coach.kind === 'swipe') {
+    // finger lands beside the shark, drags one and a half tiles in the move direction, lifts, repeats
+    const [dx, dy] = DIRS[coach.dir], cyc = (t % 1.6) / 1.6;
+    const move = clamp01((cyc - 0.15) / 0.45), e = 1 - Math.pow(1 - move, 3);
+    const alpha = cyc < 0.1 ? cyc / 0.1 : cyc > 0.75 ? clamp01((0.95 - cyc) / 0.2) : 1;
+    const bx = (sx + 0.5) * T + dy * T * 0.55, by = (sy + 0.5) * T - dx * T * 0.55;   // start just to the side of the shark
+    const x = bx + dx * T * 1.5 * e, y = by + dy * T * 1.5 * e;
+    if (move > 0) {
+      ctx.save(); ctx.globalAlpha = alpha * 0.5; ctx.strokeStyle = '#fff'; ctx.lineWidth = T * 0.12; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+    }
+    drawFinger(x, y, move > 0 && move < 1 ? 1 : 0, alpha);
+  } else {
+    // finger taps the tile where the net should go
+    const cyc = (t % 1.2) / 1.2, cx = (coach.x + 0.5) * T, cy = (coach.y + 0.5) * T;
+    const press = cyc < 0.25 ? cyc / 0.25 : cyc < 0.4 ? 1 : clamp01(1 - (cyc - 0.4) / 0.2);
+    ctx.save(); ctx.strokeStyle = C.star; ctx.lineWidth = 2; ctx.globalAlpha = clamp01(1 - cyc) * 0.8;
+    ctx.beginPath(); ctx.arc(cx, cy, T * (0.25 + cyc * 0.35), 0, 7); ctx.stroke(); ctx.restore();
+    drawFinger(cx + T * 0.18, cy + T * 0.22 - press * T * 0.1, press, 1);
+  }
 }
 
 /* ---------- title hero ---------- */
@@ -1604,13 +1676,16 @@ $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
 $('againBtn').addEventListener('click', () => loadLevel(LVL));
 $('nextBtn').addEventListener('click', () => { if (LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
-function syncSound() {
-  const b = $('soundBtn');
-  b.classList.toggle('muted', !save.sound); b.setAttribute('aria-pressed', String(save.sound));
-  b.setAttribute('aria-label', save.sound ? '소리 끄기' : '소리 켜기');
-}
-$('soundBtn').addEventListener('click', () => { save.sound = !save.sound; persist(); syncSound(); if (save.sound) sfx.eat(); });
-syncSound();
+// settings sheet (sound, vibration) — opened from the gear on the title and in a level
+const settingsOpen = () => !$('settingsOverlay').hidden;
+function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
+function closeSettings() { $('settingsOverlay').hidden = true; }
+$('settingsBtn').addEventListener('click', openSettings);
+$('titleSettingsBtn').addEventListener('click', openSettings);
+$('settingsDone').addEventListener('click', closeSettings);
+$('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
+$('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
+$('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });
 // light tick on every enabled button press, like native controls
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -1620,7 +1695,7 @@ const gameScreen = $('gameScreen');
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
-  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden) return;
+  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen()) return;
   gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
   ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
 });
@@ -1642,6 +1717,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (!$('clearOverlay').hidden) { if (e.key === 'Escape') loadLevel(LVL); return; }
   if ($('gameScreen').hidden) return;
   const map = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R', w: 'U', s: 'D', a: 'L', d: 'R', W: 'U', S: 'D', A: 'L', D: 'R' };
@@ -1654,7 +1730,10 @@ window.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { resize(); heroW = 0; });
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
-if (capApp) capApp.addListener('backButton', () => { if ($('gameScreen').hidden) capApp.exitApp(); else show('title'); });
+if (capApp) capApp.addListener('backButton', () => {
+  if (settingsOpen()) closeSettings();
+  else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
+});
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {

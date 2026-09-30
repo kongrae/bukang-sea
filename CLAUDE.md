@@ -44,7 +44,8 @@ tools/
 assets/        icon.svg(원본) + icons/*.png, fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
-capacitor.config.json  appId(임시값), webDir=www
+capacitor.config.json  appId kr.hongrae.lostshark, webDir=www, SystemBars(DARK, insets→CSS 변수)
+android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정
 www/           build:web 결과 (gitignore)
 ```
 
@@ -92,7 +93,8 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 - 연출(전부 tile 좌표 파티클): 속도에 따른 몸 늘어남, 정지 시 눌림+스프링(`settle`), 벽 충돌 물보라·파문(화면 흔들림·진동은 없음, 2026-09-30 제거), V자 항적(`wake`), 숭어 빨려 들어가기+냠!+반짝임, 물줄기 통과 번쩍임(`jetFlash`), 그물 톡 튀기(`netPop`), 탈출 시 바다로 사라짐, 물 위 코스틱 빛(타일러블 패턴을 waterPath로 clip). reduced-motion이면 대부분 생략.
 - 입력: 게임 화면 어디서든 스와이프, 손가락이 `SWIPE`(18px) 움직이는 순간 발동(pointermove). 탭은 판 위에서만(그물). 키보드 동일.
 - 판(카메라 뷰): 캔버스가 HUD와 버튼 사이 영역 전체를 가장자리까지 채운다(.board margin-inline -12px). 수로는 가운데에 최대 크기로(폭이 모자라면 바깥 산책로 열을 `CROP` 30%까지 화면 밖으로), 남는 공간은 판 밖 세계로 채움: 산책로(엔진도 격자 밖을 #로 봄) + 출구 바깥으로 이어지는 바다(`seaCells`, `~`). 그리드 원점은 `OX, OY`(캔버스 data-tile/ox/oy로 노출, tools/shots.js가 탭 좌표에 사용).
-- 햅틱: Capacitor Haptics 플러그인이 있으면 사용, 없으면 navigator.vibrate. 모든 버튼 누름에 tick.
+- 햅틱: Capacitor Haptics 플러그인이 있으면 사용, 없으면 navigator.vibrate. 모든 버튼 누름에 tick. 설정 창(톱니바퀴, 제목·게임 화면)에서 소리·진동을 따로 끔(`save.sound`, `save.vibe`).
+- 첫 플레이 안내(`coach`): 수로 1에서 손가락 스와이프, 첫 그물 수로에서 손가락 탭. 한 번 하면 `save.coachSwipe/coachNet`으로 다시 안 뜸.
 - 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·상어는 매 프레임.
 - 힌트는 현재 상태에서 `plan()`을 돌려 첫 방향과 필요한 그물 위치를 보여준다.
 - 진행 상황은 `localStorage['bukang-sea-v1']` = `{ best: {레벨인덱스: 별}, last, sound }`. 접근 실패해도 동작해야 하므로 try/catch 유지.

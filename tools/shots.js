@@ -65,7 +65,7 @@ async function cdp() {
     const game = fileUrl(path.join(root, 'www', 'index.html'));
     for (const s of scenes) {
       await send('Page.navigate', { url: game }); await sleep(800);
-      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, sound: false }))}); location.reload();`).catch(() => {});
+      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, sound: false, coachSwipe: true, coachNet: true }))}); location.reload();`).catch(() => {});
       await sleep(1200);
       await ev(`(async () => {
         const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));

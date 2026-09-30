@@ -23,20 +23,26 @@ npm run serve          # http://localhost:5173 에서 확인
 - **Android Studio** (SDK, 에뮬레이터, 빌드 도구 포함). 처음 실행할 때 설정 마법사로 SDK 설치.
 - Google Play 개발자 계정 (25달러, 1회)
 
-### 처음 세팅
+### 처음 세팅 (2026-09-30 완료: Node 24 LTS·Android Studio 설치, npm install, android/ 생성, 아이콘·스플래시 생성)
 ```bash
 npm install
-npx cap add android        # android/ 네이티브 프로젝트 생성 (생성 후 커밋)
+npx cap add android        # android/ 네이티브 프로젝트 생성 (커밋됨)
+node tools/icons.js        # assets/icon-*.png, splash*.png 원본 렌더링
+npx @capacitor/assets generate --android --iconBackgroundColor "#1e7482" --iconBackgroundColorDark "#1e7482" --splashBackgroundColor "#0c3340" --splashBackgroundColorDark "#0c3340"
 npm run cap:sync           # www 빌드 + android 로 복사
 npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레이터 선택 → Run
 ```
 
+- **Android SDK**: Android Studio를 처음 실행해 설정 마법사(Standard)를 끝내야 설치된다(SDK 라이선스 동의는 본인이 직접).
+- **JDK**: Capacitor 8은 JDK 21이 필요하다. Android Studio 안에서 빌드하면 내장 JBR(21)을 쓴다. 명령줄 `gradlew`를 쓸 때는 `JAVA_HOME=C:Program FilesAndroidAndroid Studiojbr`로 지정(시스템 JAVA_HOME은 SMART용 JDK 17이라 바꾸지 않는다).
+- 세로 고정(`AndroidManifest.xml` screenOrientation=portrait), 상태바는 어두운 배경용(SystemBars style DARK). 여백은 `--safe-area-inset-*` CSS 변수로 들어온다(shell.html에서 env()와 함께 사용).
+
 게임 코드를 고친 뒤에는 `npm run cap:sync`만 다시 하면 된다.
 
 ### 출시 전에 정할 것
-- **appId** (`capacitor.config.json`의 `kr.lostshark.app`는 임시값): 스토어에 한 번 올리면 **영구히 못 바꾼다**. 본인 도메인이나 고유한 역도메인으로 정한 뒤 `npx cap add android` 전에 바꿀 것.
+- **appId**: `kr.hongrae.lostshark`(2026-09-30 확정 가정). 첫 업로드 전까지는 바꿀 수 있다(`capacitor.config.json` + `android/app/build.gradle`의 namespace·applicationId + `strings.xml` + java 패키지 폴더). 업로드 후에는 **영구히 못 바꾼다**.
 - **앱 이름**: "길 잃은 상어"로 확정(2026-09-30). "부캉이"는 개인 상표 출원·공공기관 명칭 문제로 쓰지 않는다.
-- 앱 아이콘: Android Studio → `res` 우클릭 → New → Image Asset 에서 `assets/icons/icon-512.png`로 적응형 아이콘 생성.
+- 앱 아이콘·스플래시: 위의 `@capacitor/assets generate`로 생성 완료(적응형 아이콘 전경/배경 분리). 아이콘을 바꾸면 icons.js → assets generate 순서로 다시.
 - 서명 키(업로드 키) 생성: Android Studio → Build → Generate Signed App Bundle. **키 파일과 비밀번호는 저장소 밖에 백업**(잃어버리면 업데이트 불가).
 
 ### Google Play 등록 흐름
