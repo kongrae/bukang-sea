@@ -120,6 +120,17 @@ h1 .sea { color: var(--buoy-deep); }
 .daily.done .daily-state { background: var(--star); }
 .daily.done .daily-state b { font-size: 15px; letter-spacing: 1px; }
 @media (hover: hover) { .daily:hover { filter: brightness(1.06); } }
+/* my shark: preview of the skin in use */
+.myshark {
+  border: 0; border-radius: 20px; padding: 12px 16px 12px 12px; cursor: pointer; text-align: left; color: var(--text);
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0; background: var(--harbor-2);
+  transition: transform .2s var(--ease-spring), background .15s;
+}
+.myshark:active { transform: scale(.97); transition-duration: .08s; }
+.myshark canvas { width: 96px; height: 60px; border-radius: 14px; flex-shrink: 0; }
+.myshark-name { font-family: var(--font-display); font-size: 21px; line-height: 1.15; letter-spacing: 0; }
+.myshark-go { flex-shrink: 0; font-size: 14px; font-weight: 700; color: var(--star); }
+@media (hover: hover) { .myshark:hover { background: var(--harbor-3); } }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
 .section-label h2 { font-size: 13.5px; letter-spacing: .02em; color: var(--muted); margin: 0; font-weight: 500; }
 .section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -137,7 +148,7 @@ h1 .sea { color: var(--buoy-deep); }
 }
 @keyframes tile-in { from { transform: translateY(10px) scale(.96); opacity: 0; } }
 .lv:active { transform: scale(.93); transition-duration: .08s; }
-.lv:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible, .daily:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+.lv:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible, .daily:focus-visible, .myshark:focus-visible, .skin:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
 .lv .n { font-family: var(--font-display); font-size: 32px; line-height: 1.05; letter-spacing: 0; }
 .lv .nm { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lv .st { font-size: 13px; letter-spacing: 1px; color: var(--star); line-height: 1; }
@@ -252,6 +263,23 @@ h1 .sea { color: var(--buoy-deep); }
 .card .row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; }
 .card .btn { background: #c8bea9; min-height: 56px; }
 .card .btn.primary { background: var(--buoy); }
+/* skins sheet */
+.skins { max-height: 88vh; overflow-y: auto; }
+.skin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.skin {
+  border: 2px solid transparent; border-radius: 16px; background: #c8bea9; padding: 8px 8px 10px; cursor: pointer; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; transition: transform .2s var(--ease-spring);
+}
+.skin canvas { width: 100%; aspect-ratio: 8 / 5; max-width: 100%; border-radius: 12px; }
+.skin-name { font-family: var(--font-display); font-size: 17px; letter-spacing: 0; }
+.skin-need { font-size: 12.5px; color: #5b6a6c; text-align: center; font-variant-numeric: tabular-nums; }
+.skin.sel { border-color: var(--buoy-deep); background: #e6dcc8; }
+.skin.sel .skin-need { color: var(--buoy-deep); font-weight: 700; }
+.skin[disabled] { cursor: default; }
+.skin[disabled] canvas { filter: grayscale(1) brightness(.55); }
+.skin[disabled] .skin-name { opacity: .55; }
+.skin:not([disabled]):active { transform: scale(.95); transition-duration: .08s; }
+.checks .new { color: var(--buoy-deep); font-weight: 700; }
 /* settings sheet: native-style switches */
 .settings { gap: 6px; }
 .settings h3 { margin-bottom: 6px; }
@@ -295,6 +323,15 @@ h1 .sea { color: var(--buoy-deep); }
       </span>
       <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
     </button>
+    <button class="myshark" id="skinBtn" type="button">
+      <canvas id="skinPreview" aria-hidden="true"></canvas>
+      <span class="daily-text">
+        <span class="daily-k">내 상어</span>
+        <span class="myshark-name" id="skinName">무태상어</span>
+        <span class="daily-meta" id="skinCount">별을 모으면 새 상어가 열려요</span>
+      </span>
+      <span class="myshark-go">바꾸기</span>
+    </button>
     <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
     <div class="chapters" id="levelGrid"></div>
     <div class="section-label"><h2>수로에 있는 것들</h2></div>
@@ -327,6 +364,15 @@ h1 .sea { color: var(--buoy-deep); }
     </div>
     <p class="kbd">방향키·WASD로 이동 · Z 되돌리기 · R 처음부터 · H 힌트</p>
   </section>
+</div>
+
+<div class="overlay" id="skinsOverlay" hidden>
+  <div class="card skins" role="dialog" aria-labelledby="skinsTitle">
+    <h3 id="skinsTitle">내 상어</h3>
+    <p class="sub" id="skinsSub">별을 모으면 새 상어가 열려요.</p>
+    <div class="skin-grid" id="skinGrid"></div>
+    <button class="btn primary" id="skinsDone" type="button">닫기</button>
+  </div>
 </div>
 
 <div class="overlay" id="settingsOverlay" hidden>
