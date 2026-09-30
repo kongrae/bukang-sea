@@ -60,7 +60,7 @@ const DAILY_TIERS = [
 ];
 
 // engine functions: globals in the browser build, required in node tools
-const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, fixedNetPlan, bfsFrom };
+const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, fixedNetPlan, bfsFrom, planSearch };
 
 function dailySeed(text) {   // FNV-1a
   let h = 2166136261;
@@ -97,4 +97,69 @@ function makeDaily(date) {
   }
   return null;
 }
-if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily };
+/* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
+const DAILY_OPERATION_VERSION = 1;
+const DAILY_STAGES = [
+  { name: '첫 물길', label: '쉬움', min: 5, max: 7, slack: 2, escape: 3,
+    masks: ['bend', 'hook', 'wide'], tip: '첫 수로예요. 숭어를 챙기고 바다로 나가요.' },
+  { name: '굽이 너머', label: '보통', min: 8, max: 10, slack: 1, escape: 4,
+    masks: ['island', 'ring', 'zigzag', 'side'], tip: '두 번째 수로예요. 장치를 살펴 길을 찾아요.' },
+  { name: '마지막 탈출', label: '도전', min: 11, max: 14, slack: 0, escape: 5,
+    masks: ['harbor', 'lagoon', 'shoal', 'delta'], tip: '마지막 수로예요. 세 곳을 통과해 오늘의 작전을 마쳐요.' },
+];
+// Verified reserve routes keep every date playable even when all random candidates miss the target.
+const DAILY_FALLBACKS = [
+  { par: 7, nets: 0, map: ['#E#####','#....f#','#.....#','#.....#','#.....#','#f....#','#.o...#','#.o..o#','#.....#','####S##'] },
+  { par: 11, nets: 0, map: ['####E##','#o^...#','#....o#','#b.##.#','#of##.#','#f....#','#.s...#','##S####'] },
+  { par: 14, nets: 0, map: ['#E#######','#b.o.f..#','#.......#','#####^..#','#.......#','#f.....f#','#..o#####','#....o..#','#.s.....#','#######S#'] },
+];
+function dailyStageId(daily) {
+  return Number.isInteger(daily.stage) ? `${daily.date}:v${daily.version}:${daily.stage}` : daily.date;
+}
+// Deterministic work limits, never elapsed-time limits: slower devices must get the same map.
+// Each yield lets the browser paint and cancel preparation; tools consume this same generator synchronously.
+function* operationPlan(g, nets, needAll) {
+  const search = DE.planSearch(g, g.start, 0, new Set(), nets, needAll);
+  for (let batches = 0; batches < 256; batches++) {
+    const step = search.next();
+    if (step.done) return step.value;
+    yield;
+  }
+  return undefined; // budget exhausted; this is not proof that no route exists
+}
+function* makeDailyStageSearch(date, stage) {
+  const tier = DAILY_STAGES[stage];
+  if (!tier || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const weekday = new Date(date + 'T12:00:00').getDay();
+  if (!Number.isInteger(weekday)) return null;
+  const nets = stage === 2 && (weekday === 0 || weekday === 5) ? 1 : 0;
+  const spec = stage === 0 ? { buoys: 3, fish: 2 }
+    : stage === 1 ? { buoys: 3, fish: 2, jets: weekday % 2, boats: +(weekday % 3 === 0), sand: 1 }
+    : { buoys: 3, fish: 3, jets: 1, sand: 1, whirls: +(weekday % 2 === 0), boats: nets ? 0 : 1 };
+  const rand = rng(dailySeed(`shark-sos-operation-v${DAILY_OPERATION_VERSION}-${date}-${stage}`));
+  for (let attempt = 0; attempt < 240; attempt++) {
+    yield;
+    const mask = MASKS[tier.masks[Math.floor(rand() * tier.masks.length)]];
+    const map = place(mask, spec, rand);
+    if (map.some(r => /><|<>/.test(r))) continue;
+    const g = DE.parseLevel({ map, nets });
+    const full = yield* operationPlan(g, nets, true);
+    if (!full || full.moves < tier.min || full.moves > tier.max) continue;
+    const escape = yield* operationPlan(g, nets, false);
+    if (!escape || escape.moves < tier.escape || full.moves <= escape.moves) continue;
+    if (nets && (yield* operationPlan(g, 0, true)) !== null) continue;
+    return { date, stage, version: DAILY_OPERATION_VERSION, tier,
+      level: { name: tier.name, map, nets, par: full.moves + tier.slack, tip: tier.tip } };
+  }
+  const fallback = DAILY_FALLBACKS[stage];
+  return { date, stage, version: DAILY_OPERATION_VERSION, tier, fallback: true,
+    level: { name: tier.name, map: fallback.map.slice(), nets: fallback.nets, par: fallback.par, tip: tier.tip } };
+}
+function makeDailyStage(date, stage) {
+  const search = makeDailyStageSearch(date, stage);
+  let step;
+  do { step = search.next(); } while (!step.done);
+  return step.value;
+}
+if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
+  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage };

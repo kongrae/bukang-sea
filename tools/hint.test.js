@@ -6,10 +6,11 @@ const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
 const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
 const levels = fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8');
 const hintSource = source.slice(source.indexOf('/* ---------- hint allowance'), source.indexOf('function onClear()'));
+const { dailyStageId } = require('../src/daily.js');
 
 // Execute the actual hint handler, solver and allowance with a controllable wall clock.
 function hints({ stored = null, daily = null, index = 0, cancel = false, noRoute = false } = {}) {
-  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', `
+  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', `
     ${engine}
     ${levels}
     let now = 100000, written = stored, tip = '', hint = null, hintRequest = 0;
@@ -30,8 +31,17 @@ function hints({ stored = null, daily = null, index = 0, cancel = false, noRoute
       status:()=>({...elements.hintBtn,label:elements.hintStatus.textContent}),
       next:()=>{hint=null;hintRequest++;updateHintButton();},
       advance:ms=>{now+=ms;updateHintButton();}};
-  `)(stored, daily && {date: daily}, index, cancel, noRoute);
+  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId);
 }
+
+test('each operation stage has its own persistent allowance, independent of legacy hints', async () => {
+  const first = {date:'2026-09-30',stage:0,version:1};
+  const game = hints({daily:first});
+  await game.show(); game.next(); await game.show(); game.next();
+  assert.equal(hints({stored:game.saved(),daily:first}).wait(),12);
+  assert.equal(hints({stored:game.saved(),daily:{...first,stage:1}}).usage().count,0);
+  assert.equal(hints({stored:game.saved(),daily:first.date}).usage().count,0);
+});
 
 test('two immediate hints, then a 12-second wait for each new hint', async () => {
   const game = hints();

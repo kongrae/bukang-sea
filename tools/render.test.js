@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
+const { dailyStageId } = require('../src/daily.js');
 const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8') + '; return LEVELS;')();
 
 // Run the production movement/frame/render functions with a silent canvas and sound output.
@@ -15,9 +16,9 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
     return found[0];
   };
   const easing = source.slice(source.indexOf('function easeTable('), source.indexOf('/* ---------- drawing primitives'));
-  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'finishAnim', 'undo', 'tapTile', 'step', 'draw'].map(functionSource).join('\n');
+  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'finishAnim', 'undo', 'tapTile', 'step', 'draw'].map(functionSource).join('\n');
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
-  return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', `
+  return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', `
     ${engine}
     ${easing}
     ${source.match(/^const ANG = .*$/m)[0]}
@@ -40,7 +41,7 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
     ${functions}
     st = freshState(level);
     const packet = save.sessions[DAILY ? 'daily' : 'story'];
-    const resumed = restoreSession(packet, level, DAILY ? DAILY.date : LVL);
+    const resumed = restoreSession(packet, level, DAILY ? dailyStageId(DAILY) : LVL);
     if (resumed) st = resumed;
     const view = {x: st.pos[0], y: st.pos[1], ang: ANG.U, target: ANG.U};
     return {
@@ -50,7 +51,7 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
       render: () => {boatsDrawn = []; draw(0); return boatsDrawn;},
       state: () => JSON.parse(JSON.stringify({pos: st.pos, boats: st.boats, nets: st.nets, moves: st.moves, fish: st.fish, cleared, animating: !!anim, view: [view.x, view.y]}))
     };
-  `)(LEVELS[index], reduced, index, stored, daily && {date: daily}, storageFails);
+  `)(LEVELS[index], reduced, index, stored, daily && {date: daily, stage: 0, version: 1}, storageFails, dailyStageId);
 }
 
 function finishTurn(scene) {

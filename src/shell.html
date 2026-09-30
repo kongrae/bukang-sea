@@ -122,6 +122,25 @@ h1 .sea { color: var(--title-alert); }
 .daily-state b i { font-style: normal; opacity: .3; }
 .daily.done .daily-state { background: var(--star); }
 .daily.done .daily-state b { font-size: 13px; letter-spacing: 0; }
+.operation { max-height: 90dvh; overflow-y: auto; }
+.card.operation h3 { font-size: clamp(28px, 8vw, 32px); }
+.operation-stages { display: grid; gap: 10px; }
+.daily-stage { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 74px; padding: 10px 12px; border: 2px solid #b5ad9b; border-radius: 15px; background: #f7f1e5; color: var(--ink); cursor: pointer; text-align: left; }
+.stage-number { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--harbor); color: var(--text); font: 23px var(--font-display); }
+.stage-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stage-copy b { font-size: 17px; }
+.stage-copy small { font-size: 13px; margin-left: 4px; font-weight: 500; }
+.stage-copy > span { font-size: 13px; color: #42575a; }
+.daily-stage.done { border-color: #38785c; }
+.daily-stage.done .stage-number { background: #286446; }
+.daily-stage[disabled] { background: #d1c8b5; cursor: default; }
+.daily-stage[disabled] .stage-copy { opacity: .75; }
+.daily-stage:not([disabled]):active { transform: scale(.98); }
+.daily-stage:focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 2px; }
+.operation-note, .operation-status { font-size: 14px; line-height: 1.5; margin: 0; }
+.operation-status:empty { display: none; }
+.operation-stamp { color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; font: 21px var(--font-display); }
+#clearOverlay .card { max-height: 94dvh; overflow-y: auto; }
 @media (hover: hover) { .daily:hover { filter: brightness(1.06); } }
 /* my shark: preview of the skin in use */
 .myshark {
@@ -268,6 +287,7 @@ h1 .sea { color: var(--title-alert); }
   .card::before { display: none; }
 }
 .card h3 { font-family: var(--font-display); font-weight: 400; font-size: 38px; letter-spacing: 0; margin: 4px 0 0; line-height: 1.1; }
+.card h3.operation-title { font-size: clamp(28px, 8.4vw, 34px); }
 .card .sub { margin: 0; font-size: 14px; color: #3d4d4f; }
 .stars { display: flex; justify-content: center; gap: 12px; }
 .star { width: 62px; height: 62px; }
@@ -361,18 +381,18 @@ h1 .sea { color: var(--title-alert); }
       <p class="journey-label" id="journeyLabel"></p>
       <button class="btn primary big" id="playBtn" type="button">시작하기</button>
     </div>
+    <button class="daily" id="dailyBtn" type="button">
+      <span class="daily-text">
+        <span class="daily-k">오늘의 구조작전</span>
+        <span class="daily-date" id="dailyDate">오늘</span>
+        <span class="daily-meta" id="dailyMeta">매일 새로 열리는 세 수로</span>
+      </span>
+      <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
+    </button>
     <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
     <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
     <div class="chapters" id="levelGrid"></div>
     <div class="extra-options">
-      <button class="daily" id="dailyBtn" type="button">
-        <span class="daily-text">
-          <span class="daily-k">오늘의 수로</span>
-          <span class="daily-date" id="dailyDate">오늘</span>
-          <span class="daily-meta" id="dailyMeta">매일 새로 열리는 수로</span>
-        </span>
-        <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
-      </button>
       <button class="myshark" id="skinBtn" type="button">
         <canvas id="skinPreview" aria-hidden="true"></canvas>
         <span class="daily-text">
@@ -414,6 +434,18 @@ h1 .sea { color: var(--title-alert); }
   </section>
 </div>
 
+<div class="overlay" id="dailyOverlay" hidden>
+  <div class="card operation" role="dialog" aria-modal="true" aria-labelledby="operationTitle">
+    <h3 id="operationTitle">오늘의 구조작전</h3>
+    <p class="sub" id="operationDate"></p>
+    <div class="operation-stages" id="dailyStages"></div>
+    <p class="operation-note" id="operationNote"></p>
+    <p class="operation-status" id="operationStatus" role="status" aria-live="polite"></p>
+    <button class="btn" id="dailyLegacyBtn" type="button" hidden>이전 수로 이어하기</button>
+    <button class="btn primary" id="dailyDone" type="button">닫기</button>
+  </div>
+</div>
+
 <div class="overlay" id="skinsOverlay" hidden>
   <div class="card skins" role="dialog" aria-labelledby="skinsTitle">
     <h3 id="skinsTitle">내 상어</h3>
@@ -436,6 +468,7 @@ h1 .sea { color: var(--title-alert); }
 <div class="overlay" id="clearOverlay" hidden>
   <div class="card" role="dialog" aria-labelledby="clearTitle">
     <h3 id="clearTitle">바다로 나갔어요!</h3>
+    <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
     <div class="stars" id="clearStars"></div>
     <ul class="checks" id="clearChecks"></ul>
     <div class="row">

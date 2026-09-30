@@ -14,14 +14,20 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 /* ---------- storage (per-viewer convenience only) ---------- */
 const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
-// daily: { YYYY-MM-DD: stars } for the daily canal; owned/skin: earned shark skins and the one in use
-// sessions: one unfinished story canal and today's daily; seenDevices: rules confirmed in the guide sheet
-// hintUsage: cumulative counts and last-use times per story canal / daily date; not part of undo
-let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [], hintUsage: {} };
+// daily: dated attendance; dailyOps: three best stage stars per date; owned/skin: earned and equipped skins
+// sessions: one story canal, each daily stage, and a legacy daily; seenDevices: confirmed device guides
+// hintUsage: counts and last-use times per story canal or dated daily stage; not part of undo
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, dailyOps: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [], hintUsage: {} };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 if (!save.sessions || typeof save.sessions !== 'object' || Array.isArray(save.sessions)) save.sessions = {};
+if (!save.sessions.dailyStages || typeof save.sessions.dailyStages !== 'object' || Array.isArray(save.sessions.dailyStages)) save.sessions.dailyStages = {};
 if (!Array.isArray(save.seenDevices)) save.seenDevices = [];
 if (!save.hintUsage || typeof save.hintUsage !== 'object' || Array.isArray(save.hintUsage)) save.hintUsage = {};
+if (!save.dailyOps || typeof save.dailyOps !== 'object' || Array.isArray(save.dailyOps)) save.dailyOps = {};
+// Keep the previous single puzzle separately so starting an operation never overwrites it.
+if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
+  save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
+}
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
 // chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
@@ -401,7 +407,7 @@ let settle = null, pop = null, queued = null, clock = 0;
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 let hudLast = { moves: -1, fish: -1 };
-// DAILY = the daily canal being played ({ date, weekday, tier, level } from makeDaily), null while in the story levels
+// DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
 let DAILY = null, deco = 0;   // deco: seed for onlookers/trees so each canal gets its own crowd
 const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
 
@@ -440,13 +446,22 @@ function restoreSession(record, level, id) {
 function storySession(i = save.sessions.story?.id) {
   return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, LEVELS[i], i) : null;
 }
-function dailySession(daily) { return daily ? restoreSession(save.sessions.daily, daily.level, daily.date) : null; }
+function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
+function dailySessionRecord(daily) {
+  const record = save.sessions.dailyStages?.[daily.stage];
+  return record?.id === dailyStageId(daily) ? record : save.sessions[dailySessionKey(daily)];
+}
+function dailySession(daily) { return daily ? restoreSession(dailySessionRecord(daily), daily.level, dailyStageId(daily)) : null; }
 function checkpoint() {
   if (!st || cleared || (anim && anim.win)) return;
   const state = Object.assign(copyTurn(st), { history: st.history.map(copyTurn) });
   // Position and boats commit at swipe time; include ALL fish on that path, even before their visual effects finish.
   if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
-  save.sessions[DAILY ? 'daily' : 'story'] = { version: 1, id: DAILY ? DAILY.date : LVL, layout: levelSignature(curLevel()), state };
+  save.sessions[DAILY ? dailySessionKey(DAILY) : 'story'] = { version: 1, id: DAILY ? dailyStageId(DAILY) : LVL, layout: levelSignature(curLevel()), state };
+  if (DAILY && Number.isInteger(DAILY.stage)) {
+    if (!save.sessions.dailyStages) save.sessions.dailyStages = {};
+    save.sessions.dailyStages[DAILY.stage] = save.sessions.daily;
+  }
   persist();
 }
 function pauseGame() {
@@ -472,8 +487,9 @@ function loadLevel(i, keep) {
   enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
 }
 function loadDaily(daily, keep) {
-  DAILY = daily; deco = dailySeed(daily.date) % 997;
-  enter(daily.level, keep, `${dateLabel(daily.date)} · ${daily.tier.label}`);
+  DAILY = daily; deco = dailySeed(dailyStageId(daily)) % 997;
+  const label = Number.isInteger(daily.stage) ? `${+daily.date.slice(5, 7)}/${+daily.date.slice(8)} 구조작전 · ${daily.stage + 1} / 3 · ${daily.tier.label}` : '이전 수로 · 진행 이어하기';
+  enter(daily.level, keep, label);
 }
 const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
@@ -637,7 +653,7 @@ function tapTile(gx, gy) {
 const HINT_INSTANT = 2, HINT_COOLDOWN_MS = 12000;
 let hintSearching = 0;
 function hintUsageRecord() {
-  const key = DAILY ? 'daily:' + DAILY.date : 'story:' + LVL;
+  const key = DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL;
   const record = save.hintUsage[key];
   return record && Number.isSafeInteger(record.count) && record.count >= 0
     && Number.isSafeInteger(record.lastUsed) && record.lastUsed >= 0 ? record : { count: 0, lastUsed: 0 };
@@ -648,10 +664,12 @@ function hintWait(now = Date.now()) {
   return Math.ceil(Math.max(0, record.lastUsed + HINT_COOLDOWN_MS - now) / 1000);
 }
 function recordHintUse() {
-  const key = DAILY ? 'daily:' + DAILY.date : 'story:' + LVL, record = hintUsageRecord();
+  const key = DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL, record = hintUsageRecord();
   save.hintUsage[key] = { count: Math.min(Number.MAX_SAFE_INTEGER, record.count + 1), lastUsed: Date.now() };
-  const days = Object.keys(save.hintUsage).filter(k => k.startsWith('daily:')).sort();
-  days.slice(0, Math.max(0, days.length - 120)).forEach(k => delete save.hintUsage[k]);
+  const keys = Object.keys(save.hintUsage).filter(k => k.startsWith('daily:'));
+  const days = [...new Set(keys.map(k => k.slice(6, 16)))].sort();
+  const expired = new Set(days.slice(0, Math.max(0, days.length - 120)));
+  keys.filter(k => expired.has(k.slice(6, 16))).forEach(k => delete save.hintUsage[k]);
   persist();
 }
 function updateHintButton() {
@@ -716,12 +734,13 @@ async function showHint() {
 
 function onClear() {
   cleared = true;
-  delete save.sessions[DAILY ? 'daily' : 'story'];
+  delete save.sessions[DAILY ? dailySessionKey(DAILY) : 'story'];
+  if (DAILY && Number.isInteger(DAILY.stage)) delete save.sessions.dailyStages[DAILY.stage];
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
   const stars = starsForClear(allFish, inPar);
   const earned = [true, stars >= 2, stars === 3];
-  if (DAILY) recordDaily(DAILY.date, stars);
+  if (DAILY) recordDailyStage(DAILY, stars);
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   sfx.win();
@@ -730,16 +749,21 @@ function onClear() {
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
   const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
-  $('clearTitle').textContent = DAILY ? (stars === 3 ? '오늘의 수로 완벽!' : '오늘의 수로 완료!')
+  const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
+  $('clearTitle').classList.toggle('operation-title', !!operation);
+  $('clearTitle').textContent = DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
     : last ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
     row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
+    (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
-  $('nextBtn').textContent = DAILY || last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
+  $('operationStamp').hidden = !operation || progress.count !== 3;
+  $('nextBtn').textContent = DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
+    : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
@@ -762,6 +786,22 @@ function recordDaily(date, stars) {
   keys.slice(0, Math.max(0, keys.length - 120)).forEach(k => delete done[k]);   // keep ~4 months
   save.daily = done; persist();
 }
+function dailyProgress(date) {
+  const record = save.dailyOps[date];
+  const stars = DAILY_STAGES.map((_, i) => record?.version === DAILY_OPERATION_VERSION && Number.isInteger(record.stars?.[i])
+    ? Math.max(0, Math.min(3, record.stars[i])) : 0);
+  return { stars, count: stars.filter(Boolean).length, next: stars.findIndex(n => !n), total: stars.reduce((a, b) => a + b, 0) };
+}
+function recordDailyStage(daily, stars) {
+  if (Number.isInteger(daily.stage) && daily.version === DAILY_OPERATION_VERSION && DAILY_STAGES[daily.stage]) {
+    const progress = dailyProgress(daily.date);
+    progress.stars[daily.stage] = Math.max(progress.stars[daily.stage], stars);
+    save.dailyOps[daily.date] = { version: DAILY_OPERATION_VERSION, stars: progress.stars };
+    const days = Object.keys(save.dailyOps).sort();
+    days.slice(0, Math.max(0, days.length - 120)).forEach(k => delete save.dailyOps[k]);
+  }
+  recordDaily(daily.date, stars); // One clear still counts as attendance; never adds to story stars.
+}
 // consecutive days cleared, counting back from today (or from yesterday if today is not done yet)
 function dailyStreak() {
   const done = save.daily || {}, d = new Date();
@@ -770,22 +810,104 @@ function dailyStreak() {
   while (done[dailyDate(d)]) { n++; d.setDate(d.getDate() - 1); }
   return n;
 }
-let todayDaily = null;   // generated once per date
-function getTodayDaily() {
-  const date = dailyDate();
-  if (!todayDaily || todayDaily.date !== date) todayDaily = makeDaily(date);
-  return todayDaily;
+let dailyRequest = 0, dailyCacheDate = '', shownDailyDate = '', dailyCache = new Map(), legacyDaily = null;
+const dailyOpen = () => !$('dailyOverlay').hidden;
+function savedDailyStage(date) {
+  const id = save.sessions.daily?.id;
+  const active = DAILY_STAGES.findIndex((_, stage) => id === dailyStageId({ date, stage, version: DAILY_OPERATION_VERSION }));
+  return active >= 0 ? active : DAILY_STAGES.findIndex((_, stage) => save.sessions.dailyStages[stage]?.id === dailyStageId({ date, stage, version: DAILY_OPERATION_VERSION }));
 }
 function renderDaily() {
-  const date = dailyDate(), stars = (save.daily || {})[date] || 0, streak = dailyStreak();
-  if (save.sessions.daily && save.sessions.daily.id !== date) { delete save.sessions.daily; persist(); }
-  const [y, m, d] = date.split('-').map(Number), tier = DAILY_TIERS[new Date(y, m - 1, d).getDay()];
+  const date = dailyDate(), progress = dailyProgress(date), streak = dailyStreak();
+  for (const key of ['daily', 'dailyLegacy']) {
+    if (save.sessions[key] && String(save.sessions[key].id).slice(0, 10) !== date) { delete save.sessions[key]; persist(); }
+  }
+  for (const [key, record] of Object.entries(save.sessions.dailyStages)) {
+    if (!record || String(record.id).slice(0, 10) !== date) { delete save.sessions.dailyStages[key]; persist(); }
+  }
   $('dailyDate').textContent = dateLabel(date);
-  $('dailyMeta').textContent = `난이도 ${'●'.repeat(tier.stars)}${'○'.repeat(5 - tier.stars)} ${tier.label}` + (streak ? ` · 연속 ${streak}일` : '');
-  const resume = save.sessions.daily && dailySession(getTodayDaily());
-  $('dailyState').innerHTML = resume ? `<b>이어서</b><span>${resume.moves}회 진행</span>` : stars ? `<b>${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></b><span>완료</span>` : `<b>도전</b><span>하기</span>`;
-  $('dailyBtn').classList.toggle('done', !!stars);
-  $('dailyBtn').setAttribute('aria-label', `오늘의 수로, ${dateLabel(date)}, ${tier.label}${resume ? `, ${resume.moves}회 진행 이어서 하기` : stars ? `, 별 ${stars}개 완료` : ''}`);
+  $('dailyMeta').textContent = '쉬움 → 보통 → 도전' + (streak ? ` · 연속 ${streak}일` : '');
+  $('dailyState').innerHTML = `<b>${progress.count} / 3</b><span>${progress.count === 3 ? '완료' : savedDailyStage(date) >= 0 || progress.count ? '이어서' : '도전'}</span>`;
+  $('dailyBtn').classList.toggle('done', progress.count === 3);
+  $('dailyBtn').setAttribute('aria-label', `오늘의 구조작전, ${dateLabel(date)}, ${progress.count} / 3 수로 완료`);
+}
+function renderOperation() {
+  const date = dailyDate(), progress = dailyProgress(date);
+  shownDailyDate = date;
+  $('operationDate').textContent = `${dateLabel(date)} · ${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
+  $('operationNote').textContent = progress.count === 3 ? '오늘의 작전을 마쳤어요! 별을 더 모으거나 내일 새 수로에 도전해요.'
+    : save.daily[date] ? (progress.count ? '오늘 참여가 인정됐어요. 나머지 수로도 이어서 도전해요.' : '이전 수로의 참여 기록은 유지돼요. 새 작전에도 도전해 보세요.')
+    : '한 수로만 완료해도 연속 기록이 이어져요.';
+  $('dailyStages').innerHTML = DAILY_STAGES.map((tier, stage) => {
+    const locked = progress.stars.slice(0, stage).some(n => !n), stars = progress.stars[stage];
+    const id = { date, stage, version: DAILY_OPERATION_VERSION }, packet = dailySessionRecord(id);
+    const resume = packet?.id === dailyStageId(id), moves = packet?.state?.moves;
+    const state = resume && Number.isSafeInteger(moves) ? `${moves}회 진행 · 이어하기` : stars ? `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} · 다시 도전`
+      : locked ? '앞 수로를 완료하면 열려요' : '시작하기';
+    return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" ${locked ? 'disabled' : ''}>
+      <span class="stage-number">${stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
+  }).join('');
+  $('dailyLegacyBtn').hidden = !save.sessions.dailyLegacy;
+  $('dailyLegacyBtn').disabled = false;
+  $('operationStatus').textContent = '';
+}
+function openDaily() {
+  if (!$('gameScreen').hidden) show('title');
+  dailyRequest++;
+  renderDaily(); renderOperation();
+  $('app').inert = true; $('dailyOverlay').hidden = false;
+  $('dailyDone').focus({ preventScroll: true });
+}
+function closeDaily() {
+  dailyRequest++;
+  $('dailyOverlay').hidden = true; $('app').inert = false;
+  $('dailyBtn').focus({ preventScroll: true });
+}
+async function startDaily(stage) {
+  const date = dailyDate(), progress = dailyProgress(date);
+  if (date !== shownDailyDate) { renderDaily(); renderOperation(); $('operationStatus').textContent = '날짜가 바뀌어 새 작전이 열렸어요.'; return; }
+  if (!DAILY_STAGES[stage] || progress.stars.slice(0, stage).some(n => !n)) return;
+  const request = ++dailyRequest;
+  $('dailyStages').querySelectorAll('button').forEach(b => { b.disabled = true; });
+  $('dailyLegacyBtn').disabled = true;
+  $('operationStatus').textContent = '수로를 준비하고 있어요…';
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    if (request !== dailyRequest) return;
+    if (dailyCacheDate !== date) { dailyCacheDate = date; dailyCache = new Map(); }
+    let daily = dailyCache.get(stage);
+    if (!daily) {
+      const search = makeDailyStageSearch(date, stage);
+      let step;
+      do {
+        if (request !== dailyRequest) return;
+        const deadline = performance.now() + 8;
+        do { step = search.next(); } while (!step.done && performance.now() < deadline);
+        if (!step.done) await new Promise(resolve => setTimeout(resolve, 0));
+      } while (!step.done);
+      daily = step.value;
+      if (daily) dailyCache.set(stage, daily);
+    }
+    if (request !== dailyRequest) return;
+    if (date !== dailyDate()) { renderDaily(); renderOperation(); $('operationStatus').textContent = '날짜가 바뀌어 새 작전이 열렸어요.'; return; }
+    if (!daily) throw new Error('daily generation failed');
+    const keep = dailySession(daily);
+    closeDaily(); show('game'); loadDaily(daily, keep);
+  } catch (e) {
+    if (request === dailyRequest) { renderOperation(); $('operationStatus').textContent = '수로를 준비하지 못했어요. 잠시 후 다시 눌러 주세요.'; }
+  } finally { if (request === dailyRequest || !dailyOpen()) $('dailyLegacyBtn').disabled = false; }
+}
+function resumeLegacyDaily() {
+  const date = dailyDate();
+  if (!legacyDaily || legacyDaily.date !== date) legacyDaily = makeDaily(date);
+  const keep = dailySession(legacyDaily);
+  if (!keep) { delete save.sessions.dailyLegacy; persist(); renderOperation(); return; }
+  closeDaily(); show('game'); loadDaily(legacyDaily, keep);
+}
+function continueDaily() {
+  const date = DAILY.date, stage = Number.isInteger(DAILY.stage) ? dailyProgress(date).next : -1;
+  openDaily();
+  if (date === dailyDate() && stage >= 0) startDaily(stage);
 }
 /* ---------- my shark: title card and skin picker ---------- */
 function drawSkinPreview(canvas, skin) {
@@ -822,12 +944,6 @@ function renderSkinGrid() {
 const skinsOpen = () => !$('skinsOverlay').hidden;
 function openSkins() { $('skinsOverlay').hidden = false; renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
 function closeSkins() { $('skinsOverlay').hidden = true; renderSkinCard(); }
-function startDaily() {
-  const daily = getTodayDaily();
-  if (!daily) return;
-  const keep = dailySession(daily);
-  show('game'); loadDaily(daily, keep);
-}
 
 /* ---------- rendering ---------- */
 const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx = cvs.getContext('2d');
@@ -1275,7 +1391,14 @@ $('chapterPicker').addEventListener('click', e => {
   $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
 });
 $('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
-$('dailyBtn').addEventListener('click', () => { ac(); startDaily(); });
+$('dailyBtn').addEventListener('click', () => { ac(); openDaily(); });
+$('dailyStages').addEventListener('click', e => {
+  const b = e.target.closest('[data-stage]');
+  if (b && !b.disabled) { ac(); startDaily(+b.dataset.stage); }
+});
+$('dailyDone').addEventListener('click', closeDaily);
+$('dailyLegacyBtn').addEventListener('click', resumeLegacyDaily);
+$('dailyOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeDaily(); });
 $('skinBtn').addEventListener('click', openSkins);
 $('skinsDone').addEventListener('click', closeSkins);
 $('skinsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSkins(); });
@@ -1288,7 +1411,7 @@ $('undoBtn').addEventListener('click', undo);
 $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
 $('againBtn').addEventListener('click', replay);
-$('nextBtn').addEventListener('click', () => { if (!DAILY && LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
+$('nextBtn').addEventListener('click', () => { if (DAILY) continueDaily(); else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
 // settings sheet (sound, vibration) — opened from the gear on the title and in a level
 const settingsOpen = () => !$('settingsOverlay').hidden;
 function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
@@ -1332,6 +1455,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
@@ -1350,7 +1474,8 @@ window.addEventListener('pagehide', pauseGame);
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
-  if (guideOpen()) closeGuide();
+  if (dailyOpen()) closeDaily();
+  else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();
   else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
@@ -1361,7 +1486,8 @@ if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActi
 function start(data) {
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); renderLevelGrid();
-  const resumeDaily = data && data.daily === dailyDate() && makeDaily(data.daily);
+  const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
+    ? data.dailyVersion === DAILY_OPERATION_VERSION && makeDailyStage(data.daily, data.dailyStage) : makeDaily(data.daily));
   const level = resumeDaily ? resumeDaily.level : data && LEVELS[data.lvl];
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
@@ -1369,7 +1495,8 @@ function start(data) {
   else show('title', false);
   requestAnimationFrame(frame);
 }
-window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null, st: st && !anim ? st : null }));
+window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
+  dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }));
 const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
 })();
