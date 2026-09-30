@@ -1,0 +1,3 @@
+# shell scripts must keep LF so Gradle/CI on macOS or Linux can run them
+gradlew text eol=lf
+*.sh text eol=lf
