@@ -130,6 +130,7 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 ## 디자인
 
 - 단일 테마(항구의 깊은 청록 바탕 + 콘크리트 산책로 + 구명부표 주황 강조색). 색은 모두 `shell.html`의 `:root` 토큰에서 읽어 캔버스에도 쓴다.
+- 메인 타이틀은 밝은 단색 `--hero-paper` 위에 주아 40~48px 제목과 Noto Sans KR 20px/700 부제를 표시한다. SOS는 `--title-alert`, 상단 설명은 불투명한 청록, 설정은 불투명한 버튼 배경으로 구분한다. 메인 배너에만 적용하며 `docs/TITLE-READABILITY.md` 참고.
 - 폰트: 제목 Jua(주아), 본문 Noto Sans KR(Android 기본 한글 글꼴 계열). 2026-09-30 Bagel Fat One/IBM Plex Sans KR에서 교체(한글이 어색하다는 피드백). dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용. 실패 시 시스템 폰트.
 - 한글 조판: body에 `word-break: keep-all`(단어 중간 줄바꿈 금지), 자간 -0.01em, `font-synthesis: none`(단일 굵기 Jua에 가짜 볼드 금지 — 제목 요소는 font-weight 400 유지).
 - 상어는 코드로 그린 탑다운 무태상어. 기존 캐릭터를 닮게 만들지 말 것. 게임 속 호칭은 이름 없이 "상어(야)".

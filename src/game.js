@@ -3,7 +3,7 @@
 const $ = id => document.getElementById(id);
 const css = getComputedStyle(document.documentElement);
 const C = {};
-['harbor','water','water-hi','sea','concrete','concrete-2','rail','park','ink','text','muted','buoy','star','net','shark','shark-2']
+['harbor','water','water-hi','sea','concrete','concrete-2','rail','park','ink','text','muted','buoy','star','net','shark','shark-2','hero-paper']
   .forEach(k => C[k] = css.getPropertyValue('--' + k).trim());
 const SHIRTS = ['#e4572e', '#f3a712', '#29335c', '#a8c686', '#ffffff', '#669bbc', '#b56576', '#2b2d42'];
 const ANG = { R: 0, D: Math.PI / 2, L: Math.PI, U: -Math.PI / 2 };
@@ -1160,11 +1160,11 @@ function sizeHero() {
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
-  const W = heroW, H = heroH, waterH = H - 94, T = Math.min(64, waterH * 1.2, W / 5.2);   // room for the rescue title and subtitle, with the same water height
+  const W = heroW, H = heroH, waterH = H - 124, T = Math.min(64, waterH * 1.2, W / 5.2);   // keep the moving water above the larger, spaced title block
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
-  hctx.fillStyle = C.concrete; hctx.fillRect(0, waterH, W, H - waterH);
+  hctx.fillStyle = C['hero-paper']; hctx.fillRect(0, waterH, W, H - waterH);
   hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
   hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
   const span = W + T * 2, sx = ((t * 60) % span) - T, sy = waterH * 0.52 + Math.sin(t * 1.5) * waterH * 0.12;
