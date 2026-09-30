@@ -15,6 +15,7 @@ const body = [
   read('engine.js'),
   read('levels.js'),
   read('daily.js'),
+  read('free.js'),
   read('game.js'),
   '</script>',
 ].join('\n');

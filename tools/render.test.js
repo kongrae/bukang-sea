@@ -30,7 +30,7 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
     const haptic = noop, ring = noop, splashAt = noop, updateHud = noop, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
     const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawNet = noop, drawFish = noop;
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
-    const STORE_KEY = 'test'; let written = stored, gest = null;
+    const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null;
     const localStorage = {setItem: (key, value) => {if (storageFails) throw Error('quota'); written = value;}};
     const wake = [], particles = [], jetFlash = new Map(), netPop = new Map();
     let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null;

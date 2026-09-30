@@ -139,6 +139,21 @@ h1 .sea { color: var(--title-alert); }
 .daily-stage:focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 2px; }
 .operation-note, .operation-status { font-size: 14px; line-height: 1.5; margin: 0; }
 .operation-status:empty { display: none; }
+.free-link { margin-top: -4px; }
+.free-tier { padding: 12px; border: 1px solid #b5ad9b; border-radius: 14px; background: #f7f1e5; text-align: left; }
+.free-tier-copy { display: flex; flex-direction: column; gap: 4px; }
+.free-tier-copy b { font-size: 18px; }
+.free-tier-copy small { margin-left: 5px; font-size: 13px; font-weight: 500; }
+.free-tier-copy > span { color: #42575a; font-size: 13px; }
+.free-actions { display: flex; gap: 8px; margin-top: 10px; }
+.free-actions .btn { flex: 1; min-height: 44px; padding: 10px 6px; font-size: 14px; }
+.free-actions .btn:disabled { opacity: .55; cursor: default; }
+.card.free-dialog { overflow: hidden; }
+.free-dialog > .operation-status { flex-shrink: 0; }
+.free-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+.free-heading .icon-btn { color: var(--text); font-size: 24px; }
+.free-scroll { display: grid; gap: 14px; overflow-y: auto; min-height: 0; padding: 2px 3px 8px; }
+.card.free-dialog .free-actions .btn { min-height: 44px; }
 .operation-stamp { color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; font: 21px var(--font-display); }
 .journal-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 12px 14px; border: 1px solid var(--rail); border-radius: 14px; color: var(--text); background: var(--harbor); cursor: pointer; text-align: left; }
 .journal-link b { font-size: 15px; }
@@ -442,6 +457,9 @@ h1 .sea { color: var(--title-alert); }
       </span>
       <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
     </button>
+    <button class="journal-link free-link" id="freeBtn" type="button">
+      <span><b>자유 수로</b><small id="freeSummary">쉬움 · 보통 · 도전 · 원하는 만큼</small></span><span aria-hidden="true">고르기 ›</span>
+    </button>
     <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
     <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
     <div class="chapters" id="levelGrid"></div>
@@ -526,6 +544,19 @@ h1 .sea { color: var(--title-alert); }
     <button class="btn" id="dailyLegacyBtn" type="button" hidden>이전 수로 이어하기</button>
     <button class="btn" id="dailyJournalBtn" type="button">구조일지 · 누적 보상</button>
     <button class="btn primary" id="dailyDone" type="button">닫기</button>
+  </div>
+</div>
+
+<div class="overlay" id="freeOverlay" hidden>
+  <div class="card operation free-dialog" role="dialog" aria-modal="true" aria-labelledby="freeTitle">
+    <div class="free-heading"><h3 id="freeTitle">자유 수로</h3><button class="icon-btn" id="freeDone" type="button" aria-label="닫기">✕</button></div>
+    <p class="operation-status" id="freeStatus" role="status" aria-live="polite"></p>
+    <div class="free-scroll">
+      <p class="sub">원하는 난이도로, 한 판 더!</p>
+      <div class="operation-stages" id="freeTiers"></div>
+      <p class="operation-note">난이도별로 한 판씩 이어 할 수 있어요.<br>새 수로를 뽑으면 해당 난이도의 진행 중인 판이 바뀌어요. 완료 기록은 남아요.</p>
+      <p class="operation-note">별과 완료 기록은 자유 수로 안에서 따로 모아요.</p>
+    </div>
   </div>
 </div>
 

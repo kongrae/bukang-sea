@@ -38,7 +38,7 @@ function operation(stored = null) {
     const noop = () => {}, sfx = {win:noop}, haptic = noop;
     const renderLevelGrid = noop, chapterOf = () => ({end:47,name:'외항'}), LEVELS = Array(48);
     const reduceMotion = true, setTimeout = cb => {if(tickHook){const hook=tickHook;tickHook=null;hook();}cb();};
-    let DAILY = null, LVL = 0, g, st, anim = null, cleared = false, deco = 0;
+    let DAILY = null, FREE = null, LVL = 0, g, st, anim = null, cleared = false, deco = 0;
     const curLevel = () => DAILY.level;
     const show = which => {$('gameScreen').hidden=which!=='game'; if(which==='title') cleared=false;};
     const enter = (level,keep,label) => {st=keep||freshState(level);g=parseLevel(level);cleared=false;$('lvNum').textContent=label;checkpoint();};

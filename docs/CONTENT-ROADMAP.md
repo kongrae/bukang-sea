@@ -7,6 +7,8 @@
 | 1 | 오늘의 구조작전: 매일 세 수로, 실제 규칙의 난이도, 저장·기록 호환 | GPT-6 Astra | xhigh | 구현·자동/브라우저 검증 완료 |
 | 2 | 구조일지와 누적 참여·작전 완료 보상 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
 | 3 | 챕터 여정과 구출 엔딩 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
-| 4 | 자유 수로: 난이도를 골라 이어서 즐기는 생성 퍼즐 | GPT-6 Astra | xhigh | 반응 확인 후, 미착수 |
+| 4 | 자유 수로: 난이도를 골라 이어서 즐기는 생성 퍼즐 | GPT-6 Astra | xhigh | 구현·자동/브라우저 검증 완료 |
 
-1번 상세: [DAILY-OPERATION.md](DAILY-OPERATION.md). 2번 상세: [RESCUE-JOURNAL.md](RESCUE-JOURNAL.md). 3번 상세: [JOURNEY-AND-ENDING.md](JOURNEY-AND-ENDING.md). 기존 스토리 48개와 스킨 7개의 조건을 유지하고 누적 보상 스킨 2개·챕터 여정·구출 엔딩을 추가했다. 다음은 4번이며 실제 이용자 기록과 재방문을 확인하면서 범위를 조정한다. 사용자의 다음 시작 요청을 기다린다.
+1번 상세: [DAILY-OPERATION.md](DAILY-OPERATION.md). 2번 상세: [RESCUE-JOURNAL.md](RESCUE-JOURNAL.md). 3번 상세: [JOURNEY-AND-ENDING.md](JOURNEY-AND-ENDING.md). 4번 상세: [FREE-CANALS.md](FREE-CANALS.md). 기존 스토리 48개와 스킨 7개의 조건을 유지하고 누적 보상 스킨 2개·챕터 여정·구출 엔딩·세 난이도의 자유 수로를 추가했다.
+
+1–4번 구현은 완료했다. 다음 번호의 개발 작업은 정하지 않았다. 다음 권장 단계는 `PLAYTEST.md`의 실제 기기·이용자 시험이며, 결과 분석과 개선 우선순위 정리에는 GPT-6.1 Sol / high를 권장한다. 실제 이용자 기록과 재방문 효과는 자동 검사로 대신하지 않으며 사용자의 다음 요청을 기다린다.

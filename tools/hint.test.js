@@ -7,10 +7,11 @@ const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8')
 const levels = fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8');
 const hintSource = source.slice(source.indexOf('/* ---------- hint allowance'), source.indexOf('function onClear()'));
 const { dailyStageId } = require('../src/daily.js');
+const { freeId } = require('../src/free.js');
 
 // Execute the actual hint handler, solver and allowance with a controllable wall clock.
-function hints({ stored = null, daily = null, index = 0, cancel = false, noRoute = false } = {}) {
-  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', `
+function hints({ stored = null, daily = null, free = null, index = 0, cancel = false, noRoute = false } = {}) {
+  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', 'FREE', 'freeId', `
     ${engine}
     ${levels}
     let now = 100000, written = stored, tip = '', hint = null, hintRequest = 0;
@@ -31,8 +32,18 @@ function hints({ stored = null, daily = null, index = 0, cancel = false, noRoute
       status:()=>({...elements.hintBtn,label:elements.hintStatus.textContent}),
       next:()=>{hint=null;hintRequest++;updateHintButton();},
       advance:ms=>{now+=ms;updateHintButton();}};
-  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId);
+  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId, free, freeId);
 }
+
+test('free hints persist for the same run and reset only for a different run or difficulty', async () => {
+  const free = {version:1,difficulty:0,seed:42,serial:1}, game = hints({free});
+  await game.show(); game.next(); await game.show();
+  assert.equal(hints({stored:game.saved(),free}).wait(),12);
+  assert.equal(hints({stored:game.saved(),free:{...free,serial:2}}).usage().count,0);
+  assert.equal(hints({stored:game.saved(),free:{...free,difficulty:1}}).usage().count,0);
+  assert.equal(hints({stored:game.saved()}).usage().count,0);
+  assert.equal(hints({stored:game.saved(),daily:'2026-10-01'}).usage().count,0);
+});
 
 test('each operation stage has its own persistent allowance, independent of legacy hints', async () => {
   const first = {date:'2026-09-30',stage:0,version:1};
