@@ -1096,14 +1096,13 @@ function sizeHero() {
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
-  const W = heroW, H = heroH, waterH = Math.max(H * 0.4, H - 150), T = Math.min(96, W / 5.2);   // keep ~150px of promenade for the title text
+  const W = heroW, H = heroH, waterH = H - 72, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.1)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
   hctx.fillStyle = C.concrete; hctx.fillRect(0, waterH, W, H - waterH);
   hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
   hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
-  for (let i = 0; i < Math.floor(W / 26); i++) drawPerson(hctx, 13 + i * 26 + hash(i) * 8, waterH + 16 + hash(i + 50) * 4, T * 0.9, hash(i * 7 + 3));
   const span = W + T * 2, sx = ((t * 60) % span) - T, sy = waterH * 0.52 + Math.sin(t * 1.5) * waterH * 0.12;
   const ang = Math.atan2(Math.cos(t * 1.5) * waterH * 0.12 * 1.5, 60);
   drawShark(hctx, sx, sy, ang, T, t, true, 1.05);
@@ -1112,24 +1111,31 @@ function drawHero(t) {
 }
 
 /* ---------- UI wiring ---------- */
-function renderLevelGrid() {
-  const grid = $('levelGrid'); let total = 0;
+let selectedChapter = null;
+function renderLevelGrid(followProgress = false) {
+  const resume = storySession(), target = resume ? save.sessions.story.id : nextLevel();
+  if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
+  const grid = $('levelGrid'), total = totalStars();
   const button = (L, i, k) => {
-    const b = save.best[i] || 0; total += b; const ok = unlocked(i);
+    const b = save.best[i] || 0; const ok = unlocked(i);
     const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
-    return `<button class="lv${i === save.last ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
+    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
       <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span><span class="st">${stars}</span></button>`;
   };
   let start = 0;
-  grid.innerHTML = CHAPTERS.map((ch, ci) => {
+  $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
     const idx = Array.from({ length: ch.count }, (_, k) => start + k); start += ch.count;
-    const before = total, buttons = idx.map((i, k) => button(LEVELS[i], i, k)).join('');
-    return `<div class="chapter-head${unlocked(idx[0]) ? '' : ' locked'}"><span><b>${ci + 1}장</b> ${ch.name}</span><span>★ ${total - before} / ${ch.count * 3}</span></div>
-      <div class="levels">${buttons}</div>`;
+    const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]);
+    if (ci === selectedChapter) {
+      grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span>★ ${stars} / ${ch.count * 3}</span></div>
+        <div class="levels">${idx.map((i, k) => button(LEVELS[i], i, k)).join('')}</div>`;
+    }
+    return `<button class="chapter-btn" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
-  const resume = storySession();
+  const chap = chapterOf(target);
+  $('journeyLabel').innerHTML = `${chap.ci + 1}장 ${chap.name} · <b>${LEVELS[target].name}</b>`;
   $('playBtn').textContent = resume ? `이어서 하기 · 수로 ${save.sessions.story.id + 1} · ${resume.moves}회 진행`
     : Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
 }
@@ -1193,12 +1199,17 @@ function show(which, animate = true) {
   $('gameScreen').hidden = which !== 'game';
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
-  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(); renderDaily(); renderSkinCard(); heroW = 0; }
+  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderSkinCard(); $('titleScreen').scrollTop = 0; heroW = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
 
 $('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
+$('chapterPicker').addEventListener('click', e => {
+  const b = e.target.closest('.chapter-btn'); if (!b) return;
+  selectedChapter = +b.dataset.chapter; renderLevelGrid();
+  $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
+});
 $('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
 $('dailyBtn').addEventListener('click', () => { ac(); startDaily(); });
 $('skinBtn').addEventListener('click', openSkins);
