@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectDir = Split-Path -Parent $PSScriptRoot
 $repoUrl = 'https://github.com/kongrae/bukang-sea.git'
 $apiUrl = 'https://api.github.com/repos/kongrae/bukang-sea'
+$repoDescription = '상어 SOS: 바다로 보내줘! — 상어 구출 슬라이드 퍼즐'
 $pagesDir = Join-Path $projectDir 'outputs/pages'
 
 function Run-Git {
@@ -28,8 +29,12 @@ try {
     try { $repo = Invoke-RestMethod $apiUrl -Headers $headers }
     catch {
         if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
-        $body = @{ name = 'bukang-sea'; description = '길 잃은 상어 — 수로 탈출 퍼즐'; private = $false } | ConvertTo-Json
+        $body = @{ name = 'bukang-sea'; description = $repoDescription; private = $false } | ConvertTo-Json
         $repo = Invoke-RestMethod https://api.github.com/user/repos -Method Post -Headers $headers -ContentType 'application/json' -Body $body
+    }
+    if ($repo.description -ne $repoDescription) {
+        $body = @{ description = $repoDescription } | ConvertTo-Json
+        $repo = Invoke-RestMethod $apiUrl -Method Patch -Headers $headers -ContentType 'application/json' -Body $body
     }
     $origin = git remote get-url origin 2>$null
     if ($LASTEXITCODE -ne 0) { Run-Git -GitArgs @('remote', 'add', 'origin', $repoUrl) }

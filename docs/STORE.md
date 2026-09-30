@@ -6,8 +6,8 @@
 
 | 항목 | 값 | 제한 |
 |---|---|---|
-| 앱 이름 | 길 잃은 상어: 바다 탈출 퍼즐 | 30자 |
-| 홈 화면 이름 | 길 잃은 상어 | |
+| 앱 이름 | 상어 SOS: 바다로 보내줘! | 30자 |
+| 홈 화면 이름 | 상어 SOS | |
 | 앱 ID(패키지명) | kr.hongrae.lostshark | 첫 업로드 후 변경 불가 |
 | 기본 언어 | 한국어 | |
 | 앱/게임 | 게임 · 퍼즐 | |
@@ -15,7 +15,7 @@
 | 가격 | 무료 | |
 | 개발자 이름 | MOONGRAE | 스토어에 공개 |
 | 연락처 이메일 | sky7700sky@naver.com | 필수, 스토어에 공개됨 |
-| 개인정보처리방침 URL | https://claude.ai/artifact/4zeYgGePczLzg8dYULQ1zK | Claude 아티팩트(원본 assets/privacy.html → dist/privacy.html). **공유 메뉴에서 공개로 바꿔야** 누구나 열림. 나중에 웹 배포하면 [주소]/privacy.html 로 교체 가능 |
+| 개인정보처리방침 URL | https://kongrae.github.io/bukang-sea/privacy.html | 원본 assets/privacy.html, 웹 배포에 포함 |
 
 ## 간단한 설명 (80자 이내)
 
@@ -26,7 +26,7 @@
 ## 자세한 설명 (4000자 이내)
 
 ```
-굽은 수로에 들어와 길을 잃은 상어.
+상어 SOS! 굽은 수로에 갇힌 상어가 바다로 돌아갈 길을 기다리고 있어요.
 화면을 밀면 상어는 벽에 닿을 때까지 쭉 헤엄칩니다. 부표 앞에서 멈추고, 물줄기를 타면 방향이 꺾여요. 한 칸씩 오가는 구조정은 때를 맞춰 지나가야 해요. 길을 잘 골라 넓은 바다로 돌려보내 주세요.
 
 ■ 이렇게 놀아요
@@ -67,10 +67,12 @@
 | 파일 | 용도 | 규격 |
 |---|---|---|
 | `assets/icons/icon-512.png` | 앱 아이콘 | 512×512 PNG (필수) |
-| `feature-graphic.png` | 그래픽 이미지 | 1024×500 (필수) |
-| `1-title.png` … `6-chapters.png` | 휴대전화 스크린샷 | 1080×1920, 2~8장 (필수) |
+| `feature-graphic-sos.jpg` | 새 이름을 반영한 그래픽 이미지 | 1024×500 |
+| `1-title-sos.jpg`, `6-chapters-sos.jpg` | 새 이름을 반영한 제목/챕터 화면 | 360×640 |
+| `2-jets.png` … `5-chapter4.png` | 게임 화면 스크린샷 초안 | 1080×1920 |
 
-스크린샷 순서 추천: 1-title → 2-jets(힌트) → 3-nets(그물) → 4-clear(별 3개) → 5-chapter3 → 6-chapters.
+스크린샷 순서 추천: 1-title-sos → 2-jets(힌트) → 3-nets(그물) → 4-clear(별 3개) → 5-chapter4 → 6-chapters-sos.
+이름 변경 후 현재 제목/챕터와 그래픽은 `*-sos.jpg`를 사용한다. 같은 용도의 기존 PNG는 이전 이름의 초안이다. 신규 제목/챕터 이미지는 기존 진행 상태의 실제 브라우저 화면이며 신규 사용자 시험 결과가 아니다.
 게임 화면이 바뀌면 `npm run build:web && node tools/shots.js`로 다시 만든다.
 
 ## 콘텐츠 등급 설문 (IARC) 답변 가이드

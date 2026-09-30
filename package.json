@@ -2,7 +2,7 @@
   "name": "bukang-sea",
   "version": "0.2.0",
   "private": true,
-  "description": "길 잃은 상어 - 수로 탈출 슬라이드 퍼즐",
+  "description": "상어 SOS: 바다로 보내줘! - 상어 구출 슬라이드 퍼즐",
   "scripts": {
     "build": "node tools/build.js",
     "build:artifact": "node tools/build.js --artifact",

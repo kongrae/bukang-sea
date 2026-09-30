@@ -48,7 +48,7 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 
 ### 출시 전에 정할 것
 - **appId**: `kr.hongrae.lostshark`(2026-09-30 확정 가정). 첫 업로드 전까지는 바꿀 수 있다(`capacitor.config.json` + `android/app/build.gradle`의 namespace·applicationId + `strings.xml` + java 패키지 폴더). 업로드 후에는 **영구히 못 바꾼다**.
-- **앱 이름**: "길 잃은 상어"로 확정(2026-09-30). "부캉이"는 개인 상표 출원·공공기관 명칭 문제로 쓰지 않는다.
+- **앱 이름**: "상어 SOS: 바다로 보내줘!"로 확정(2026-09-30). 메인 제목/홈 화면 이름은 "상어 SOS", 부제는 "바다로 보내줘!"다. 앱 ID와 기존 저장 키는 유지한다. "부캉이"는 기존 명칭 사용 방침에 따라 쓰지 않는다.
 - 앱 아이콘·스플래시: 위의 `@capacitor/assets generate`로 생성 완료(적응형 아이콘 전경/배경 분리). 아이콘을 바꾸면 icons.js → assets generate 순서로 다시.
 - **업로드 키(2026-09-30 생성)**: `C:Usershongrae.android-keyslostshark-upload.jks`(PKCS12, alias `upload`, RSA 2048, 유효 10000일). 비밀번호는 `android/keystore.properties`(gitignore)에만 있다.
   - **두 파일(.jks + keystore.properties)을 함께 백업**(비밀번호 관리자, USB 등). Play App Signing을 쓰므로 잃어버려도 Play Console에서 업로드 키 재설정을 요청할 수 있지만 며칠 걸린다.

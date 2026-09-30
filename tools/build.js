@@ -26,7 +26,7 @@ const FONTS = [
   { family: 'Bukang Body', weight: 500, file: 'noto-sans-kr-500.woff2' },
   { family: 'Bukang Body', weight: 700, file: 'noto-sans-kr-700.woff2' },
 ];
-const APP = { name: '길 잃은 상어', short: '길 잃은 상어', color: '#0c3340', description: '수로에서 길을 잃은 상어를 밀어서 바다로 돌려보내는 슬라이드 퍼즐' };
+const APP = { name: '상어 SOS: 바다로 보내줘!', short: '상어 SOS', color: '#0c3340', description: '수로에 갇힌 상어에게 바다로 가는 길을 열어 주는 구출 슬라이드 퍼즐' };
 
 const page = (head, extra = '', content = body) => `<!doctype html>
 <html lang="ko">
@@ -63,7 +63,7 @@ const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'c
   // Use local fonts so mobile test sessions do not depend on Google Fonts connectivity.
   content = content.replace(/<link rel="preconnect" href="https:\/\/fonts\.[^\n]*\n/g, '').replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^\n]*\n/, '');
   const fonts = FONTS.map(f => `@font-face { font-family: "${f.family}"; font-weight: ${f.weight}; src: url("fonts/${f.file}") format("woff2"); }`).join('\n');
-  write('playtest/index.html', page(`<title>플레이테스트 — 길 잃은 상어</title><style>${fonts}</style>\n`, '', content));
+  write('playtest/index.html', page(`<title>플레이테스트 — ${APP.name}</title><style>${fonts}</style>\n`, '', content));
   fs.mkdirSync(path.join(root, 'playtest', 'fonts'), { recursive: true });
   FONTS.forEach(f => fs.copyFileSync(path.join(root, 'assets', 'fonts', f.file), path.join(root, 'playtest', 'fonts', f.file)));
   console.log(`game build ${fingerprint}; use ?tester=P01 for normal progression, &all=1 for later-stage testing; separate records, no service worker`);

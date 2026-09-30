@@ -1160,7 +1160,7 @@ function sizeHero() {
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
-  const W = heroW, H = heroH, waterH = H - 78, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
+  const W = heroW, H = heroH, waterH = H - 94, T = Math.min(64, waterH * 1.2, W / 5.2);   // room for the rescue title and subtitle, with the same water height
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
