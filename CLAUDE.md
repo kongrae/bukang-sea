@@ -3,6 +3,11 @@
 2026년 9월 부산 북항 친수공원 인공 수로에 들어온 무태상어에서 착안한 모바일 퍼즐 게임 **길 잃은 상어**(웹 + PWA + Capacitor 앱)다. 저장소·저장 키·내부 이름의 `bukang`은 옛 가제의 흔적이라 그대로 둔다(진행 기록 호환).
 장르는 하이퍼캐주얼 슬라이드 퍼즐이고, 목표는 앱스토어 출시용 모바일 게임으로 발전시키는 것이다.
 
+## 작업 규칙
+
+- **작업을 마칠 때마다 자동으로 커밋한다**(사용자 요청, 2026-09-30). verify·빌드 통과 후 `master`에 바로 커밋, `.claude/`는 제외, 메시지는 한국어 요약.
+- `src/` 를 고쳤으면 `dist/`(build, build:artifact)도 다시 빌드해 함께 커밋한다.
+
 ## 명령어
 
 ```bash
@@ -100,7 +105,8 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 ## 디자인
 
 - 단일 테마(항구의 깊은 청록 바탕 + 콘크리트 산책로 + 구명부표 주황 강조색). 색은 모두 `shell.html`의 `:root` 토큰에서 읽어 캔버스에도 쓴다.
-- 폰트: 제목 Bagel Fat One, 본문 IBM Plex Sans KR. dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용(OFL 예약 이름 때문). 실패 시 시스템 폰트.
+- 폰트: 제목 Jua(주아), 본문 Noto Sans KR(Android 기본 한글 글꼴 계열). 2026-09-30 Bagel Fat One/IBM Plex Sans KR에서 교체(한글이 어색하다는 피드백). dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용. 실패 시 시스템 폰트.
+- 한글 조판: body에 `word-break: keep-all`(단어 중간 줄바꿈 금지), 자간 -0.01em, `font-synthesis: none`(단일 굵기 Jua에 가짜 볼드 금지 — 제목 요소는 font-weight 400 유지).
 - 상어는 코드로 그린 탑다운 무태상어. 기존 캐릭터를 닮게 만들지 말 것. 게임 속 호칭은 이름 없이 "상어(야)".
 - 네이티브 느낌 유지: 텍스트 선택·롱프레스 메뉴·확대 금지, hover 효과는 `@media (hover: hover)` 안에만, 글자 버튼 대신 아이콘+라벨, 누름은 scale 스프링.
 

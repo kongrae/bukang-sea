@@ -8,8 +8,8 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const outDir = path.join(root, 'assets', 'fonts');
 const FAMILIES = [
-  { family: 'Bagel Fat One', file: 'bagel-fat-one', weights: [400], ofl: 'bagelfatone' },
-  { family: 'IBM Plex Sans KR', file: 'ibm-plex-sans-kr', weights: [400, 500, 700], ofl: 'ibmplexsanskr' },
+  { family: 'Jua', file: 'jua', weights: [400], ofl: 'jua' },
+  { family: 'Noto Sans KR', file: 'noto-sans-kr', weights: [400, 500, 700], ofl: 'notosanskr' },
 ];
 // a modern browser UA makes Google Fonts answer with woff2
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';

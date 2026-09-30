@@ -20,10 +20,10 @@ const body = [
 
 // subset copies from tools/fonts.js, renamed (OFL reserved font names) — see --font-* tokens in shell.html
 const FONTS = [
-  { family: 'Bukang Display', weight: 400, file: 'bagel-fat-one-400.woff2' },
-  { family: 'Bukang Body', weight: 400, file: 'ibm-plex-sans-kr-400.woff2' },
-  { family: 'Bukang Body', weight: 500, file: 'ibm-plex-sans-kr-500.woff2' },
-  { family: 'Bukang Body', weight: 700, file: 'ibm-plex-sans-kr-700.woff2' },
+  { family: 'Bukang Display', weight: 400, file: 'jua-400.woff2' },
+  { family: 'Bukang Body', weight: 400, file: 'noto-sans-kr-400.woff2' },
+  { family: 'Bukang Body', weight: 500, file: 'noto-sans-kr-500.woff2' },
+  { family: 'Bukang Body', weight: 700, file: 'noto-sans-kr-700.woff2' },
 ];
 const APP = { name: '길 잃은 상어', short: '길 잃은 상어', color: '#0c3340', description: '수로에서 길을 잃은 상어를 밀어서 바다로 돌려보내는 슬라이드 퍼즐' };
 
@@ -120,6 +120,7 @@ self.addEventListener('fetch', e => {
   fs.mkdirSync(path.join(root, 'www', 'icons'), { recursive: true });
   fs.copyFileSync(path.join(root, 'assets', 'icon.svg'), path.join(root, 'www', 'icons', 'icon.svg'));
   icons.forEach(f => fs.copyFileSync(path.join(root, 'assets', 'icons', f), path.join(root, 'www', 'icons', f)));
+  fs.rmSync(path.join(root, 'www', 'fonts'), { recursive: true, force: true });   // drop fonts that are no longer used
   fs.mkdirSync(path.join(root, 'www', 'fonts'), { recursive: true });
   fs.readdirSync(path.join(root, 'assets', 'fonts')).filter(f => /\.(woff2|txt)$/.test(f) && f !== 'chars.txt')
     .forEach(f => fs.copyFileSync(path.join(root, 'assets', 'fonts', f), path.join(root, 'www', 'fonts', f)));

@@ -8,7 +8,7 @@
 <title>길 잃은 상어</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
 /* Layout: one-screen harbour app that behaves like a native game. Board takes every spare pixel, compact HUD above,
    thumb-sized control bar below. Screens push/pop sideways, results arrive as a bottom sheet. Single committed "북항 수로" look. */
@@ -33,8 +33,8 @@
   --shark: #8b8a78;        /* copper shark back */
   --shark-2: #6f6e5f;
   /* "Bukang *" = bundled subset fonts (www/ build only, renamed per OFL); the Google Fonts names serve the other builds */
-  --font-display: "Bukang Display", "Bagel Fat One", "Jua", system-ui, sans-serif;
-  --font-body: "Bukang Body", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: "Bukang Display", "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "Bukang Body", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --ease-out: cubic-bezier(.2, .85, .25, 1);
   --ease-sheet: cubic-bezier(.16, 1, .3, 1);
   --ease-spring: cubic-bezier(.3, 1.5, .5, 1);
@@ -48,7 +48,12 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -.01em;
+  /* Korean typesetting: break between words (not inside them), never fake a bold on single-weight faces */
+  word-break: keep-all; overflow-wrap: break-word;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   overflow: hidden;
   /* app feel: no text selection, no long-press callouts, no tap flash, no double-tap zoom */
   -webkit-user-select: none; user-select: none;
@@ -82,12 +87,12 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--water); flex-shrink: 0; }
 .hero canvas { display: block; width: 100%; height: clamp(210px, 33vh, 320px); }
 .hero-text { position: absolute; left: 20px; bottom: 16px; right: 20px; pointer-events: none; }
-.eyebrow { font-size: 12.5px; letter-spacing: .08em; color: var(--muted); font-weight: 500; }
+.eyebrow { font-size: 13px; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
 .hero .eyebrow { color: var(--ink); opacity: .7; }
 h1 {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(46px, 14vw, 68px);
+  font-size: clamp(50px, 15vw, 76px);
   line-height: 1;
   margin: 2px 0 0;
   color: var(--ink);
@@ -95,15 +100,15 @@ h1 {
   letter-spacing: -.01em;
 }
 h1 .sea { color: var(--buoy-deep); }
-.lede { margin: 0; color: var(--text); font-size: 15.5px; max-width: 34em; }
+.lede { margin: 0; color: var(--text); font-size: 16px; line-height: 1.6; max-width: 34em; text-wrap: pretty; }
 .lede b { color: var(--star); font-weight: 700; }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
-.section-label h2 { font-size: 13px; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 500; }
+.section-label h2 { font-size: 13.5px; letter-spacing: .02em; color: var(--muted); margin: 0; font-weight: 500; }
 .section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .chapters { display: flex; flex-direction: column; gap: 10px; }
 .chapter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .chapter-head:first-child { margin-top: 0; }
-.chapter-head b { font-family: var(--font-display); font-weight: 400; font-size: 21px; color: var(--text); margin-right: 6px; }
+.chapter-head b { font-family: var(--font-display); font-weight: 400; font-size: 23px; letter-spacing: 0; color: var(--text); margin-right: 6px; }
 .chapter-head.locked { opacity: .5; }
 .levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .lv {
@@ -115,7 +120,7 @@ h1 .sea { color: var(--buoy-deep); }
 @keyframes tile-in { from { transform: translateY(10px) scale(.96); opacity: 0; } }
 .lv:active { transform: scale(.93); transition-duration: .08s; }
 .lv:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
-.lv .n { font-family: var(--font-display); font-size: 30px; line-height: 1.05; }
+.lv .n { font-family: var(--font-display); font-size: 32px; line-height: 1.05; letter-spacing: 0; }
 .lv .nm { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lv .st { font-size: 13px; letter-spacing: 1px; color: var(--star); line-height: 1; }
 .lv .st i { font-style: normal; color: var(--harbor-3); }
@@ -158,7 +163,7 @@ h1 .sea { color: var(--buoy-deep); }
 .topbar { display: flex; align-items: center; gap: 10px; min-height: 46px; }
 .topbar .lvl-title { flex: 1; min-width: 0; text-align: center; }
 .lvl-title .num { font-size: 12px; color: var(--muted); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
-.lvl-title .name { font-family: var(--font-display); font-size: 23px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lvl-title .name { font-family: var(--font-display); font-size: 25px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stats { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .chip {
   background: var(--harbor-2); border-radius: 999px; padding: 4px 12px; font-size: 13.5px;
@@ -212,7 +217,7 @@ h1 .sea { color: var(--buoy-deep); }
   .card { border-radius: 28px; padding-bottom: 22px; animation-name: pop; }
   .card::before { display: none; }
 }
-.card h3 { font-family: var(--font-display); font-weight: 400; font-size: 34px; margin: 4px 0 0; line-height: 1.1; }
+.card h3 { font-family: var(--font-display); font-weight: 400; font-size: 38px; letter-spacing: 0; margin: 4px 0 0; line-height: 1.1; }
 .card .sub { margin: 0; font-size: 14px; color: #3d4d4f; }
 .stars { display: flex; justify-content: center; gap: 12px; }
 .star { width: 62px; height: 62px; }
