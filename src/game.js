@@ -71,6 +71,99 @@ function chapterOf(i) {
   return { ci: 0, start: 0, end: LEVELS.length - 1, name: '' };
 }
 
+/* ---------- story journey: derived from existing clears, independent of daily operations ---------- */
+const JOURNEY_STORY = [
+  { intro: '좁은 북항 수로에 갇힌 상어. 굽은 물길을 하나씩 열어 주세요.', outro: '좁은 수로를 벗어났어요! 이제 공원 안쪽 운하를 따라 나아가요.' },
+  { intro: '화단 사이로 이어진 운하. 갈림길을 지나 바다 쪽으로 길을 찾아요.', outro: '공원 운하를 통과했어요! 저 앞에 방파제가 보여요.' },
+  { intro: '방파제 너머로 흐르는 물살. 물줄기와 그물을 이용해 출구를 열어요.', outro: '방파제를 넘어왔어요! 넓은 바다까지 마지막 물길만 남았어요.' },
+  { intro: '모래톱과 소용돌이를 지나면 탁 트인 바다. 마지막 구출을 함께해요.', outro: '마지막 물길이 열렸어요. 상어가 넓은 바다로 돌아갑니다.' },
+];
+function storyProgress() {
+  let start = 0;
+  const chapters = CHAPTERS.map((ch, ci) => {
+    const indices = Array.from({ length: ch.count }, (_, i) => start + i); start += ch.count;
+    const count = indices.filter(i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3).length;
+    return { ci, start: indices[0], count, total: ch.count, complete: count === ch.count };
+  });
+  const count = chapters.reduce((sum, ch) => sum + ch.count, 0);
+  return { chapters, count, complete: count === LEVELS.length };
+}
+const journeyOpen = () => !$('journeyOverlay').hidden;
+const endingOpen = () => !$('endingOverlay').hidden;
+let endingReturn = 'title', endingStarted = 0;
+function renderJourney() {
+  const progress = storyProgress();
+  $('journeyCount').textContent = `${progress.count} / ${LEVELS.length}개 수로 구출 완료`;
+  $('journeyChapters').innerHTML = progress.chapters.map(ch => {
+    const available = unlocked(ch.start), text = ch.complete ? '통과' : available ? '구출 중' : '앞 장을 통과하면 열려요';
+    return `<li class="journey-stop${ch.complete ? ' complete' : ''}"><span class="journey-number" aria-hidden="true">${ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
+  }).join('');
+  $('journeyEndingBtn').hidden = !progress.complete;
+}
+function openJourney() {
+  renderJourney(); $('app').inert = true; $('journeyOverlay').hidden = false;
+  $('journeyCard').scrollTop = 0; $('journeyTitle').focus({ preventScroll: true });
+}
+function closeJourney() {
+  $('journeyOverlay').hidden = true; $('app').inert = false; $('journeyBtn').focus({ preventScroll: true });
+}
+function selectJourneyChapter(ci) {
+  if (!CHAPTERS[ci]) return;
+  closeJourney(); selectedChapter = ci; renderLevelGrid();
+  $('chapterPicker').querySelector(`[data-chapter="${ci}"]`).focus();
+}
+function openEnding(from = 'title') {
+  if (!storyProgress().complete) return false;
+  endingReturn = from; endingStarted = performance.now() / 1000;
+  if (from === 'clear') $('clearOverlay').hidden = true;
+  if (from === 'journey') $('journeyOverlay').hidden = true;
+  $('endingRecord').textContent = `${LEVELS.length}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
+  $('endingAfter').textContent = totalStars() < LEVELS.length * 3 ? '남은 별을 모으거나 오늘의 구조작전에서 새로운 물길을 열어 주세요.'
+    : '모든 별도 모았어요! 오늘의 구조작전에서 새로운 물길을 열어 주세요.';
+  $('app').inert = true; $('endingOverlay').hidden = false;
+  $('endingCard').scrollTop = 0; $('endingTitle').focus({ preventScroll: true });
+  drawEnding(endingStarted); return true;
+}
+function closeEnding() {
+  $('endingOverlay').hidden = true; $('app').inert = false;
+  if (endingReturn === 'clear' && cleared) { $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true }); }
+  else if (endingReturn === 'journey') openJourney();
+  else $('endingBtn').focus({ preventScroll: true });
+}
+function endingToTitle() { endingReturn = 'title'; closeEnding(); show('title'); }
+function endingToDaily() { endingReturn = 'title'; closeEnding(); openDaily(); }
+function continueStory() {
+  if (DAILY) continueDaily();
+  else if (LVL === LEVELS.length - 1 && storyProgress().complete) openEnding('clear');
+  else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1);
+  else show('title');
+}
+function drawEnding(t) {
+  const canvas = $('endingScene'), r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const d = Math.min(window.devicePixelRatio || 1, 2.5), w = r.width, h = r.height, ctx = canvas.getContext('2d');
+  if (canvas.width !== Math.round(w * d) || canvas.height !== Math.round(h * d)) {
+    canvas.width = Math.round(w * d); canvas.height = Math.round(h * d);
+  }
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  const time = reduceMotion ? 0 : Math.max(0, t - endingStarted), u = reduceMotion ? 1 : Math.min(1, time / 4);
+  const gradient = ctx.createLinearGradient(0, 0, w, h); gradient.addColorStop(0, C.water); gradient.addColorStop(1, C.sea);
+  ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(210,243,231,.22)'; ctx.lineWidth = 1.5;
+  for (let row = 0; row < 6; row++) {
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 6) { const y = h * (row + 0.5) / 6 + Math.sin(x * 0.035 + time * 0.6 + row) * 3; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  ctx.fillStyle = C.concrete;
+  for (const top of [true, false]) {
+    ctx.beginPath(); ctx.moveTo(0, top ? 0 : h); ctx.lineTo(w * 0.27, top ? 0 : h);
+    ctx.lineTo(w * 0.2, h * (top ? 0.32 : 0.75)); ctx.lineTo(0, h * (top ? 0.32 : 0.75)); ctx.closePath(); ctx.fill();
+  }
+  const eased = 1 - Math.pow(1 - u, 2), sx = w * (0.14 + 0.6 * eased), sy = h * 0.54 + Math.sin(time * 0.8) * h * 0.025;
+  drawShark(ctx, sx, sy, 0, Math.min(76, w * 0.22), time, u < 1, 1, 1, currentSkin());
+}
+
 /* ---------- shark skins: earned with story stars (one with a daily streak), kept once earned ---------- */
 // Decorations draw in the shark's own frame: x forward (head at +L/2), y across (+-W/2); `pattern` is clipped to the body.
 function flower(ctx, x, y, r) {
@@ -794,10 +887,15 @@ function onClear() {
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
   const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
+  const journey = !DAILY && storyProgress(), rescueComplete = last && journey.complete;
+  const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
+  $('clearStory').hidden = !milestone;
+  $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : '';
+  $('clearTitle').classList.toggle('story-title', !!milestone);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
   $('clearTitle').classList.toggle('operation-title', !!operation);
   $('clearTitle').textContent = DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
-    : last ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
+    : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
@@ -810,7 +908,7 @@ function onClear() {
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('operationStamp').hidden = !operation || progress.count !== 3;
   $('nextBtn').textContent = DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
-    : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
+    : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
@@ -1181,6 +1279,7 @@ function frame(now) {
     draw(t);
   }
   if (!$('titleScreen').hidden) drawHero(t);
+  if (endingOpen()) drawEnding(t);
   requestAnimationFrame(frame);
 }
 function step(dt) {
@@ -1423,7 +1522,9 @@ function renderLevelGrid(followProgress = false) {
     const idx = Array.from({ length: ch.count }, (_, k) => start + k); start += ch.count;
     const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]);
     if (ci === selectedChapter) {
+      const progress = storyProgress().chapters[ci];
       grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span>★ ${stars} / ${ch.count * 3}</span></div>
+        <p class="chapter-story">${progress.complete ? JOURNEY_STORY[ci].outro : JOURNEY_STORY[ci].intro}<br><b>${progress.count} / ${ch.count} 수로 구출 완료</b></p>
         <div class="levels">${idx.map((i, k) => button(LEVELS[i], i, k)).join('')}</div>`;
     }
     return `<button class="chapter-btn" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
@@ -1434,6 +1535,10 @@ function renderLevelGrid(followProgress = false) {
   $('journeyLabel').innerHTML = `${chap.ci + 1}장 ${chap.name} · <b>${LEVELS[target].name}</b>`;
   $('playBtn').textContent = resume ? `이어서 하기 · 수로 ${save.sessions.story.id + 1} · ${resume.moves}회 진행`
     : Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
+  const progress = storyProgress();
+  $('journeyBtn').textContent = `구출 여정 · ${progress.count} / ${LEVELS.length} 수로${progress.complete ? ' · 구출 성공' : ''} ›`;
+  $('endingBtn').hidden = !progress.complete;
+  if (progress.complete && !resume) $('playBtn').textContent = `별 더 모으기 · 수로 ${target + 1}`;
 }
 function nextLevel() {
   for (let i = 0; i < LEVELS.length; i++) if (save.best[i] == null) return i;
@@ -1507,6 +1612,16 @@ $('chapterPicker').addEventListener('click', e => {
   $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
 });
 $('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
+$('journeyBtn').addEventListener('click', openJourney);
+$('journeyDone').addEventListener('click', closeJourney);
+$('journeyOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeJourney(); });
+$('journeyChapters').addEventListener('click', e => { const b = e.target.closest('[data-journey-chapter]'); if (b) selectJourneyChapter(+b.dataset.journeyChapter); });
+$('endingBtn').addEventListener('click', () => openEnding());
+$('journeyEndingBtn').addEventListener('click', () => openEnding('journey'));
+$('endingDone').addEventListener('click', closeEnding);
+$('endingHomeBtn').addEventListener('click', endingToTitle);
+$('endingDailyBtn').addEventListener('click', endingToDaily);
+$('endingOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEnding(); });
 $('dailyBtn').addEventListener('click', () => { ac(); openDaily(); });
 $('dailyStages').addEventListener('click', e => {
   const b = e.target.closest('[data-stage]');
@@ -1534,7 +1649,7 @@ $('undoBtn').addEventListener('click', undo);
 $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
 $('againBtn').addEventListener('click', replay);
-$('nextBtn').addEventListener('click', () => { if (DAILY) continueDaily(); else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
+$('nextBtn').addEventListener('click', continueStory);
 // settings sheet (sound, vibration) — opened from the gear on the title and in a level
 const settingsOpen = () => !$('settingsOverlay').hidden;
 function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
@@ -1578,6 +1693,8 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (endingOpen()) { if (e.key === 'Escape') closeEnding(); return; }
+  if (journeyOpen()) { if (e.key === 'Escape') closeJourney(); return; }
   if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
   if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
@@ -1598,7 +1715,9 @@ window.addEventListener('pagehide', pauseGame);
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
-  if (journalOpen()) closeJournal();
+  if (endingOpen()) closeEnding();
+  else if (journeyOpen()) closeJourney();
+  else if (journalOpen()) closeJournal();
   else if (dailyOpen()) closeDaily();
   else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();

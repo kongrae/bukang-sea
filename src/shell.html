@@ -197,6 +197,27 @@ h1 .sea { color: var(--title-alert); }
 .chapter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .chapter-head:first-child { margin-top: 0; }
 .chapter-head h3 { font-family: var(--font-display); font-weight: 400; font-size: 23px; color: var(--text); margin: 0; line-height: 1.3; }
+.chapter-story { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.chapter-story b { color: var(--water-hi); font-weight: 500; }
+.journey-link { border: 0; background: transparent; color: var(--water-hi); font-size: 13px; min-height: 36px; padding: 4px 8px; cursor: pointer; border-radius: 10px; }
+.journey-link:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+.card.journey, .card.ending { max-height: 92dvh; overflow-y: auto; }
+.card.journey h3, .card.ending h3, .card h3.story-title { font-size: clamp(28px, 8vw, 32px); }
+.journey-route { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; text-align: left; }
+.journey-stop { display: flex; gap: 12px; }
+.journey-number { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: #ded5c4; color: #435659; font: 20px var(--font-display); }
+.journey-stop.complete .journey-number { background: #286446; color: #fff9e9; }
+.journey-stop > div { min-width: 0; flex: 1; padding-bottom: 14px; border-bottom: 1px dashed #b5ad9b; }
+.journey-stop:last-child > div { border-bottom: 0; padding-bottom: 0; }
+.journey-stop b { font-size: 17px; }
+.journey-stop p { font-size: 14px; line-height: 1.6; margin: 6px 0; }
+.journey-stop small { font-size: 13px; color: #435659; }
+.journey-stop progress { display: block; width: 100%; height: 6px; margin: 8px 0 10px; accent-color: #286446; }
+.journey-stop .btn { color: var(--ink); background: #e2ecdf; border: 1px solid #38785c; min-height: 44px; padding: 8px 12px; font-size: 13px; }
+.ending-scene { width: 100%; height: clamp(150px, 25vh, 210px); border-radius: 16px; flex-shrink: 0; }
+.ending-copy, .clear-story { margin: 0; font-size: 15px; line-height: 1.7; color: #304d50; }
+.clear-story { padding: 10px 12px; background: #e2ecdf; border-radius: 12px; font-size: 14px; }
+.ending-stamp { font: 22px var(--font-display); color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; }
 .levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .lv {
   background: var(--harbor-2); border: 2px solid transparent; border-radius: 18px;
@@ -411,6 +432,7 @@ h1 .sea { color: var(--title-alert); }
     <div class="cta-bar">
       <p class="journey-label" id="journeyLabel"></p>
       <button class="btn primary big" id="playBtn" type="button">시작하기</button>
+      <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
     </div>
     <button class="daily" id="dailyBtn" type="button">
       <span class="daily-text">
@@ -424,6 +446,7 @@ h1 .sea { color: var(--title-alert); }
     <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
     <div class="chapters" id="levelGrid"></div>
     <div class="extra-options">
+      <button class="btn" id="endingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
       <button class="journal-link" id="journalBtn" type="button">
         <span><b>구조일지</b><small id="journalSummary">참여 0일 · 작전 완료 0일</small></span><span aria-hidden="true">보기 ›</span>
       </button>
@@ -466,6 +489,31 @@ h1 .sea { color: var(--title-alert); }
     </div>
     <p class="kbd">방향키·WASD로 이동 · Z 되돌리기 · R 처음부터 · H 힌트</p>
   </section>
+</div>
+
+<div class="overlay" id="journeyOverlay" hidden>
+  <div class="card journey" id="journeyCard" role="dialog" aria-modal="true" aria-labelledby="journeyTitle">
+    <h3 id="journeyTitle" tabindex="-1">바다로 가는 여정</h3>
+    <p class="sub" id="journeyCount"></p>
+    <p class="sub">한 수로씩 길을 열면 바다에 가까워져요.<br>별 하나만 얻어도 여정은 이어져요.</p>
+    <ol class="journey-route" id="journeyChapters"></ol>
+    <button class="btn" id="journeyEndingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
+    <button class="btn primary" id="journeyDone" type="button">닫기</button>
+  </div>
+</div>
+
+<div class="overlay" id="endingOverlay" hidden>
+  <div class="card ending" id="endingCard" role="dialog" aria-modal="true" aria-labelledby="endingTitle">
+    <h3 id="endingTitle" tabindex="-1">상어야, 바다에서 만나!</h3>
+    <canvas class="ending-scene" id="endingScene" role="img" aria-label="좁은 수로를 벗어나 넓은 바다로 헤엄치는 상어"></canvas>
+    <div class="ending-stamp">구출 성공!</div>
+    <p class="ending-copy">좁은 수로에서 시작한 작은 구조작전.<br>함께 열어 준 물길 끝에 넓은 바다가 있어요.<br>상어가 마음껏 헤엄칠 수 있게 되었어요.</p>
+    <p class="sub" id="endingRecord"></p>
+    <p class="sub" id="endingAfter"></p>
+    <button class="btn primary" id="endingDailyBtn" type="button">오늘의 구조작전</button>
+    <button class="btn" id="endingHomeBtn" type="button">수로 목록으로</button>
+    <button class="btn" id="endingDone" type="button">닫기</button>
+  </div>
 </div>
 
 <div class="overlay" id="dailyOverlay" hidden>
@@ -524,6 +572,7 @@ h1 .sea { color: var(--title-alert); }
 <div class="overlay" id="clearOverlay" hidden>
   <div class="card" role="dialog" aria-labelledby="clearTitle">
     <h3 id="clearTitle">바다로 나갔어요!</h3>
+    <p class="clear-story" id="clearStory" hidden></p>
     <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
     <div class="stars" id="clearStars"></div>
     <ul class="checks" id="clearChecks"></ul>

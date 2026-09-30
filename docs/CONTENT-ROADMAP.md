@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | 1 | 오늘의 구조작전: 매일 세 수로, 실제 규칙의 난이도, 저장·기록 호환 | GPT-6 Astra | xhigh | 구현·자동/브라우저 검증 완료 |
 | 2 | 구조일지와 누적 참여·작전 완료 보상 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
-| 3 | 챕터 여정과 구출 엔딩 | GPT-6.1 Sol | high | 미착수 |
+| 3 | 챕터 여정과 구출 엔딩 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
 | 4 | 자유 수로: 난이도를 골라 이어서 즐기는 생성 퍼즐 | GPT-6 Astra | xhigh | 반응 확인 후, 미착수 |
 
-1번 상세: [DAILY-OPERATION.md](DAILY-OPERATION.md). 2번 상세: [RESCUE-JOURNAL.md](RESCUE-JOURNAL.md). 기존 스토리 48개와 스킨 7개의 조건을 유지하고 누적 보상 스킨 2개를 추가했다. 다음은 3번이며 실제 이용자 기록과 재방문을 확인하면서 후속 범위를 조정한다.
+1번 상세: [DAILY-OPERATION.md](DAILY-OPERATION.md). 2번 상세: [RESCUE-JOURNAL.md](RESCUE-JOURNAL.md). 3번 상세: [JOURNEY-AND-ENDING.md](JOURNEY-AND-ENDING.md). 기존 스토리 48개와 스킨 7개의 조건을 유지하고 누적 보상 스킨 2개·챕터 여정·구출 엔딩을 추가했다. 다음은 4번이며 실제 이용자 기록과 재방문을 확인하면서 범위를 조정한다. 사용자의 다음 시작 요청을 기다린다.
