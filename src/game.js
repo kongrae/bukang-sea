@@ -77,6 +77,8 @@ const sfx = {
   jet: () => tone(480, 0.1, 'sine', 0.06, 320),
   undo: () => tone(520, 0.09, 'sine', 0.06, -200),
   exit: () => { noise(0.5, 0.2, 400, 2400, 0.6); tone(330, 0.3, 'sine', 0.05, 330); },
+  warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
+  sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
 };
 
@@ -227,6 +229,38 @@ function drawExit(ctx, x, y, T, g, gx, gy, t) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('바다', x + T / 2, dir === 'U' ? y + T * 0.8 : y + T * 0.2);
 }
+// sandbar: a low mound of sand in the water, with a foam line where the water laps it
+function drawSand(ctx, x, y, T, seed) {
+  const cx = x + T / 2, cy = y + T / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1.5, T * 0.04);
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.44, T * 0.38, 0, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#cdb27a';
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.4, T * 0.34, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e3cd96';
+  ctx.beginPath(); ctx.ellipse(cx - T * 0.05, cy - T * 0.04, T * 0.3, T * 0.22, -0.3, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(120,90,50,.45)';
+  for (let k = 0; k < 6; k++) {
+    const a = hash(seed * 13 + k * 7) * Math.PI * 2, r = T * 0.08 + hash(seed + k * 3) * T * 0.2;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8, T * 0.022, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// whirlpool: dark eye with three turning spiral arms; `flash` brightens it right after a jump
+function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
+  const r = T * 0.46;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, `rgba(4,22,30,${0.8 - flash * 0.3})`); grad.addColorStop(1, 'rgba(4,22,30,0)');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(reduceMotion ? 0.6 : t * (2.4 + flash * 6));
+  ctx.strokeStyle = flash ? '#ffffff' : C['water-hi']; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, T * 0.05);
+  for (let k = 0; k < 3; k++) {
+    ctx.rotate(Math.PI * 2 / 3); ctx.globalAlpha = 0.8; ctx.beginPath();
+    for (let a = 0; a <= 1.001; a += 0.1) { const ang = a * 2.6, rr = r * (0.12 + a * 0.8); a ? ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
 // tileable light pattern for the water surface (computed once)
 const caustic = (() => {
   const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
@@ -356,11 +390,12 @@ function tryMove(d) {
     if (JET[cellAt(g, x, y)]) jets.push({ k: k + 1, x, y, done: false });
   });
   const pts = [st.pos.slice(), ...r.path.map(p => [p[0], p[1]])];
+  const warps = new Set(); r.path.forEach((p, k) => { if (p[3]) warps.add(k + 1); });   // pts index reached by a jump
   const dirs = [d, ...r.path.map(p => p[2])];
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false,
+  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
@@ -382,6 +417,12 @@ function finishAnim() {
   a.eats.forEach(e => { if (!st.fish.includes(e.fi)) st.fish.push(e.fi); });
   updateHud();
   if (a.win) { onClear(); return; }
+  if (cellAt(g, view.x, view.y) === 's') {
+    settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
+    if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x: view.x, y: view.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
+    if (queued) { const q = queued; queued = null; tryMove(q); }
+    return;
+  }
   const d = a.dirs[a.steps], amp = Math.min(1, a.steps / 5), [dx, dy] = DIRS[d];
   settle = { t: 0, d, amp };
   ring(view.x + dx * 0.3, view.y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
@@ -550,7 +591,7 @@ function buildStatic() {
       s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
       waterPath.rect(px, py, T, T); continue;
     }
-    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); continue; }
+    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
     s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
     s.strokeStyle = C['concrete-2']; s.lineWidth = 1;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
@@ -616,7 +657,13 @@ function step(dt) {
     a.p = (a.win ? DASH : GLIDE)(u) * a.n;
     a.speed = (a.p - prev) / Math.max(dt, 1e-3);
     const i = Math.min(Math.floor(a.p), a.n - 1), f = a.p - i, A = a.pts[i], B = a.pts[i + 1];
-    view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f;
+    if (a.warps.has(i + 1)) {
+      const out = f >= 0.5; view.x = out ? B[0] : A[0]; view.y = out ? B[1] : A[1]; a.warpScale = out ? (f - 0.5) * 2 : 1 - f * 2;
+      if (!a.warpDone.has(i + 1)) {
+        a.warpDone.add(i + 1); sfx.warp(); haptic('medium');
+        jetFlash.set(A[1] * g.w + A[0], 1); jetFlash.set(B[1] * g.w + B[0], 1); ring(A[0], A[1], 1, 0.6); ring(B[0], B[1], 1.2, 0.6);
+      }
+    } else { a.warpScale = 1; view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f; }
     view.target = ANG[a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
     for (const e of a.eats) if (!a.eaten.has(e.fi) && a.p >= e.k - 0.35) eatFish(e.fi);
     for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
@@ -675,6 +722,7 @@ function draw(t) {
     if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
     else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
     else if (c === 'b') drawBoat(ctx, px + T / 2, py + T / 2, T, t);
+    else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
   // surface rings and the wake behind the shark
   for (const p of particles) if (p.kind === 'ring') {
@@ -715,6 +763,7 @@ function draw(t) {
     sx += dx * off; sy += dy * off; stretch = 1 - 0.14 * settle.amp * e * Math.cos(k * 20);
   }
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
+  if (anim && anim.warpScale < 1) size *= Math.max(0.05, anim.warpScale);
   const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
   drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
@@ -733,6 +782,8 @@ function draw(t) {
       ctx.font = `400 ${Math.round(T * 0.36 * s)}px ${css.getPropertyValue('--font-display')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
       ctx.strokeText('냠!', px, p.y * T + T * 0.4); ctx.fillText('냠!', px, p.y * T + T * 0.4);
       ctx.globalAlpha = 1;
+    } else if (p.kind === 'grain') {
+      ctx.fillStyle = `rgba(214,188,130,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size, 0, 7); ctx.fill();
     } else if (p.kind === 'drop') {
       ctx.fillStyle = `rgba(236,245,242,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size * (0.6 + 0.4 * p.life), 0, 7); ctx.fill();
     } else if (p.kind === 'spark') {
@@ -831,6 +882,7 @@ function renderLegend() {
     ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
     ['boat', '구조정 · 앞에서 멈춰요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
+    ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
   ];
   $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
   $('legend').querySelectorAll('canvas').forEach(c => {
@@ -842,6 +894,8 @@ function renderLegend() {
     if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
     if (k === 'net') drawNet(x, 0, 0, S, false, 0);
     if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
+    if (k === 'sand') drawSand(x, 0, 0, S, 5);
+    if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
   });
 }
 // screen change with a native-style push (into a level) or pop (back to the list)

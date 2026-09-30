@@ -33,9 +33,9 @@ const scenes = [
     document.querySelector('.lv[data-i="4"]').click(); await sleep(400);
     for (const d of 'URDLURU') { swipe(d); await sleep(1300); }
     await sleep(1200);` },
-  { name: '5-chapter3', save: { best: done(31), last: 31 }, run: `
-    document.querySelector('.lv[data-i="31"]').click(); await sleep(400);
-    for (const d of 'ULUR') { swipe(d); await sleep(1300); }` },
+  { name: '5-chapter4', save: { best: done(42), last: 42 }, run: `
+    document.querySelector('.lv[data-i="42"]').click(); await sleep(400);
+    for (const d of 'URD') { swipe(d); await sleep(1300); }` },
   { name: '6-chapters', save: { best: done(27), last: 27 }, run: `
     document.querySelectorAll('.chapter-head')[1].scrollIntoView(); await sleep(300);` },
 ];

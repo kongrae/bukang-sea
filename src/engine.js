@@ -14,7 +14,11 @@ function parseLevel(level) {
       cells.push(c);
     }
   }
-  return { w, h, cells, start, fish, nets: level.nets || 0, par: level.par };
+  // whirlpools come in one pair: entering either one comes out of the other
+  const whirls = []; cells.forEach((c, i) => { if (c === 'w') whirls.push(i); });
+  if (whirls.length && whirls.length !== 2) throw new Error('whirlpools must come in a pair in ' + level.name);
+  const warp = new Map(whirls.length === 2 ? [[whirls[0], whirls[1]], [whirls[1], whirls[0]]] : []);
+  return { w, h, cells, start, fish, warp, nets: level.nets || 0, par: level.par };
 }
 function cellAt(g, x, y) {
   if (x < 0 || y < 0 || x >= g.w || y >= g.h) return '#';
@@ -25,7 +29,9 @@ function isBlocked(g, x, y, nets) {
   if (c === '#' || c === 'o' || c === 'b') return true;
   return !!(nets && nets.has(y * g.w + x));
 }
-// Slide until blocked. path excludes the start tile; each step is [x, y, dir].
+// Slide until blocked. path excludes the start tile; each step is [x, y, dir] (a 4th element `true` marks
+// the tile reached by a whirlpool jump rather than by swimming). Stops on a sandbar 's'. Jets and whirlpools
+// passed twice in one move stop the slide (loop guard); the tile the move starts on never triggers anything.
 function slide(g, pos, dir, nets) {
   let [x, y] = pos, d = dir;
   const path = [], seen = new Set();
@@ -35,10 +41,17 @@ function slide(g, pos, dir, nets) {
     x += dx; y += dy; path.push([x, y, d]);
     const c = cellAt(g, x, y);
     if (c === 'E') return { path, end: [x, y], win: true };
-    if (JET[c]) {
+    if (c === 's') break;
+    if (JET[c] || c === 'w') {
       const key = x + ',' + y;
       if (seen.has(key)) break;
-      seen.add(key); d = JET[c];
+      seen.add(key);
+      if (JET[c]) d = JET[c];
+      else {
+        const to = g.warp.get(y * g.w + x);
+        x = to % g.w; y = Math.floor(to / g.w); seen.add(x + ',' + y);
+        path.push([x, y, d, true]);
+      }
     }
   }
   return { path, end: [x, y], win: false };

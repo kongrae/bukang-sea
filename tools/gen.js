@@ -2,7 +2,8 @@
 // whose optimal solution length is closest to the target.
 //   node tools/gen.js <mask> '<spec json>' <targetPar> [seed] [tries]
 //   e.g. node tools/gen.js basin '{"buoys":3,"jets":2,"fish":2}' 8 42 2000
-// spec keys: buoys, boats, jets, fish, nets (nets = how many the player gets; the level must need them),
+// spec keys: buoys, boats, jets, fish, sand (sandbars), whirls (1 = one whirlpool pair),
+//            nets (nets = how many the player gets; the level must need them),
 //            bits (optional target difficulty from tools/difficulty.js; when set it outranks targetPar)
 //   e.g. node tools/gen.js lagoon '{"buoys":3,"jets":2,"fish":3,"bits":16}' 11 7 800
 const E = require('../src/engine.js');

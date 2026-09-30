@@ -374,7 +374,11 @@ function parseLevel(level) {
       cells.push(c);
     }
   }
-  return { w, h, cells, start, fish, nets: level.nets || 0, par: level.par };
+  // whirlpools come in one pair: entering either one comes out of the other
+  const whirls = []; cells.forEach((c, i) => { if (c === 'w') whirls.push(i); });
+  if (whirls.length && whirls.length !== 2) throw new Error('whirlpools must come in a pair in ' + level.name);
+  const warp = new Map(whirls.length === 2 ? [[whirls[0], whirls[1]], [whirls[1], whirls[0]]] : []);
+  return { w, h, cells, start, fish, warp, nets: level.nets || 0, par: level.par };
 }
 function cellAt(g, x, y) {
   if (x < 0 || y < 0 || x >= g.w || y >= g.h) return '#';
@@ -385,7 +389,9 @@ function isBlocked(g, x, y, nets) {
   if (c === '#' || c === 'o' || c === 'b') return true;
   return !!(nets && nets.has(y * g.w + x));
 }
-// Slide until blocked. path excludes the start tile; each step is [x, y, dir].
+// Slide until blocked. path excludes the start tile; each step is [x, y, dir] (a 4th element `true` marks
+// the tile reached by a whirlpool jump rather than by swimming). Stops on a sandbar 's'. Jets and whirlpools
+// passed twice in one move stop the slide (loop guard); the tile the move starts on never triggers anything.
 function slide(g, pos, dir, nets) {
   let [x, y] = pos, d = dir;
   const path = [], seen = new Set();
@@ -395,10 +401,17 @@ function slide(g, pos, dir, nets) {
     x += dx; y += dy; path.push([x, y, d]);
     const c = cellAt(g, x, y);
     if (c === 'E') return { path, end: [x, y], win: true };
-    if (JET[c]) {
+    if (c === 's') break;
+    if (JET[c] || c === 'w') {
       const key = x + ',' + y;
       if (seen.has(key)) break;
-      seen.add(key); d = JET[c];
+      seen.add(key);
+      if (JET[c]) d = JET[c];
+      else {
+        const to = g.warp.get(y * g.w + x);
+        x = to % g.w; y = Math.floor(to / g.w); seen.add(x + ',' + y);
+        path.push([x, y, d, true]);
+      }
     }
   }
   return { path, end: [x, y], win: false };
@@ -875,7 +888,7 @@ const LEVELS = [
     '#.......#',
     '####S####',
   ] },
-  { par: 14, name: '넓은 바다로', nets: 2, tip: '마지막 수로. 상어를 바다로 보내 주세요!', map: [
+  { par: 14, name: '넓은 바다로', nets: 2, tip: '3장 마지막 수로. 상어를 바다로 보내 주세요!', map: [
     '####E####',
     '#.......#',
     '#....f..#',
@@ -888,6 +901,147 @@ const LEVELS = [
     '#..f....#',
     '####S####',
   ] },
+  /* ----- 4장 외항 물길 ----- */
+  { par: 7, name: '모래톱', tip: '모래톱에 올라서면 그 자리에서 멈춰요. 벽이 없어도 괜찮아요.', map: [
+    '####E####',
+    '#.f.....#',
+    '#.......#',
+    '#...s...#',
+    '#.......#',
+    '#.......#',
+    '#.......#',
+    '#.......#',
+    '#.s.so..#',
+    '####S####',
+  ] },
+  { par: 10, name: '모래 징검다리', tip: '모래톱을 디딤돌처럼 이어 가 보세요.', map: [
+    '####E####',
+    '#.o.....#',
+    '#....s..#',
+    '#..ss...#',
+    '#....o.s#',
+    '#.....f.#',
+    '#.......#',
+    '#.......#',
+    '#.....f.#',
+    '####S####',
+  ] },
+  { par: 14, name: '삼각주', tip: '물줄기와 모래톱이 함께 있어요.', map: [
+    '#E#######',
+    '#.......#',
+    '#..fs...#',
+    '#####..v#',
+    '#of.....#',
+    '#..s..s.#',
+    '#...#####',
+    '#.o.....#',
+    '#.......#',
+    '#######S#',
+  ] },
+  { par: 10, name: '소용돌이', tip: '소용돌이에 들어가면 짝 소용돌이로 빨려 나와 같은 방향으로 계속 헤엄쳐요.', map: [
+    '#####E###',
+    '#...#...#',
+    '#w..#o..#',
+    '#...#...#',
+    '#...#...#',
+    '#...#...#',
+    '#..f#...#',
+    '#...#.w.#',
+    '#S#######',
+  ] },
+  { par: 11, name: '빙글빙글 모래섬', tip: '소용돌이를 지나 모래톱에서 멈춰 보세요.', map: [
+    '####E####',
+    '#.......#',
+    '#...s...#',
+    '#.......#',
+    '#.......#',
+    '#v......#',
+    '#.......#',
+    '#.....ff#',
+    '#w..w.s.#',
+    '####S####',
+  ] },
+  { par: 15, name: '쌍둥이 물길', tip: '두 물길은 소용돌이로만 이어져 있어요.', map: [
+    '#####E###',
+    '#...#...#',
+    '#w..#w..#',
+    '#...#..f#',
+    '#o..#...#',
+    '#..o#...#',
+    '#..f#...#',
+    '#...#...#',
+    '#S#######',
+  ] },
+  { par: 16, name: '해자', tip: '가운데 연못에도 소용돌이로 들어갈 수 있어요.', map: [
+    '####E####',
+    '#....o..#',
+    '#......f#',
+    '#.#####.#',
+    '#.#...#f#',
+    '#.#s.w#.#',
+    '#.#####o#',
+    '#..w....#',
+    '#.......#',
+    '####S####',
+  ] },
+  { par: 16, name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
+    '#####E###',
+    '#...#...#',
+    '#...#..w#',
+    '#..s#...#',
+    '#...#.ff#',
+    '#...#...#',
+    '#.w.#.f.#',
+    '#.s.#.v.#',
+    '#S#######',
+  ] },
+  { par: 12, name: '모래 그물', nets: 1, tip: '그물 하나로 멈출 곳을 하나 더 만들어요.', map: [
+    '#E#######',
+    '#...f.s.#',
+    '#.f.....#',
+    '#####...#',
+    '#.......#',
+    '#.......#',
+    '#oo.#####',
+    '#.....s.#',
+    '#.......#',
+    '#######S#',
+  ] },
+  { par: 14, name: '소용돌이 광장', tip: '물줄기 두 개, 모래톱 세 개, 소용돌이 한 쌍.', map: [
+    '####E####',
+    '#.......#',
+    '#...s...#',
+    '#....>..#',
+    '#.......#',
+    '#.....f.#',
+    '#<fw.o.w#',
+    '#....s..#',
+    '#..f...s#',
+    '####S####',
+  ] },
+  { par: 18, name: '성곽 수로', nets: 1, tip: '그물과 소용돌이를 함께 써야 해요.', map: [
+    '####E####',
+    '#.......#',
+    '#...o.f.#',
+    '#.#####.#',
+    '#.#w..#.#',
+    '#.#.s.#w#',
+    '#.#####.#',
+    '#.f.....#',
+    '#.......#',
+    '####S####',
+  ] },
+  { par: 17, name: '먼바다로', nets: 1, tip: '마지막 수로. 그물 하나와 소용돌이로 상어를 먼바다로 보내 주세요!', map: [
+    '#####E###',
+    '#...#...#',
+    '#.f.#..o#',
+    '#...#.w.#',
+    '#.s.#...#',
+    '#..^#...#',
+    '#f.f#v..#',
+    '#.w.#.s.#',
+    '#S#######',
+  ] },
 ];
 
 /* ---------- Chapters: consecutive runs of LEVELS (count 합계 = LEVELS.length) ---------- */
@@ -895,6 +1049,7 @@ const CHAPTERS = [
   { name: '북항 수로', count: 12 },
   { name: '친수공원 운하', count: 12 },
   { name: '방파제 너머', count: 12 },
+  { name: '외항 물길', count: 12 },
 ];
 
 /* ---------- Daily canal: one generated puzzle per calendar day, the same for every player ---------- */
@@ -915,6 +1070,11 @@ const MASKS = {
   harbor: ['####E####', '#.......#', '#.......#', '#..###..#', '#.......#', '#.......#', '#.......#', '##.....##', '#.......#', '#.......#', '####S####'],
   breakwater: ['########', 'E......#', '#......#', '####...#', '#......#', '#......#', '#...####', '#......#', '#......#', '#......#', '#......#', '######S#'],
   lagoon: ['#######E#', '#.......#', '#.......#', '#.##....#', '#.##....#', '#.......#', '#....##.#', '#....##.#', '#.......#', '#S#######'],
+  // chapter 4: 외항 물길 (twin/moat have water that only a whirlpool pair can connect)
+  shoal:  ['####E####', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '####S####'],
+  twin:   ['#####E###', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#S#######'],
+  moat:   ['####E####', '#.......#', '#.......#', '#.#####.#', '#.#...#.#', '#.#...#.#', '#.#####.#', '#.......#', '#.......#', '####S####'],
+  delta:  ['#E#######', '#.......#', '#.......#', '#####...#', '#.......#', '#.......#', '#...#####', '#.......#', '#.......#', '#######S#'],
 };
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
@@ -932,6 +1092,9 @@ function place(mask, spec, rand) {
   put('o', spec.buoys || 0);
   put('b', spec.boats || 0);
   put(() => '<>^v'[Math.floor(rand() * 4)], spec.jets || 0);
+  // chapter 4 devices; a count of 0 draws no random numbers, so existing daily recipes are unaffected
+  put('s', spec.sand || 0);
+  put('w', spec.whirls ? 2 : 0);
   put('f', spec.fish || 0);
   return rows.map(r => r.join(''));
 }
@@ -1067,6 +1230,8 @@ const sfx = {
   jet: () => tone(480, 0.1, 'sine', 0.06, 320),
   undo: () => tone(520, 0.09, 'sine', 0.06, -200),
   exit: () => { noise(0.5, 0.2, 400, 2400, 0.6); tone(330, 0.3, 'sine', 0.05, 330); },
+  warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
+  sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
 };
 
@@ -1217,6 +1382,38 @@ function drawExit(ctx, x, y, T, g, gx, gy, t) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('바다', x + T / 2, dir === 'U' ? y + T * 0.8 : y + T * 0.2);
 }
+// sandbar: a low mound of sand in the water, with a foam line where the water laps it
+function drawSand(ctx, x, y, T, seed) {
+  const cx = x + T / 2, cy = y + T / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1.5, T * 0.04);
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.44, T * 0.38, 0, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#cdb27a';
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.4, T * 0.34, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e3cd96';
+  ctx.beginPath(); ctx.ellipse(cx - T * 0.05, cy - T * 0.04, T * 0.3, T * 0.22, -0.3, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(120,90,50,.45)';
+  for (let k = 0; k < 6; k++) {
+    const a = hash(seed * 13 + k * 7) * Math.PI * 2, r = T * 0.08 + hash(seed + k * 3) * T * 0.2;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8, T * 0.022, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// whirlpool: dark eye with three turning spiral arms; `flash` brightens it right after a jump
+function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
+  const r = T * 0.46;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, `rgba(4,22,30,${0.8 - flash * 0.3})`); grad.addColorStop(1, 'rgba(4,22,30,0)');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(reduceMotion ? 0.6 : t * (2.4 + flash * 6));
+  ctx.strokeStyle = flash ? '#ffffff' : C['water-hi']; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, T * 0.05);
+  for (let k = 0; k < 3; k++) {
+    ctx.rotate(Math.PI * 2 / 3); ctx.globalAlpha = 0.8; ctx.beginPath();
+    for (let a = 0; a <= 1.001; a += 0.1) { const ang = a * 2.6, rr = r * (0.12 + a * 0.8); a ? ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
 // tileable light pattern for the water surface (computed once)
 const caustic = (() => {
   const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
@@ -1346,11 +1543,12 @@ function tryMove(d) {
     if (JET[cellAt(g, x, y)]) jets.push({ k: k + 1, x, y, done: false });
   });
   const pts = [st.pos.slice(), ...r.path.map(p => [p[0], p[1]])];
+  const warps = new Set(); r.path.forEach((p, k) => { if (p[3]) warps.add(k + 1); });   // pts index reached by a jump
   const dirs = [d, ...r.path.map(p => p[2])];
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false,
+  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
@@ -1372,6 +1570,12 @@ function finishAnim() {
   a.eats.forEach(e => { if (!st.fish.includes(e.fi)) st.fish.push(e.fi); });
   updateHud();
   if (a.win) { onClear(); return; }
+  if (cellAt(g, view.x, view.y) === 's') {
+    settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
+    if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x: view.x, y: view.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
+    if (queued) { const q = queued; queued = null; tryMove(q); }
+    return;
+  }
   const d = a.dirs[a.steps], amp = Math.min(1, a.steps / 5), [dx, dy] = DIRS[d];
   settle = { t: 0, d, amp };
   ring(view.x + dx * 0.3, view.y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
@@ -1540,7 +1744,7 @@ function buildStatic() {
       s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
       waterPath.rect(px, py, T, T); continue;
     }
-    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); continue; }
+    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
     s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
     s.strokeStyle = C['concrete-2']; s.lineWidth = 1;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
@@ -1606,7 +1810,13 @@ function step(dt) {
     a.p = (a.win ? DASH : GLIDE)(u) * a.n;
     a.speed = (a.p - prev) / Math.max(dt, 1e-3);
     const i = Math.min(Math.floor(a.p), a.n - 1), f = a.p - i, A = a.pts[i], B = a.pts[i + 1];
-    view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f;
+    if (a.warps.has(i + 1)) {
+      const out = f >= 0.5; view.x = out ? B[0] : A[0]; view.y = out ? B[1] : A[1]; a.warpScale = out ? (f - 0.5) * 2 : 1 - f * 2;
+      if (!a.warpDone.has(i + 1)) {
+        a.warpDone.add(i + 1); sfx.warp(); haptic('medium');
+        jetFlash.set(A[1] * g.w + A[0], 1); jetFlash.set(B[1] * g.w + B[0], 1); ring(A[0], A[1], 1, 0.6); ring(B[0], B[1], 1.2, 0.6);
+      }
+    } else { a.warpScale = 1; view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f; }
     view.target = ANG[a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
     for (const e of a.eats) if (!a.eaten.has(e.fi) && a.p >= e.k - 0.35) eatFish(e.fi);
     for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
@@ -1665,6 +1875,7 @@ function draw(t) {
     if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
     else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
     else if (c === 'b') drawBoat(ctx, px + T / 2, py + T / 2, T, t);
+    else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
   // surface rings and the wake behind the shark
   for (const p of particles) if (p.kind === 'ring') {
@@ -1705,6 +1916,7 @@ function draw(t) {
     sx += dx * off; sy += dy * off; stretch = 1 - 0.14 * settle.amp * e * Math.cos(k * 20);
   }
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
+  if (anim && anim.warpScale < 1) size *= Math.max(0.05, anim.warpScale);
   const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
   drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
@@ -1723,6 +1935,8 @@ function draw(t) {
       ctx.font = `400 ${Math.round(T * 0.36 * s)}px ${css.getPropertyValue('--font-display')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
       ctx.strokeText('냠!', px, p.y * T + T * 0.4); ctx.fillText('냠!', px, p.y * T + T * 0.4);
       ctx.globalAlpha = 1;
+    } else if (p.kind === 'grain') {
+      ctx.fillStyle = `rgba(214,188,130,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size, 0, 7); ctx.fill();
     } else if (p.kind === 'drop') {
       ctx.fillStyle = `rgba(236,245,242,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size * (0.6 + 0.4 * p.life), 0, 7); ctx.fill();
     } else if (p.kind === 'spark') {
@@ -1821,6 +2035,7 @@ function renderLegend() {
     ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
     ['boat', '구조정 · 앞에서 멈춰요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
+    ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
   ];
   $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
   $('legend').querySelectorAll('canvas').forEach(c => {
@@ -1832,6 +2047,8 @@ function renderLegend() {
     if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
     if (k === 'net') drawNet(x, 0, 0, S, false, 0);
     if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
+    if (k === 'sand') drawSand(x, 0, 0, S, 5);
+    if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
   });
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
