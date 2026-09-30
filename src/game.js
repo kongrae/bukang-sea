@@ -516,13 +516,14 @@ function setTip(text, isHint) {
 }
 function updateHud() {
   const L = curLevel(), parts = [];
-  parts.push(`<span class="chip${st.moves > L.par ? ' over' : ''}"><span class="k">이동</span><b>${st.moves}</b><span class="k">/ 기준 ${L.par}</span></span>`);
-  if (g.fish.length) parts.push(`<span class="chip${st.fish.length === g.fish.length ? ' done' : ''}"><span class="k">숭어</span><b>${st.fish.length} / ${g.fish.length}</b></span>`);
-  if (g.nets) parts.push(`<span class="chip net"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span>`);
+  const done = g.fish.length && st.fish.length === g.fish.length;
+  const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
+  parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료' : '숭어 모으기' : '목표'}</span><b>${g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '바다로 탈출'}</b></span></span>`);
+  parts.push(`<span class="chip move${st.moves > L.par ? ' over' : ''}"><span class="hud-stack"><span class="count">이동 <b>${st.moves}</b></span><span class="k">기준 ${L.par}회</span></span></span>`);
+  if (g.nets) parts.push(`<span class="chip net"><span class="hud-stack"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span></span>`);
   $('stats').innerHTML = parts.join('');
-  const bs = $('stats').querySelectorAll('.chip b');
-  if (hudLast.moves >= 0 && st.moves !== hudLast.moves && bs[0]) bs[0].classList.add('bump');
-  if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish && bs[1]) bs[1].classList.add('bump');
+  if (hudLast.moves >= 0 && st.moves !== hudLast.moves) $('stats').querySelector('.move b').classList.add('bump');
+  if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
   hudLast = { moves: st.moves, fish: st.fish.length };
   $('undoBtn').disabled = !st.history.length;
 }
@@ -1108,7 +1109,7 @@ function sizeHero() {
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
-  const W = heroW, H = heroH, waterH = H - 72, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
+  const W = heroW, H = heroH, waterH = H - 78, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.1)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
