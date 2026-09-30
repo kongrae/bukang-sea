@@ -7,6 +7,13 @@ const E = require('../src/engine.js');
 const { makeDaily, rng, place } = require('../src/daily.js');
 const { replayPlan } = require('./replay-plan.js');
 const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8') + '; return LEVELS;')();
+// Keep the original bug repros independent of later level balancing.
+const NET_REGRESSIONS = [
+  { number: 11, moves: 6, map: ['#E#####','#.f...#','#..f..#','#.....#','#..o<.#','#.....#','#^....#','#.....#','#o....#','####S##'] },
+  { number: 34, moves: 6, map: ['#######E#','#vf...o.#','#.......#','#f##....#','#.##....#','#..^....#','#....##.#','#..o.##.#','#....f..#','#S#######'] },
+  { number: 47, moves: 8, map: ['####E####','#.......#','#...o.f.#','#.#####.#','#.#w..#.#','#.#.s.#w#','#.#####.#','#.f.....#','#.......#','####S####'] },
+  { number: 48, moves: 8, map: ['#####E###','#...#...#','#.f.#..o#','#...#.w.#','#.s.#...#','#..^#...#','#f.f#v..#','#.w.#.s.#','#S#######'] },
+];
 
 // Exhaustive oracle: enumerate ALL legal placements before EVERY swipe, without the production
 // solver's path/boat pruning. Small boards keep this practical. Both solvers use the canonical movement rules.
@@ -39,7 +46,7 @@ function exhaustive(g, { pos = g.start, mask = 0, boats = g.boats, capacity = g.
   return null;
 }
 
-test('all 48 story plans replay legally; existing star targets remain achievable', () => {
+test('all 48 story plans replay legally; balanced star targets remain achievable', () => {
   for (const l of LEVELS) {
     const g = E.parseLevel(l), before = JSON.stringify(g);
     for (const needAll of [true, false]) {
@@ -51,12 +58,31 @@ test('all 48 story plans replay legally; existing star targets remain achievable
   }
 });
 
-test('regression: 11/34/47/48 use the actual reusable-net minimum', () => {
-  for (const [number, moves] of [[11, 6], [34, 6], [47, 8], [48, 8]]) {
-    const g = E.parseLevel(LEVELS[number - 1]), p = E.plan(g, g.start, 0, new Set(), g.nets, true);
+test('regression: original 11/34/47/48 use the actual reusable-net minimum', () => {
+  for (const { number, moves, map } of NET_REGRESSIONS) {
+    const g = E.parseLevel({ name: 'original ' + number, nets: 1, map }), p = E.plan(g, g.start, 0, new Set(), g.nets, true);
     assert.equal(p.moves, moves, 'level ' + number);
     replayPlan(g, p);
   }
+});
+
+test('representative canals retain fish detours and the revised finale routes', () => {
+  for (const [n, minimum, escapeMoves] of [[6,7,5],[12,9,5],[24,10,7],[34,10,5],[36,11,6],[47,11,7],[48,12,6]]) {
+    const g = E.parseLevel(LEVELS[n - 1]);
+    assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, true).moves, minimum, 'full route ' + n);
+    assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, false).moves, escapeMoves, 'escape route ' + n);
+  }
+  assert.ok(E.parseLevel(LEVELS[46]).fish.some(([x,y]) => x >= 3 && x <= 5 && y >= 4 && y <= 5), 'fish inside the moat');
+  const final = E.parseLevel(LEVELS[47]);
+  assert.equal(final.fish.length, 4);
+  assert.ok(final.fish.some(([x]) => x < 4) && final.fish.some(([x]) => x > 4), 'fish in both final waterways');
+});
+
+test('fish completion gates the move star at and above the target', () => {
+  assert.equal(E.starsForClear(false, true), 1, 'quick fish-skipping escape');
+  assert.equal(E.starsForClear(false, false), 1);
+  assert.equal(E.starsForClear(true, false), 2, 'all fish above target');
+  assert.equal(E.starsForClear(true, true), 3, 'all fish at target');
 });
 
 test('level 10 recovers from a wrong placed net with no unused inventory', () => {
@@ -94,7 +120,7 @@ test('replan from every state of a two-net / two-boat route', () => {
   const g = E.parseLevel(LEVELS[11]);
   let pos = g.start, mask = 0, boats = g.boats, nets = new Set();
   const original = E.plan(g, pos, mask, nets, g.nets, true);
-  assert.equal(original.moves, 6);
+  assert.equal(original.moves, 9);
   for (let i = 0; i < original.steps.length; i++) {
     const p = E.plan(g, pos, mask, nets, g.nets - nets.size, true, boats);
     assert.equal(p.moves, original.moves - i);

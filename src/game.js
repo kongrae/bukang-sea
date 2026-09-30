@@ -393,7 +393,8 @@ function splashAt(x, y, n, dir, force = 1) {
 
 function loadLevel(i, keep) {
   DAILY = null; LVL = i; save.last = i; persist(); deco = i;
-  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length}`);
+  const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
+  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
 }
 function loadDaily(daily, keep) {
   DAILY = daily; deco = dailySeed(daily.date) % 997;
@@ -594,13 +595,14 @@ function onClear() {
   cleared = true;
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
-  const stars = 1 + (allFish ? 1 : 0) + (inPar ? 1 : 0);
+  const stars = starsForClear(allFish, inPar);
+  const earned = [true, stars >= 2, stars === 3];
   if (DAILY) recordDaily(DAILY.date, stars);
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   sfx.win();
   const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
-  $('clearStars').innerHTML = [true, allFish, inPar].map(starSvg).join('');
+  $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
   const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
@@ -610,14 +612,14 @@ function onClear() {
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
-    row('이동 기준', `${st.moves}번 / ${L.par}번`, inPar) +
+    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('nextBtn').textContent = DAILY || last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
-    [true, allFish, inPar].forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
+    earned.forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
     if (freshSkins.length) setTimeout(() => haptic('success'), 600);
   }, reduceMotion ? 50 : 650);
   renderLevelGrid();
@@ -1053,7 +1055,7 @@ function nextLevel() {
 }
 function renderLegend() {
   const items = [
-    ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
+    ['fish', '숭어 · 모두 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
     ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],

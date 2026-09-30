@@ -1,11 +1,12 @@
-// Difficulty metric (proxy for how hard a level feels).
+// Actual reusable-net route budgets are the default report. They are not human difficulty scores.
+// measure() below is retained for the generator and the optional --fixed-nets diagnostic:
 //   bits = -log2(P), P = chance that a random player gets 3 stars: nets dropped on random free water tiles,
 //          then random valid swipes, at most `par` moves. +1 bit = half the chance.
 //   Also: sols (distinct sequences of exactly par swipes), netOK (placements with those sequences).
 // FIXED-NET proxy only: does not model free net relocation and is NOT the gameplay minimum.
 // It overstates net difficulty (people reason about where to stop, they don't place nets at random),
 // so compare net levels with each other and confirm the curve by playing on a phone.
-//   node tools/difficulty.js        -> table for every level, grouped by chapter
+//   node tools/difficulty.js        -> live-rule route/target table, grouped by chapter
 const E = require('../src/engine.js');
 
 // state = shark position + eaten-fish mask + patrol boats (they move after every swim)
@@ -60,17 +61,18 @@ function measure(level) {
 if (require.main === module) {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
-  const { LEVELS, CHAPTERS } = new Function(src + '; return { LEVELS, CHAPTERS };')();
+  const { LEVELS, CHAPTERS, LEVEL_ROLES } = new Function(src + '; return { LEVELS, CHAPTERS, LEVEL_ROLES };')();
   let i = 0;
-  console.log('Fixed-net difficulty proxy only; run verify for the actual reusable-net minimum.');
+  const fixed = process.argv.includes('--fixed-nets');
+  console.log('Live rules: free net relocation. Full = all fish + escape; escape = fish optional. Counts are not human difficulty scores.');
+  if (fixed) console.log('Optional fixed-net bits overstate net difficulty; Infinity means no fixed layout meets this target.');
   for (const [ci, ch] of CHAPTERS.entries()) {
     console.log(`\n${ci + 1}장 ${ch.name}`);
-    let prev = null;
     for (let k = 0; k < ch.count; k++, i++) {
-      const L = LEVELS[i], d = measure(L);
-      const drop = prev != null && d.bits < prev ? `  ▼${(prev - d.bits).toFixed(1)}` : '';
-      console.log(`  ${String(i + 1).padStart(2)} ${L.name.padEnd(8, '　')} par ${String(L.par).padStart(2)}  nets ${L.nets || 0}  bits ${String(d.bits).padStart(4)}  ${'█'.repeat(Math.round(d.bits))}${drop}`);
-      prev = d.bits;
+      const L = LEVELS[i], g = E.parseLevel(L), role = LEVEL_ROLES[L.role || 'regular'];
+      const full = E.plan(g, g.start, 0, new Set(), g.nets, true);
+      const escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
+      console.log(`  ${String(i + 1).padStart(2)} ${L.name.padEnd(8, '　')} ${role.label}  par ${String(L.par).padStart(2)}  full ${full ? full.moves : '-'}  escape ${escape ? escape.moves : '-'}  allowance ${full ? L.par - full.moves : '-'}  fish detour ${full && escape ? full.moves - escape.moves : '-'}  nets ${g.nets}${fixed ? `  fixed-net bits ${measure(L).bits}` : ''}`);
     }
   }
 }

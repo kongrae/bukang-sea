@@ -207,4 +207,8 @@ function plan(g, pos, mask, nets, netsLeft, needAll, boats) {
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
-if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, cellAt, isBlocked, DIRS, JET, OPP };
+// A quick escape still clears the canal; fish completion is required before earning the move star.
+function starsForClear(allFish, inPar) {
+  return 1 + (allFish ? 1 : 0) + (allFish && inPar ? 1 : 0);
+}
+if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, starsForClear, cellAt, isBlocked, DIRS, JET, OPP };

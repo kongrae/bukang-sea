@@ -606,12 +606,22 @@ function plan(g, pos, mask, nets, netsLeft, needAll, boats) {
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
-if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, cellAt, isBlocked, DIRS, JET, OPP };
+// A quick escape still clears the canal; fish completion is required before earning the move star.
+function starsForClear(allFish, inPar) {
+  return 1 + (allFish ? 1 : 0) + (allFish && inPar ? 1 : 0);
+}
+if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, starsForClear, cellAt, isBlocked, DIRS, JET, OPP };
 
 /* ---------- Levels: # 산책로  . 물  S 상어  E 바다  f 숭어  o 부표  b 구조정  ^v<> 물줄기 ---------- */
+// Three-star targets: practice allows two extra swipes, regular one, challenge the minimum.
+const LEVEL_ROLES = {
+  learn: { label: '연습', slack: 2 },
+  regular: { label: '일반', slack: 1 },
+  challenge: { label: '도전', slack: 0 },
+};
 const LEVELS = [
   /* ----- 1장 북항 수로 ----- */
-  { par: 6, name: '첫 굽이', tip: '밀면 벽에 닿을 때까지 헤엄쳐요. 굽은 수로를 따라 바다(맨 위 출구)까지 가 보세요.', map: [
+  { par: 8, role: 'learn', name: '첫 굽이', tip: '밀면 벽에 닿을 때까지 헤엄쳐요. 굽은 수로를 따라 바다(맨 위 출구)까지 가 보세요.', map: [
     '#####E#',
     '#.....#',
     '#.#####',
@@ -620,7 +630,7 @@ const LEVELS = [
     '#S....#',
     '#######',
   ] },
-  { par: 5, name: '휘어진 수로', tip: '부표는 벽처럼 상어를 멈춰 세워요.', map: [
+  { par: 7, role: 'learn', name: '휘어진 수로', tip: '부표는 벽처럼 상어를 멈춰 세워요.', map: [
     '#####E#',
     '#.....#',
     '#.o...#',
@@ -631,7 +641,7 @@ const LEVELS = [
     '#.....#',
     '##S####',
   ] },
-  { par: 5, name: '숭어 한 마리', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요.', map: [
+  { par: 7, role: 'learn', name: '숭어 한 마리', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요.', map: [
     '#E#####',
     '#.....#',
     '#...o.#',
@@ -643,7 +653,7 @@ const LEVELS = [
     '#.....#',
     '####S##',
   ] },
-  { par: 6, name: 'S자 물길', tip: '이동 기준 안에 나가면 세 번째 별이에요.', map: [
+  { par: 7, name: 'S자 물길', tip: '숭어를 모두 먹고 이동 기준 안에 나가면 세 번째 별이에요.', map: [
     '######E',
     '#......',
     '#......',
@@ -655,7 +665,7 @@ const LEVELS = [
     '#..f..#',
     '##S####',
   ] },
-  { par: 7, name: '친수공원 한복판', tip: '구경꾼이 많아도 침착하게. 돌아가는 길이 더 빠를 때가 있어요.', map: [
+  { par: 8, name: '친수공원 한복판', tip: '구경꾼이 많아도 침착하게. 돌아가는 길이 더 빠를 때가 있어요.', map: [
     '###E###',
     '#...o.#',
     '#.....#',
@@ -668,18 +678,18 @@ const LEVELS = [
     '#o....#',
     '###S###',
   ] },
-  { par: 7, name: '구조정 등장', tip: '구조정은 상어가 한 번 헤엄칠 때마다 한 칸씩 오가요. 부딪히면 그 앞에서 멈춰요.', map: [
+  { par: 9, role: 'learn', name: '구조정 등장', tip: '상어가 한 번 헤엄친 뒤 구조정도 한 칸 움직여요. 부표처럼 앞에서 멈추니 돌아서 지나가요.', map: [
     '###E###',
     '##o..##',
     '#....o#',
-    '#.f...#',
+    '#.fo..#',
     '#.....#',
-    '#.f..b#',
+    '#.f...#',
     '#..b..#',
     '##...##',
     '###S###',
   ] },
-  { par: 6, name: '물대포', tip: '물줄기 칸을 지나면 화살표 방향으로 꺾여요.', map: [
+  { par: 8, role: 'learn', name: '물대포', tip: '물줄기 칸을 지나면 화살표 방향으로 꺾여요.', map: [
     '#E#####',
     '#....f#',
     '#..o..#',
@@ -691,7 +701,7 @@ const LEVELS = [
     '#.....#',
     '####S##',
   ] },
-  { par: 8, name: '물줄기 미로', tip: '물줄기를 여러 번 타면 멀리 돌아갈 수 있어요.', map: [
+  { par: 9, name: '물줄기 미로', tip: '물줄기를 여러 번 타면 멀리 돌아갈 수 있어요.', map: [
     '######E',
     '#o...f.',
     '#......',
@@ -703,7 +713,7 @@ const LEVELS = [
     '#...f.#',
     '##S####',
   ] },
-  { par: 10, name: '소방정 총출동', tip: '숭어 세 마리. 순서를 잘 정해 보세요.', map: [
+  { par: 10, role: 'challenge', name: '소방정 총출동', tip: '숭어 세 마리. 순서를 잘 정해 보세요.', map: [
     '###E###',
     '#^..of#',
     '#.o<..#',
@@ -716,7 +726,7 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 5, name: '그물 작전', nets: 1, tip: '물 위를 톡 누르면 그물을 쳐요. 상어는 그물 앞에서 멈춰요. 다시 누르면 걷어요.', map: [
+  { par: 7, role: 'learn', name: '그물 작전', nets: 1, tip: '물 위를 톡 누르면 그물을 쳐요. 상어는 그물 앞에서 멈춰요. 다시 누르면 걷어요.', map: [
     '#####E#',
     '#f.o..#',
     '#.....#',
@@ -739,21 +749,21 @@ const LEVELS = [
     '#o....#',
     '####S##',
   ] },
-  { par: 7, name: '바다로 가는 길', nets: 2, tip: '그물 두 개. 1장 마지막 수로예요.', map: [
+  { par: 9, role: 'challenge', name: '바다로 가는 길', nets: 2, tip: '그물은 두 개까지 쓸 수 있어요. 숭어 세 마리를 챙기는 1장의 마지막 도전이에요.', map: [
     '###E###',
     '#.....#',
-    '#.o...#',
+    '#.oo..#',
     '#f.bf.#',
     '#.>...#',
     '#.....#',
     '#.....#',
     '#..v..#',
-    '#...b.#',
+    '#...bf#',
     '#.....#',
     '###S###',
   ] },
   /* ----- 2장 친수공원 운하 ----- */
-  { par: 7, name: '작은 순환로', tip: '가운데 화단을 빙 돌 수 있어요. 숭어 두 마리를 챙겨요.', map: [
+  { par: 8, name: '작은 순환로', tip: '가운데 화단을 빙 돌 수 있어요. 숭어 두 마리를 챙겨요.', map: [
     '####E##',
     '#....o#',
     '#..f..#',
@@ -763,7 +773,7 @@ const LEVELS = [
     '#..ob.#',
     '##S####',
   ] },
-  { par: 8, name: '옆문 출구', tip: '이번엔 바다가 오른쪽에 있어요.', map: [
+  { par: 9, name: '옆문 출구', tip: '이번엔 바다가 오른쪽에 있어요.', map: [
     '#######',
     '#..o.o#',
     '#.....E',
@@ -774,7 +784,7 @@ const LEVELS = [
     '#.f...#',
     '###S###',
   ] },
-  { par: 9, name: '회오리 물길', tip: '물줄기 두 개가 상어를 빙글 돌려요.', map: [
+  { par: 10, name: '회오리 물길', tip: '물줄기 두 개가 상어를 빙글 돌려요.', map: [
     '####E##',
     '#.o.f.#',
     '#...^.#',
@@ -784,7 +794,7 @@ const LEVELS = [
     '#....f#',
     '##S####',
   ] },
-  { par: 9, name: '구조정 두 척', tip: '구조정 두 척이 오가요. 움직인 뒤의 자리를 생각해 보세요.', map: [
+  { par: 10, name: '구조정 두 척', tip: '구조정 두 척이 오가요. 움직인 뒤의 자리를 생각해 보세요.', map: [
     '#####E#',
     '#.....#',
     '#.....#',
@@ -797,7 +807,7 @@ const LEVELS = [
     '#f.o..#',
     '#S#####',
   ] },
-  { par: 10, name: '분수 광장', tip: '물줄기 세 개. 어디서 타느냐가 중요해요.', map: [
+  { par: 11, name: '분수 광장', tip: '물줄기 세 개. 어디서 타느냐가 중요해요.', map: [
     '###E###',
     '#o....#',
     '#..>o.#',
@@ -822,7 +832,7 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 10, name: '지그재그', tip: '좌우로 꺾이는 물길에 숭어 세 마리가 숨어 있어요.', map: [
+  { par: 11, name: '지그재그', tip: '좌우로 꺾이는 물길에 숭어 세 마리가 숨어 있어요.', map: [
     '#####E#',
     '#.....#',
     '#.....#',
@@ -835,7 +845,7 @@ const LEVELS = [
     '#..ob.#',
     '#S#####',
   ] },
-  { par: 8, name: '옆문과 그물', nets: 1, tip: '물줄기에 휩쓸리기 전에 그물로 세워요.', map: [
+  { par: 7, name: '옆문과 그물', nets: 1, tip: '물줄기에 휩쓸리기 전에 그물로 세워요.', map: [
     '#######',
     '#.....#',
     '#.o...E',
@@ -846,7 +856,7 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 12, name: '갈림길', tip: '두 갈래 물길과 물줄기 두 개. 어느 쪽부터 갈까요?', map: [
+  { par: 12, role: 'challenge', name: '갈림길', tip: '두 갈래 물길과 물줄기 두 개. 어느 쪽부터 갈까요?', map: [
     '###E####',
     '#.o....#',
     '#......#',
@@ -857,7 +867,7 @@ const LEVELS = [
     '#.ff>..#',
     '####S###',
   ] },
-  { par: 10, name: '화단 섬', nets: 1, tip: '그물 하나와 물줄기 하나. 멈출 자리를 잘 골라요.', map: [
+  { par: 8, name: '화단 섬', nets: 1, tip: '그물 하나와 물줄기 하나. 멈출 자리를 잘 골라요.', map: [
     '###E###',
     '#..v..#',
     '#f....#',
@@ -869,7 +879,7 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 13, name: '숭어 떼', tip: '가로로, 세로로 오가는 구조정 사이로 숭어를 모아요.', map: [
+  { par: 14, name: '숭어 떼', tip: '가로로, 세로로 오가는 구조정 사이로 숭어를 모아요.', map: [
     '###E###',
     '#.....#',
     '#..f..#',
@@ -882,19 +892,19 @@ const LEVELS = [
     '#<f...#',
     '###S###',
   ] },
-  { par: 10, name: '운하의 끝', nets: 2, tip: '그물 두 개. 2장 마지막 수로예요.', map: [
+  { par: 10, role: 'challenge', name: '운하의 끝', nets: 2, tip: '섬 양쪽의 숭어를 챙긴 뒤, 그물을 옮겨 출구로 가요. 2장의 마지막 도전이에요.', map: [
     '###E####',
-    '#ff....#',
+    '#.f....#',
     '#......#',
     '#..##..#',
-    '#..##..#',
-    '#..##.f#',
+    '#..##o.#',
+    '#.f##.f#',
     '#.o...o#',
     '#..o...#',
     '####S###',
   ] },
   /* ----- 3장 방파제 너머 ----- */
-  { par: 10, name: '뱃길 물살', tip: '물줄기가 상어를 멀리 실어 날라요.', map: [
+  { par: 11, name: '뱃길 물살', tip: '물줄기가 상어를 멀리 실어 날라요.', map: [
     '####E####',
     '#...^...#',
     '#f.....>#',
@@ -907,7 +917,7 @@ const LEVELS = [
     '#f....o.#',
     '####S####',
   ] },
-  { par: 11, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
+  { par: 12, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
     '#######E#',
     '#.......#',
     '#.......#',
@@ -919,7 +929,7 @@ const LEVELS = [
     '#...f..f#',
     '#S#######',
   ] },
-  { par: 14, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
+  { par: 15, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
     '########',
     'Ef.....#',
     '#......#',
@@ -933,7 +943,7 @@ const LEVELS = [
     '#.b...<#',
     '######S#',
   ] },
-  { par: 13, name: '잔잔한 석호', tip: '화단 두 개 사이로 숭어 세 마리를 찾아요.', map: [
+  { par: 14, name: '잔잔한 석호', tip: '화단 두 개 사이로 숭어 세 마리를 찾아요.', map: [
     '#######E#',
     '#.......#',
     '#.....>.#',
@@ -945,7 +955,7 @@ const LEVELS = [
     '#.....f.#',
     '#S#######',
   ] },
-  { par: 17, name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요.', map: [
+  { par: 17, role: 'challenge', name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요.', map: [
     '####E####',
     '#....b..#',
     '#.......#',
@@ -958,7 +968,7 @@ const LEVELS = [
     '#.o.....#',
     '####S####',
   ] },
-  { par: 10, name: '방파제 그물', nets: 1, tip: '넓은 물에서는 그물이 멈춤표가 돼요.', map: [
+  { par: 7, name: '방파제 그물', nets: 1, tip: '넓은 물에서는 그물이 멈춤표가 돼요.', map: [
     '########',
     'E......#',
     '#......#',
@@ -972,7 +982,7 @@ const LEVELS = [
     '#......#',
     '######S#',
   ] },
-  { par: 12, name: '파도 너머', nets: 1, tip: '물줄기와 그물을 함께 써야 해요.', map: [
+  { par: 8, name: '파도 너머', nets: 1, tip: '물줄기와 그물을 함께 써야 해요.', map: [
     '########',
     'E.f...>#',
     '#...f..#',
@@ -986,7 +996,7 @@ const LEVELS = [
     '#......#',
     '######S#',
   ] },
-  { par: 14, name: '방파제 길', tip: '세로로 오가는 구조정이 길을 열었다 닫았다 해요.', map: [
+  { par: 15, name: '방파제 길', tip: '세로로 오가는 구조정이 길을 열었다 닫았다 해요.', map: [
     '########',
     'E....f>#',
     '#...o..#',
@@ -1000,7 +1010,7 @@ const LEVELS = [
     '#..o...#',
     '######S#',
   ] },
-  { par: 12, name: '등대 아래', nets: 1, tip: '숭어를 다 먹으려면 그물이 꼭 필요해요.', map: [
+  { par: 8, name: '등대 아래', nets: 1, tip: '숭어를 다 먹으려면 그물이 꼭 필요해요.', map: [
     '#######E#',
     '#.......#',
     '#<......#',
@@ -1012,19 +1022,19 @@ const LEVELS = [
     '#...f...#',
     '#S#######',
   ] },
-  { par: 14, name: '석호의 밤', nets: 1, tip: '그물 하나로 숭어 세 마리를 다 모아요.', map: [
+  { par: 10, role: 'challenge', name: '석호의 밤', nets: 1, tip: '그물을 걷어 옮기며 숭어 세 마리를 모아요. 물줄기에 타는 순서를 생각해 보세요.', map: [
     '#######E#',
     '#vf...o.#',
-    '#.......#',
+    '#...o...#',
     '#f##....#',
     '#.##....#',
-    '#..^....#',
+    '#.....^o#',
+    '#o...##.#',
     '#....##.#',
-    '#..o.##.#',
     '#....f..#',
     '#S#######',
   ] },
-  { par: 12, name: '두 겹 그물', nets: 2, tip: '그물 두 개를 어디에 칠지 먼저 생각해 봐요.', map: [
+  { par: 7, name: '두 겹 그물', nets: 2, tip: '그물 두 개를 어디에 칠지 먼저 생각해 봐요.', map: [
     '####E####',
     '#..f....#',
     '#.......#',
@@ -1037,21 +1047,21 @@ const LEVELS = [
     '#.......#',
     '####S####',
   ] },
-  { par: 14, name: '넓은 바다로', nets: 2, tip: '3장 마지막 수로. 상어를 바다로 보내 주세요!', map: [
+  { par: 11, role: 'challenge', name: '넓은 바다로', nets: 2, tip: '아래쪽 숭어를 놓치지 마세요. 그물을 옮겨 물줄기를 타고 3장을 마무리해요.', map: [
     '####E####',
     '#.......#',
-    '#....f..#',
+    '#..o.f..#',
     '#..###..#',
     '#.......#',
-    '#.......#',
+    '#....o..#',
     '#.f.>.o.#',
-    '##..o..##',
-    '#.>.....#',
-    '#..f....#',
+    '##.....##',
+    '#.>.o..f#',
+    '#.......#',
     '####S####',
   ] },
   /* ----- 4장 외항 물길 ----- */
-  { par: 7, name: '모래톱', tip: '모래톱에 올라서면 그 자리에서 멈춰요. 벽이 없어도 괜찮아요.', map: [
+  { par: 9, role: 'learn', name: '모래톱', tip: '모래톱에 올라서면 그 자리에서 멈춰요. 벽이 없어도 괜찮아요.', map: [
     '####E####',
     '#.f.....#',
     '#.......#',
@@ -1063,7 +1073,7 @@ const LEVELS = [
     '#.s.so..#',
     '####S####',
   ] },
-  { par: 10, name: '모래 징검다리', tip: '모래톱을 디딤돌처럼 이어 가 보세요.', map: [
+  { par: 11, name: '모래 징검다리', tip: '모래톱을 디딤돌처럼 이어 가 보세요.', map: [
     '####E####',
     '#.o.....#',
     '#....s..#',
@@ -1075,7 +1085,7 @@ const LEVELS = [
     '#.....f.#',
     '####S####',
   ] },
-  { par: 14, name: '삼각주', tip: '물줄기와 모래톱이 함께 있어요.', map: [
+  { par: 14, role: 'challenge', name: '삼각주', tip: '물줄기와 모래톱이 함께 있어요.', map: [
     '#E#######',
     '#.......#',
     '#..fs...#',
@@ -1087,7 +1097,7 @@ const LEVELS = [
     '#.......#',
     '#######S#',
   ] },
-  { par: 10, name: '소용돌이', tip: '소용돌이에 들어가면 짝 소용돌이로 빨려 나와 같은 방향으로 계속 헤엄쳐요.', map: [
+  { par: 12, role: 'learn', name: '소용돌이', tip: '소용돌이에 들어가면 짝 소용돌이로 빨려 나와 같은 방향으로 계속 헤엄쳐요.', map: [
     '#####E###',
     '#...#...#',
     '#w..#o..#',
@@ -1098,7 +1108,7 @@ const LEVELS = [
     '#...#.w.#',
     '#S#######',
   ] },
-  { par: 11, name: '빙글빙글 모래섬', tip: '소용돌이를 지나 모래톱에서 멈춰 보세요.', map: [
+  { par: 12, name: '빙글빙글 모래섬', tip: '소용돌이를 지나 모래톱에서 멈춰 보세요.', map: [
     '####E####',
     '#.......#',
     '#...s...#',
@@ -1110,7 +1120,7 @@ const LEVELS = [
     '#w..w.s.#',
     '####S####',
   ] },
-  { par: 15, name: '쌍둥이 물길', tip: '두 물길은 소용돌이로만 이어져 있어요.', map: [
+  { par: 16, name: '쌍둥이 물길', tip: '두 물길은 소용돌이로만 이어져 있어요.', map: [
     '#####E###',
     '#...#...#',
     '#w..#w..#',
@@ -1121,7 +1131,7 @@ const LEVELS = [
     '#...#...#',
     '#S#######',
   ] },
-  { par: 16, name: '해자', tip: '가운데 연못에도 소용돌이로 들어갈 수 있어요.', map: [
+  { par: 17, name: '해자', tip: '가운데 연못에도 소용돌이로 들어갈 수 있어요.', map: [
     '####E####',
     '#....o..#',
     '#......f#',
@@ -1133,7 +1143,7 @@ const LEVELS = [
     '#.......#',
     '####S####',
   ] },
-  { par: 16, name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
+  { par: 16, role: 'challenge', name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
     '#####E###',
     '#...#...#',
     '#...#..w#',
@@ -1144,7 +1154,7 @@ const LEVELS = [
     '#.s.#.v.#',
     '#S#######',
   ] },
-  { par: 12, name: '모래 그물', nets: 1, tip: '그물 하나로 멈출 곳을 하나 더 만들어요.', map: [
+  { par: 10, name: '모래 그물', nets: 1, tip: '그물 하나로 멈출 곳을 하나 더 만들어요.', map: [
     '#E#######',
     '#...f.s.#',
     '#.f.....#',
@@ -1156,7 +1166,7 @@ const LEVELS = [
     '#.......#',
     '#######S#',
   ] },
-  { par: 14, name: '소용돌이 광장', tip: '물줄기 두 개, 모래톱 세 개, 소용돌이 한 쌍.', map: [
+  { par: 15, name: '소용돌이 광장', tip: '물줄기 두 개, 모래톱 세 개, 소용돌이 한 쌍.', map: [
     '####E####',
     '#.......#',
     '#...s...#',
@@ -1168,26 +1178,26 @@ const LEVELS = [
     '#..f...s#',
     '####S####',
   ] },
-  { par: 18, name: '성곽 수로', nets: 1, tip: '그물과 소용돌이를 함께 써야 해요.', map: [
+  { par: 11, role: 'challenge', name: '성곽 수로', nets: 1, tip: '성곽 안에도 숭어가 있어요. 소용돌이로 들어갔다 돌아와 출구 앞에 그물을 쳐요.', map: [
     '####E####',
     '#.......#',
-    '#...o.f.#',
+    '#.......#',
     '#.#####.#',
-    '#.#w..#.#',
+    '#.#w.f#.#',
     '#.#.s.#w#',
-    '#.#####.#',
-    '#.f.....#',
+    '#o#####.#',
+    '#.f.o...#',
     '#.......#',
     '####S####',
   ] },
-  { par: 17, name: '먼바다로', nets: 1, tip: '마지막 수로. 그물 하나와 소용돌이로 상어를 먼바다로 보내 주세요!', map: [
+  { par: 12, role: 'challenge', name: '먼바다로', nets: 1, tip: '마지막 도전! 양쪽 물길의 숭어 네 마리를 모두 챙겨 먼바다로 보내 주세요.', map: [
     '#####E###',
     '#...#...#',
-    '#.f.#..o#',
-    '#...#.w.#',
-    '#.s.#...#',
-    '#..^#...#',
-    '#f.f#v..#',
+    '#..f#..o#',
+    '#...#ow.#',
+    '#.s.#.f.#',
+    '#..^#f..#',
+    '#f..#v..#',
     '#.w.#.s.#',
     '#S#######',
   ] },
@@ -1697,7 +1707,8 @@ function splashAt(x, y, n, dir, force = 1) {
 
 function loadLevel(i, keep) {
   DAILY = null; LVL = i; save.last = i; persist(); deco = i;
-  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length}`);
+  const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
+  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
 }
 function loadDaily(daily, keep) {
   DAILY = daily; deco = dailySeed(daily.date) % 997;
@@ -1898,13 +1909,14 @@ function onClear() {
   cleared = true;
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
-  const stars = 1 + (allFish ? 1 : 0) + (inPar ? 1 : 0);
+  const stars = starsForClear(allFish, inPar);
+  const earned = [true, stars >= 2, stars === 3];
   if (DAILY) recordDaily(DAILY.date, stars);
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   sfx.win();
   const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
-  $('clearStars').innerHTML = [true, allFish, inPar].map(starSvg).join('');
+  $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
   const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
@@ -1914,14 +1926,14 @@ function onClear() {
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
-    row('이동 기준', `${st.moves}번 / ${L.par}번`, inPar) +
+    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('nextBtn').textContent = DAILY || last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
-    [true, allFish, inPar].forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
+    earned.forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
     if (freshSkins.length) setTimeout(() => haptic('success'), 600);
   }, reduceMotion ? 50 : 650);
   renderLevelGrid();
@@ -2357,7 +2369,7 @@ function nextLevel() {
 }
 function renderLegend() {
   const items = [
-    ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
+    ['fish', '숭어 · 모두 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
     ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
