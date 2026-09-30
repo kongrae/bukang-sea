@@ -48,6 +48,10 @@ function write(rel, content) {
 
 if (process.argv.includes('--artifact')) {
   write('dist/artifact.html', body);
+  // privacy policy as its own artifact page (its public link is the Play Console privacy policy URL)
+  const privacy = fs.readFileSync(path.join(root, 'assets', 'privacy.html'), 'utf8');
+  const part = re => (privacy.match(re) || [''])[0];
+  write('dist/privacy.html', [part(/<title>[\s\S]*?<\/title>/), part(/<style>[\s\S]*?<\/style>/), part(/<main>[\s\S]*?<\/main>/), ''].join('\n'));
 } else if (process.argv.includes('--web')) {
   const head = `<meta name="description" content="${APP.description}">
 <meta name="theme-color" content="${APP.color}">

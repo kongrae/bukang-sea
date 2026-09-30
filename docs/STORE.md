@@ -13,8 +13,9 @@
 | 앱/게임 | 게임 · 퍼즐 | |
 | 태그 (최대 5개) | 퍼즐, 슬라이드 퍼즐, 캐주얼, 오프라인, 두뇌 게임 | |
 | 가격 | 무료 | |
-| 연락처 이메일 | [문의 이메일] | 필수, 스토어에 공개됨 |
-| 개인정보처리방침 URL | [웹 배포 주소]/privacy.html | `www/privacy.html`로 함께 배포됨 |
+| 개발자 이름 | MOONGRAE | 스토어에 공개 |
+| 연락처 이메일 | sky7700sky@naver.com | 필수, 스토어에 공개됨 |
+| 개인정보처리방침 URL | https://claude.ai/artifact/4zeYgGePczLzg8dYULQ1zK | Claude 아티팩트(원본 assets/privacy.html → dist/privacy.html). **공유 메뉴에서 공개로 바꿔야** 누구나 열림. 나중에 웹 배포하면 [주소]/privacy.html 로 교체 가능 |
 
 ## 간단한 설명 (80자 이내)
 
