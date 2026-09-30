@@ -132,6 +132,7 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 - 폰트: 제목 Jua(주아), 본문 Noto Sans KR(Android 기본 한글 글꼴 계열). 2026-09-30 Bagel Fat One/IBM Plex Sans KR에서 교체(한글이 어색하다는 피드백). dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용. 실패 시 시스템 폰트.
 - 한글 조판: body에 `word-break: keep-all`(단어 중간 줄바꿈 금지), 자간 -0.01em, `font-synthesis: none`(단일 굵기 Jua에 가짜 볼드 금지 — 제목 요소는 font-weight 400 유지).
 - 상어는 코드로 그린 탑다운 무태상어. 기존 캐릭터를 닮게 만들지 말 것. 게임 속 호칭은 이름 없이 "상어(야)".
+- 디자인 개선 2번: 넓은 머리/몸통, 뒤로 뻗는 가슴지느러미, 갈라진 꼬리, 삼각형 등지느러미, 눈 테두리와 아가미를 공통 `drawShark()`로 그린다. 기존 스킨도 같은 실루엣을 사용한다. 변경과 검증 범위는 `docs/SHARK-DESIGN.md` 참고.
 - 개선 3번: 물줄기는 어두운 타일 위 고정된 밝은 화살표, 상어는 밝은 윤곽, 배경 물결·구경꾼은 약하게 표시한다. 화면 측정과 실제 입력·자동 검증 범위는 `docs/READABILITY.md` 참고.
 - 네이티브 느낌 유지: 텍스트 선택·롱프레스 메뉴·확대 금지, hover 효과는 `@media (hover: hover)` 안에만, 글자 버튼 대신 아이콘+라벨, 누름은 scale 스프링.
 
