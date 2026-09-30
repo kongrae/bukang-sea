@@ -20,6 +20,7 @@ npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 →
 node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
 npm run cap:sync         # build:web + Capacitor android 동기화
 npm run android:debug    # cap:sync + 디버그 APK 빌드(JDK 21: ~/.jdks/jdk-21*, 시스템 JDK 17은 그대로)
+npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-keys, 비밀번호는 android/keystore.properties, 둘 다 커밋 금지)
 npm run verify           # 모든 레벨이 풀리는지, par가 최적 이동 수와 같은지 검사 (실패 시 exit 1)
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
 npm run difficulty       # 장별 난이도 곡선(bits) 출력, 앞 수로보다 쉬워지면 ▼ 표시

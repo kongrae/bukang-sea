@@ -44,7 +44,11 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 - **appId**: `kr.hongrae.lostshark`(2026-09-30 확정 가정). 첫 업로드 전까지는 바꿀 수 있다(`capacitor.config.json` + `android/app/build.gradle`의 namespace·applicationId + `strings.xml` + java 패키지 폴더). 업로드 후에는 **영구히 못 바꾼다**.
 - **앱 이름**: "길 잃은 상어"로 확정(2026-09-30). "부캉이"는 개인 상표 출원·공공기관 명칭 문제로 쓰지 않는다.
 - 앱 아이콘·스플래시: 위의 `@capacitor/assets generate`로 생성 완료(적응형 아이콘 전경/배경 분리). 아이콘을 바꾸면 icons.js → assets generate 순서로 다시.
-- 서명 키(업로드 키) 생성: Android Studio → Build → Generate Signed App Bundle. **키 파일과 비밀번호는 저장소 밖에 백업**(잃어버리면 업데이트 불가).
+- **업로드 키(2026-09-30 생성)**: `C:Usershongrae.android-keyslostshark-upload.jks`(PKCS12, alias `upload`, RSA 2048, 유효 10000일). 비밀번호는 `android/keystore.properties`(gitignore)에만 있다.
+  - **두 파일(.jks + keystore.properties)을 함께 백업**(비밀번호 관리자, USB 등). Play App Signing을 쓰므로 잃어버려도 Play Console에서 업로드 키 재설정을 요청할 수 있지만 며칠 걸린다.
+  - 다른 PC에서 빌드하려면 두 파일을 옮기고 keystore.properties의 storeFile 경로만 고친다.
+- **출시용 번들**: `npm run android:release` → `android/app/build/outputs/bundle/release/app-release.aab`(업로드 키로 서명). Play Console에 올릴 때마다 `android/app/build.gradle`의 `versionCode`를 1씩 올리고 `versionName`도 맞춘다.
+- Play Console 첫 업로드 때 **Play App Signing 사용**(기본값)을 그대로 둔다: Google이 앱 서명 키를 보관하고, 우리는 업로드 키로만 서명한다.
 
 ### Google Play 등록 흐름
 1. Play Console에서 앱 만들기 → 스토어 등록정보(설명, 스크린샷, 아이콘 512px, 그래픽 이미지 1024×500)
