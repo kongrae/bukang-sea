@@ -844,9 +844,9 @@ function buildStatic() {
     }
     if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
     s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
-    s.strokeStyle = C['concrete-2']; s.lineWidth = 1;
+    s.strokeStyle = C['concrete-2']; s.lineWidth = 1; s.globalAlpha = 0.4;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
-    const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke();
+    const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke(); s.globalAlpha = 1;
   }
   // shade on water next to land, railings and onlookers on land next to water
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -865,7 +865,11 @@ function buildStatic() {
     }
     const waterSides = nb.filter(([dx, dy]) => !isLand(x + dx, y + dy));
     if (!waterSides.length) {
-      if (seed < (inside ? 0.4 : 0.22)) { s.fillStyle = C.park; s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill(); s.fillStyle = 'rgba(255,255,255,.14)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); }
+      if (seed < (inside ? 0.25 : 0.16)) {
+        s.save(); s.globalAlpha = 0.6; s.fillStyle = C.park;
+        s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill();
+        s.fillStyle = 'rgba(255,255,255,.1)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); s.restore();
+      }
       continue;
     }
     waterSides.forEach(([dx, dy], k) => {
@@ -876,7 +880,7 @@ function buildStatic() {
       if (dx === -1) { s.moveTo(px + 2, py); s.lineTo(px + 2, py + T); }
       if (dx === 1) { s.moveTo(px + T - 2, py); s.lineTo(px + T - 2, py + T); }
       s.stroke();
-      if (seed > 0.4) return; // decorations yield to the playable tiles, especially on small screens
+      if (T < 44 || waterSides.length !== 1 || seed > 0.18) return; // keep small boards and narrow islands free of onlookers
       const n = 1;
       for (let j = 0; j < n; j++) {
         const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.3;
@@ -884,7 +888,7 @@ function buildStatic() {
         if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
         if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
         if (dy) qx = px + T * along; else qy = py + T * along;
-        s.save(); s.globalAlpha = 0.65; drawPerson(s, qx, qy, T, sd); s.restore();
+        s.save(); s.globalAlpha = 0.4; drawPerson(s, qx, qy, T, sd); s.restore();
       }
     });
   }
@@ -954,17 +958,18 @@ function draw(t) {
   if (!causticPat) causticPat = ctx.createPattern(caustic, 'repeat');
   const ct = reduceMotion ? 0 : t, sc = T / 60;
   ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = causticPat;
-  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.045], [-ct * 5, ct * 6, sc * 1.4, 0.025]]) {
+  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.02], [-ct * 5, ct * 6, sc * 1.4, 0.012]]) {
     ctx.save(); ctx.globalAlpha = al; ctx.scale(s, s); ctx.translate(ox % 128, oy % 128);
     ctx.fillRect(-OX / s - 256, -OY / s - 256, CW / s + 512, CH / s + 512); ctx.restore();
   }
   ctx.restore();
   // ripples
-  ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,.028)'; ctx.lineWidth = 1.5;
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = cellAt(g, x, y); if (c === '#') continue;
     const px = x * T, py = y * T;
     if (c === 'E') { drawExit(ctx, px, py, T, g, x, y, t); continue; }
+    if (c !== '.' || hash(x * 19 + y * 23 + deco) > 0.4) continue;
     const ph = reduceMotion ? 0 : t * 0.8 + hash(x * 5 + y * 11) * 6;
     ctx.beginPath();
     for (let k = 0; k <= 8; k++) { const qx = px + T * 0.18 + k * T * 0.08, qy = py + T * (0.35 + hash(x + y * 3) * 0.3) + Math.sin(ph + k * 0.8) * T * 0.035; k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); }
@@ -1111,7 +1116,7 @@ function drawHero(t) {
   if (!heroW) sizeHero();
   const W = heroW, H = heroH, waterH = H - 78, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
-  hctx.strokeStyle = 'rgba(255,255,255,.1)'; hctx.lineWidth = 1.5;
+  hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
   hctx.fillStyle = C.concrete; hctx.fillRect(0, waterH, W, H - waterH);
   hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
