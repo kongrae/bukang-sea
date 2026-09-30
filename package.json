@@ -2,7 +2,7 @@
   "name": "bukang-sea",
   "version": "0.2.0",
   "private": true,
-  "description": "부캉이 바다로 - 부산 북항 수로 탈출 슬라이드 퍼즐",
+  "description": "길 잃은 상어 - 수로 탈출 슬라이드 퍼즐",
   "scripts": {
     "build": "node tools/build.js",
     "build:artifact": "node tools/build.js --artifact",
@@ -19,7 +19,8 @@
   "dependencies": {
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
-    "@capacitor/core": "^8.5.2"
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2"

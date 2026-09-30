@@ -25,13 +25,13 @@ const FONTS = [
   { family: 'Bukang Body', weight: 500, file: 'ibm-plex-sans-kr-500.woff2' },
   { family: 'Bukang Body', weight: 700, file: 'ibm-plex-sans-kr-700.woff2' },
 ];
-const APP = { name: '부캉이 바다로', short: '부캉이', color: '#0c3340', description: '부산 북항 수로에 들어온 상어 부캉이를 바다로 돌려보내는 슬라이드 퍼즐' };
+const APP = { name: '길 잃은 상어', short: '길 잃은 상어', color: '#0c3340', description: '수로에서 길을 잃은 상어를 밀어서 바다로 돌려보내는 슬라이드 퍼즐' };
 
 const page = (head, extra = '', content = body) => `<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 ${head}</head>
 <body style="margin:0">
 ${content}

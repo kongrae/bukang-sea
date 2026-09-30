@@ -34,8 +34,8 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 게임 코드를 고친 뒤에는 `npm run cap:sync`만 다시 하면 된다.
 
 ### 출시 전에 정할 것
-- **appId** (`capacitor.config.json`의 `kr.bukangsea.app`는 임시값): 스토어에 한 번 올리면 **영구히 못 바꾼다**. 본인 도메인이나 고유한 역도메인으로 정한 뒤 `npx cap add android` 전에 바꿀 것.
-- **앱 이름**: "부캉이"는 부산시설공단이 붙인 애칭. 사용 가능 여부 확인 전까지 대체 이름도 준비.
+- **appId** (`capacitor.config.json`의 `kr.lostshark.app`는 임시값): 스토어에 한 번 올리면 **영구히 못 바꾼다**. 본인 도메인이나 고유한 역도메인으로 정한 뒤 `npx cap add android` 전에 바꿀 것.
+- **앱 이름**: "길 잃은 상어"로 확정(2026-09-30). "부캉이"는 개인 상표 출원·공공기관 명칭 문제로 쓰지 않는다.
 - 앱 아이콘: Android Studio → `res` 우클릭 → New → Image Asset 에서 `assets/icons/icon-512.png`로 적응형 아이콘 생성.
 - 서명 키(업로드 키) 생성: Android Studio → Build → Generate Signed App Bundle. **키 파일과 비밀번호는 저장소 밖에 백업**(잃어버리면 업데이트 불가).
 
