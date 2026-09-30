@@ -4,6 +4,8 @@
 
 ## 바로 해 보기
 
+[GitHub Pages에서 플레이](https://kongrae.github.io/bukang-sea/)
+
 `dist/index.html`을 브라우저로 열면 된다. 휴대폰에서는 파일을 옮겨 열거나 간단한 로컬 서버로 띄운다.
 
 ```bash

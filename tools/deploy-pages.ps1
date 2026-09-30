@@ -1,0 +1,73 @@
+# 소스 master와 www 빌드를 각각 GitHub / GitHub Pages에 배포한다.
+$ErrorActionPreference = 'Stop'
+$projectDir = Split-Path -Parent $PSScriptRoot
+$repoUrl = 'https://github.com/kongrae/bukang-sea.git'
+$apiUrl = 'https://api.github.com/repos/kongrae/bukang-sea'
+$pagesDir = Join-Path $projectDir 'outputs/pages'
+
+function Run-Git {
+    param([string[]]$GitArgs)
+    & git @GitArgs
+    if ($LASTEXITCODE -ne 0) { throw "git failed: $($GitArgs -join ' ')" }
+}
+
+Push-Location $projectDir
+try {
+    # Git Credential Manager의 인증을 메모리에서만 사용한다. 출력/파일 저장 금지.
+    $credential = @{}
+    $credentialLines = "protocol=https`nhost=github.com`n`n" | git credential fill
+    if ($LASTEXITCODE -ne 0) { throw 'GitHub 인증이 필요합니다.' }
+    foreach ($line in $credentialLines) {
+        $parts = $line -split '=', 2
+        if ($parts.Length -eq 2) { $credential[$parts[0]] = $parts[1] }
+    }
+    if (-not $credential.password) { throw 'GitHub 인증이 필요합니다.' }
+    $headers = @{ Authorization = 'Bearer ' + $credential.password; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+    $account = Invoke-RestMethod https://api.github.com/user -Headers $headers
+    if ($account.login -ne 'kongrae') { throw '배포 계정이 kongrae가 아닙니다.' }
+    try { $repo = Invoke-RestMethod $apiUrl -Headers $headers }
+    catch {
+        if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
+        $body = @{ name = 'bukang-sea'; description = '길 잃은 상어 — 수로 탈출 퍼즐'; private = $false } | ConvertTo-Json
+        $repo = Invoke-RestMethod https://api.github.com/user/repos -Method Post -Headers $headers -ContentType 'application/json' -Body $body
+    }
+    $origin = git remote get-url origin 2>$null
+    if ($LASTEXITCODE -ne 0) { Run-Git -GitArgs @('remote', 'add', 'origin', $repoUrl) }
+    elseif ($origin -ne $repoUrl) { throw 'origin 주소가 배포 저장소와 다릅니다.' }
+
+    & npm.cmd run build:web
+    if ($LASTEXITCODE -ne 0) { throw '웹 빌드 실패' }
+    Run-Git -GitArgs @('push', '-u', 'origin', 'master')
+
+    if (-not (Test-Path (Join-Path $pagesDir '.git'))) {
+        New-Item -ItemType Directory -Path $pagesDir -Force | Out-Null
+        Run-Git -GitArgs @('-C', $pagesDir, 'init', '-b', 'gh-pages')
+        Run-Git -GitArgs @('-C', $pagesDir, 'remote', 'add', 'origin', $repoUrl)
+    }
+    Run-Git -GitArgs @('-C', $pagesDir, 'config', 'user.name', 'kongrae')
+    Run-Git -GitArgs @('-C', $pagesDir, 'config', 'user.email', 'ghdfo918@gmail.com')
+    Copy-Item (Join-Path $projectDir 'www/*') -Destination $pagesDir -Recurse -Force
+    New-Item -ItemType File -Path (Join-Path $pagesDir '.nojekyll') -Force | Out-Null
+    $sourceCommit = git rev-parse HEAD
+    Set-Content -LiteralPath (Join-Path $pagesDir 'version.json') -Value (@{ sourceCommit = $sourceCommit; builtAt = [DateTime]::UtcNow.ToString('o') } | ConvertTo-Json) -Encoding utf8
+    Run-Git -GitArgs @('-C', $pagesDir, 'add', '-A')
+    & git -C $pagesDir diff --cached --quiet
+    if ($LASTEXITCODE -eq 1) { Run-Git -GitArgs @('-C', $pagesDir, 'commit', '-m', "웹 배포: $sourceCommit") }
+    elseif ($LASTEXITCODE -ne 0) { throw '배포 변경 확인 실패' }
+    Run-Git -GitArgs @('-C', $pagesDir, 'push', '-u', 'origin', 'gh-pages')
+
+    $pagesBody = @{ build_type = 'legacy'; source = @{ branch = 'gh-pages'; path = '/' } } | ConvertTo-Json
+    try {
+        $pages = Invoke-RestMethod "$apiUrl/pages" -Headers $headers
+        $pages = Invoke-RestMethod "$apiUrl/pages" -Method Put -Headers $headers -ContentType 'application/json' -Body $pagesBody
+    } catch {
+        if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
+        $pages = Invoke-RestMethod "$apiUrl/pages" -Method Post -Headers $headers -ContentType 'application/json' -Body $pagesBody
+    }
+    Write-Output 'https://kongrae.github.io/bukang-sea/'
+} finally {
+    if ($credential) { $credential.Clear() }
+    if ($headers) { $headers.Clear() }
+    $credentialLines = $null
+    Pop-Location
+}

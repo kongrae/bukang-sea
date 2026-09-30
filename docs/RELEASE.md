@@ -4,6 +4,12 @@
 
 ## 1. 웹 (PWA)
 
+공개 주소: https://kongrae.github.io/bukang-sea/
+
+소스 저장소: https://github.com/kongrae/bukang-sea (`master`). Pages는 같은 저장소의 `gh-pages` 루트에서 `www/` 빌드를 제공한다. 기존 머지 게임의 별도 배포 저장소 방식을 참고했으며 머지 게임 파일은 수정하지 않는다.
+
+검증·커밋 후 `pwsh -File tools/deploy-pages.ps1`로 소스 푸시와 웹 빌드 배포를 실행한다. Git Credential Manager의 `kongrae` 인증이 필요하며 토큰은 파일에 저장하지 않는다. `outputs/pages`는 무시된 로컬 배포 체크아웃이다. 배포 후 `/version.json`의 `sourceCommit`과 공개 파일을 확인한다. Play Store 업로드는 이 웹 배포에 포함되지 않는다.
+
 ```bash
 npm run build:web      # www/ 생성: index.html, manifest.webmanifest, sw.js, icons/
 npm run serve          # http://localhost:5173 에서 확인
