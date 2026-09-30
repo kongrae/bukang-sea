@@ -59,10 +59,18 @@ try {
     $pagesBody = @{ build_type = 'legacy'; source = @{ branch = 'gh-pages'; path = '/' } } | ConvertTo-Json
     try {
         $pages = Invoke-RestMethod "$apiUrl/pages" -Headers $headers
-        $pages = Invoke-RestMethod "$apiUrl/pages" -Method Put -Headers $headers -ContentType 'application/json' -Body $pagesBody
     } catch {
         if ([int]$_.Exception.Response.StatusCode -ne 404) { throw }
-        $pages = Invoke-RestMethod "$apiUrl/pages" -Method Post -Headers $headers -ContentType 'application/json' -Body $pagesBody
+        try {
+            $pages = Invoke-RestMethod "$apiUrl/pages" -Method Post -Headers $headers -ContentType 'application/json' -Body $pagesBody
+        } catch {
+            # gh-pages 첫 push와 동시에 GitHub가 사이트를 자동 활성화할 수 있다.
+            if ([int]$_.Exception.Response.StatusCode -ne 409) { throw }
+            $pages = Invoke-RestMethod "$apiUrl/pages" -Headers $headers
+        }
+    }
+    if ($pages.build_type -ne 'legacy' -or $pages.source.branch -ne 'gh-pages' -or $pages.source.path -ne '/') {
+        $pages = Invoke-RestMethod "$apiUrl/pages" -Method Put -Headers $headers -ContentType 'application/json' -Body $pagesBody
     }
     Write-Output 'https://kongrae.github.io/bukang-sea/'
 } finally {
