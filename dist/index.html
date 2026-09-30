@@ -299,6 +299,13 @@ h1 .sea { color: var(--buoy-deep); }
 .switch input:checked + .track::after { transform: translateX(22px); }
 .switch input:focus-visible + .track { outline: 2px solid var(--buoy-deep); outline-offset: 2px; }
 .settings .btn { margin-top: 10px; }
+.guide { max-height: 88vh; overflow: hidden; }
+.guide h3, .guide .btn { flex-shrink: 0; }
+.guide-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; text-align: left; min-height: 0; overflow-y: auto; }
+.guide-items li { display: flex; align-items: flex-start; gap: 12px; }
+.guide-items canvas { width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; }
+.guide-items b { font-size: 18px; }
+.guide-items p { margin: 4px 0 0; font-size: 15px; line-height: 1.6; }
 
 @keyframes fade { from { opacity: 0 } }
 @keyframes pop { from { transform: scale(.6); opacity: 0 } }
@@ -396,6 +403,7 @@ h1 .sea { color: var(--buoy-deep); }
     <h3 id="settingsTitle">설정</h3>
     <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
   </div>
 </div>
@@ -409,6 +417,14 @@ h1 .sea { color: var(--buoy-deep); }
       <button class="btn" id="againBtn" type="button">다시 하기</button>
       <button class="btn primary" id="nextBtn" type="button">다음 수로</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="guideOverlay" hidden>
+  <div class="card guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <h3 id="guideTitle">장치 안내</h3>
+    <ul class="guide-items" id="guideItems"></ul>
+    <button class="btn primary" id="guideDone" type="button">확인</button>
   </div>
 </div>
 
@@ -1345,8 +1361,11 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
 // daily: { YYYY-MM-DD: stars } for the daily canal; owned/skin: earned shark skins and the one in use
-let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic' };
+// sessions: one unfinished story canal and today's daily; seenDevices: rules confirmed in the guide sheet
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [] };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
+if (!save.sessions || typeof save.sessions !== 'object' || Array.isArray(save.sessions)) save.sessions = {};
+if (!Array.isArray(save.seenDevices)) save.seenDevices = [];
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
 // chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
@@ -1725,6 +1744,50 @@ function freshState(level) {
 function netSet() { return new Set(st.nets); }
 function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
 
+// Resume only matching layouts and complete, structurally valid turns. Effects and pending input are not saved.
+function levelSignature(level) { return JSON.stringify([level.map, level.nets || 0]); }
+function copyTurn(s) {
+  return { pos: s.pos.slice(), dir: s.dir, fish: s.fish.slice(), nets: s.nets.slice(), boats: s.boats.map(b => b.slice()), moves: s.moves };
+}
+function restoreSession(record, level, id) {
+  if (!record || record.version !== 1 || record.id !== id || record.layout !== levelSignature(level)) return null;
+  const grid = parseLevel(level), s = record.state;
+  const ints = (a, limit) => Array.isArray(a) && a.length <= limit && new Set(a).size === a.length && a.every(i => Number.isInteger(i) && i >= 0);
+  const valid = v => {
+    if (!v || !Array.isArray(v.pos) || v.pos.length !== 2 || !v.pos.every(Number.isInteger) || !['U', 'D', 'L', 'R'].includes(v.dir)
+      || !Number.isSafeInteger(v.moves) || v.moves < 0 || !ints(v.fish, grid.fish.length) || v.fish.some(i => i >= grid.fish.length)
+      || !ints(v.nets, grid.nets) || !Array.isArray(v.boats) || v.boats.length !== grid.boats.length) return false;
+    const [x, y] = v.pos, index = y * grid.w + x;
+    const open = i => Number.isInteger(i) && i >= 0 && i < grid.cells.length && !['#', 'o', 'E'].includes(grid.cells[i]);
+    if (x < 0 || x >= grid.w || y < 0 || y >= grid.h || !open(index)) return false;
+    if (v.boats.some((b, k) => !Array.isArray(b) || b.length !== 2 || !open(b[0]) || b[0] === index
+      || !(grid.boats[k][1] === 'R' ? ['R', 'L'] : ['D', 'U']).includes(b[1]))) return false;
+    if (new Set(v.boats.map(b => b[0])).size !== v.boats.length) return false;
+    return v.nets.every(i => grid.cells[i] === '.' && i !== index && !v.boats.some(b => b[0] === i)
+      && !grid.fish.some((f, k) => f[1] * grid.w + f[0] === i && !v.fish.includes(k)));
+  };
+  if (!valid(s) || !Array.isArray(s.history) || s.history.length > 200 || s.history.some(h => !valid(h) || h.moves > s.moves)) return null;
+  return Object.assign(copyTurn(s), { history: s.history.map(copyTurn) });
+}
+function storySession(i = save.sessions.story?.id) {
+  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, LEVELS[i], i) : null;
+}
+function dailySession(daily) { return daily ? restoreSession(save.sessions.daily, daily.level, daily.date) : null; }
+function checkpoint() {
+  if (!st || cleared || (anim && anim.win)) return;
+  const state = Object.assign(copyTurn(st), { history: st.history.map(copyTurn) });
+  // Position and boats commit at swipe time; include ALL fish on that path, even before their visual effects finish.
+  if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
+  save.sessions[DAILY ? 'daily' : 'story'] = { version: 1, id: DAILY ? DAILY.date : LVL, layout: levelSignature(curLevel()), state };
+  persist();
+}
+function pauseGame() {
+  if ($('gameScreen').hidden || !st) return;
+  queued = null; gest = null;
+  if (anim) finishAnim();
+  checkpoint();
+}
+
 // effects live in tile units; x, y are tile coordinates of the cell's top-left
 const ring = (x, y, size = 1, alpha = 0.55) => particles.push({ kind: 'ring', x, y, life: 1, size, alpha });
 function splashAt(x, y, n, dir, force = 1) {
@@ -1736,7 +1799,7 @@ function splashAt(x, y, n, dir, force = 1) {
 }
 
 function loadLevel(i, keep) {
-  DAILY = null; LVL = i; save.last = i; persist(); deco = i;
+  DAILY = null; LVL = i; save.last = i; deco = i;
   const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
   enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
 }
@@ -1761,6 +1824,8 @@ function enter(level, keep, label) {
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
+  checkpoint();
+  showDeviceGuide(true);
 }
 // shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
 function setupCoach() {
@@ -1835,7 +1900,7 @@ function tryMove(d) {
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe');
+  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
 }
 function eatFish(fi) {
   anim.eaten.add(fi); sfx.eat(); haptic('light');
@@ -1875,7 +1940,7 @@ function undo() {
   view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
   cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
-  setTip(curLevel().tip); updateHud();
+  setTip(curLevel().tip); updateHud(); checkpoint();
 }
 function restart() { if (anim) return; replay(); haptic('light'); }
 
@@ -1887,7 +1952,7 @@ function tapTile(gx, gy) {
   const at = st.nets.indexOf(idx);
   if (at >= 0) {
     hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
-    sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud();
+    sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
     if (hint) refreshHint(); else setTip(curLevel().tip);
     return;
   }
@@ -1895,7 +1960,7 @@ function tapTile(gx, gy) {
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
   hintRequest++; pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
-  updateHud();
+  updateHud(); checkpoint();
   if (hint) refreshHint(); else setTip(curLevel().tip);
 }
 
@@ -1939,6 +2004,7 @@ async function showHint() {
 
 function onClear() {
   cleared = true;
+  delete save.sessions[DAILY ? 'daily' : 'story'];
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
   const stars = starsForClear(allFish, inPar);
@@ -2000,12 +2066,14 @@ function getTodayDaily() {
 }
 function renderDaily() {
   const date = dailyDate(), stars = (save.daily || {})[date] || 0, streak = dailyStreak();
+  if (save.sessions.daily && save.sessions.daily.id !== date) { delete save.sessions.daily; persist(); }
   const [y, m, d] = date.split('-').map(Number), tier = DAILY_TIERS[new Date(y, m - 1, d).getDay()];
   $('dailyDate').textContent = dateLabel(date);
   $('dailyMeta').textContent = `난이도 ${'●'.repeat(tier.stars)}${'○'.repeat(5 - tier.stars)} ${tier.label}` + (streak ? ` · 연속 ${streak}일` : '');
-  $('dailyState').innerHTML = stars ? `<b>${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></b><span>완료</span>` : `<b>도전</b><span>하기</span>`;
+  const resume = save.sessions.daily && dailySession(getTodayDaily());
+  $('dailyState').innerHTML = resume ? `<b>이어서</b><span>${resume.moves}회 진행</span>` : stars ? `<b>${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></b><span>완료</span>` : `<b>도전</b><span>하기</span>`;
   $('dailyBtn').classList.toggle('done', !!stars);
-  $('dailyBtn').setAttribute('aria-label', `오늘의 수로, ${dateLabel(date)}, ${tier.label}${stars ? `, 별 ${stars}개 완료` : ''}`);
+  $('dailyBtn').setAttribute('aria-label', `오늘의 수로, ${dateLabel(date)}, ${tier.label}${resume ? `, ${resume.moves}회 진행 이어서 하기` : stars ? `, 별 ${stars}개 완료` : ''}`);
 }
 /* ---------- my shark: title card and skin picker ---------- */
 function drawSkinPreview(canvas, skin) {
@@ -2045,7 +2113,8 @@ function closeSkins() { $('skinsOverlay').hidden = true; renderSkinCard(); }
 function startDaily() {
   const daily = getTodayDaily();
   if (!daily) return;
-  show('game'); loadDaily(daily);
+  const keep = dailySession(daily);
+  show('game'); loadDaily(daily, keep);
 }
 
 /* ---------- rendering ---------- */
@@ -2159,7 +2228,8 @@ function frame(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   if (!$('gameScreen').hidden && g && staticLayer) {
-    step(dt); draw(t);
+    if (!guideOpen()) step(dt);
+    draw(t);
   }
   if (!$('titleScreen').hidden) drawHero(t);
   requestAnimationFrame(frame);
@@ -2405,7 +2475,9 @@ function renderLevelGrid() {
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
-  $('playBtn').textContent = Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
+  const resume = storySession();
+  $('playBtn').textContent = resume ? `이어서 하기 · 수로 ${save.sessions.story.id + 1} · ${resume.moves}회 진행`
+    : Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
 }
 function nextLevel() {
   for (let i = 0; i < LEVELS.length; i++) if (save.best[i] == null) return i;
@@ -2419,21 +2491,49 @@ function renderLegend() {
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
   ];
   $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
-  $('legend').querySelectorAll('canvas').forEach(c => {
-    const x = c.getContext('2d'); x.scale(2, 2); const S = 36, k = c.dataset.k;
-    x.fillStyle = C.water; x.fillRect(0, 0, S, S);
-    if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
-    if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
-    if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
-    if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
-    if (k === 'net') drawNet(x, 0, 0, S, false, 0);
-    if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
-    if (k === 'sand') drawSand(x, 0, 0, S, 5);
-    if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
-  });
+  $('legend').querySelectorAll('canvas').forEach(drawLegendIcon);
+}
+function drawLegendIcon(c) {
+  const x = c.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); const S = 36, k = c.dataset.k;
+  x.fillStyle = C.water; x.fillRect(0, 0, S, S);
+  if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
+  if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
+  if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
+  if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
+  if (k === 'net') drawNet(x, 0, 0, S, false, 0);
+  if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
+  if (k === 'sand') drawSand(x, 0, 0, S, 5);
+  if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
+}
+/* ---------- device rules: once on first encounter, always available from settings ---------- */
+const DEVICE_GUIDES = [
+  { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 치거나 회수할 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
+  { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
+  { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
+  { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
+  { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
+];
+let guideKeys = [];
+const guideOpen = () => !$('guideOverlay').hidden;
+function showDeviceGuide(firstOnly = false) {
+  const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
+  if (firstOnly && !devices.length) return;
+  guideKeys = devices.map(d => d.key);
+  $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
+  $('guideItems').innerHTML = devices.length ? devices.map(d => `<li><canvas data-k="${d.key}" width="72" height="72" aria-hidden="true"></canvas><div><b>${d.name}</b><p>${d.text}</p></div></li>`).join('')
+    : '<li><div><b>상어를 바다로 보내요</b><p>화면을 밀면 막힐 때까지 헤엄쳐요. 방향키로도 움직일 수 있어요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.</p></div></li>';
+  $('guideItems').querySelectorAll('canvas').forEach(drawLegendIcon);
+  $('app').inert = true;
+  $('guideOverlay').hidden = false; $('guideDone').focus({ preventScroll: true });
+}
+function closeGuide() {
+  save.seenDevices = [...new Set([...save.seenDevices, ...guideKeys])]; persist();
+  guideKeys = []; $('guideOverlay').hidden = true; $('app').inert = false;
+  $($('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn').focus({ preventScroll: true });
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
+  if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
   $('gameScreen').hidden = which !== 'game';
@@ -2442,10 +2542,10 @@ function show(which, animate = true) {
   if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(); renderDaily(); renderSkinCard(); heroW = 0; }
   else requestAnimationFrame(resize);
 }
-function startLevel(i) { if (!unlocked(i)) return; show('game'); loadLevel(i); }
+function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
 
 $('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
-$('playBtn').addEventListener('click', () => { ac(); startLevel(nextLevel()); });
+$('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
 $('dailyBtn').addEventListener('click', () => { ac(); startDaily(); });
 $('skinBtn').addEventListener('click', openSkins);
 $('skinsDone').addEventListener('click', closeSkins);
@@ -2467,6 +2567,8 @@ function closeSettings() { $('settingsOverlay').hidden = true; }
 $('settingsBtn').addEventListener('click', openSettings);
 $('titleSettingsBtn').addEventListener('click', openSettings);
 $('settingsDone').addEventListener('click', closeSettings);
+$('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
+$('guideDone').addEventListener('click', closeGuide);
 $('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
 $('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
 $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });
@@ -2479,7 +2581,7 @@ const gameScreen = $('gameScreen');
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
-  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen()) return;
+  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
   gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
   ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
 });
@@ -2501,6 +2603,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
   if (!$('clearOverlay').hidden) { if (e.key === 'Escape') replay(); return; }
@@ -2513,21 +2616,27 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'Escape') show('title');
 });
 window.addEventListener('resize', () => { resize(); heroW = 0; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+window.addEventListener('pagehide', pauseGame);
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
-  if (settingsOpen()) closeSettings();
+  if (guideOpen()) closeGuide();
+  else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();
   else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
 });
+if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) pauseGame(); });
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); renderLevelGrid();
-  const resumeDaily = data && data.daily && makeDaily(data.daily);
-  if (data && data.screen === 'game' && data.st && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, data.st)); }
-  else if (data && data.screen === 'game' && data.st && LEVELS[data.lvl]) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, data.st)); }
+  const resumeDaily = data && data.daily === dailyDate() && makeDaily(data.daily);
+  const level = resumeDaily ? resumeDaily.level : data && LEVELS[data.lvl];
+  const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
+  if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
+  else if (data && !data.daily && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
   else show('title', false);
   requestAnimationFrame(frame);
 }

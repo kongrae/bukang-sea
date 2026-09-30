@@ -292,6 +292,13 @@ h1 .sea { color: var(--buoy-deep); }
 .switch input:checked + .track::after { transform: translateX(22px); }
 .switch input:focus-visible + .track { outline: 2px solid var(--buoy-deep); outline-offset: 2px; }
 .settings .btn { margin-top: 10px; }
+.guide { max-height: 88vh; overflow: hidden; }
+.guide h3, .guide .btn { flex-shrink: 0; }
+.guide-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; text-align: left; min-height: 0; overflow-y: auto; }
+.guide-items li { display: flex; align-items: flex-start; gap: 12px; }
+.guide-items canvas { width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; }
+.guide-items b { font-size: 18px; }
+.guide-items p { margin: 4px 0 0; font-size: 15px; line-height: 1.6; }
 
 @keyframes fade { from { opacity: 0 } }
 @keyframes pop { from { transform: scale(.6); opacity: 0 } }
@@ -389,6 +396,7 @@ h1 .sea { color: var(--buoy-deep); }
     <h3 id="settingsTitle">설정</h3>
     <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
   </div>
 </div>
@@ -402,5 +410,13 @@ h1 .sea { color: var(--buoy-deep); }
       <button class="btn" id="againBtn" type="button">다시 하기</button>
       <button class="btn primary" id="nextBtn" type="button">다음 수로</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="guideOverlay" hidden>
+  <div class="card guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <h3 id="guideTitle">장치 안내</h3>
+    <ul class="guide-items" id="guideItems"></ul>
+    <button class="btn primary" id="guideDone" type="button">확인</button>
   </div>
 </div>
