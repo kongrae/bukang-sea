@@ -14,7 +14,8 @@
     "gen": "node tools/gen.js",
     "difficulty": "node tools/difficulty.js",
     "cap:sync": "npm run build:web && cap sync android",
-    "cap:open": "cap open android"
+    "cap:open": "cap open android",
+    "android:debug": "npm run cap:sync && node tools/android.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

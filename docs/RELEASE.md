@@ -34,7 +34,8 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 ```
 
 - **Android SDK**: Android Studio를 처음 실행해 설정 마법사(Standard)를 끝내야 설치된다(SDK 라이선스 동의는 본인이 직접).
-- **JDK**: Capacitor 8은 JDK 21이 필요하다. Android Studio 안에서 빌드하면 내장 JBR(21)을 쓴다. 명령줄 `gradlew`를 쓸 때는 `JAVA_HOME=C:Program FilesAndroidAndroid Studiojbr`로 지정(시스템 JAVA_HOME은 SMART용 JDK 17이라 바꾸지 않는다).
+- **JDK 21**: Capacitor 8 / Gradle 8.14.3은 JDK 21로 빌드한다. 설치된 Android Studio의 내장 JBR은 25라 이 Gradle로는 실행되지 않고, 시스템 JDK 17(SMART용)은 건드리지 않는다. 그래서 Microsoft OpenJDK 21 압축본을 `~/.jdks/jdk-21.0.12.1+1`에 풀어 두었고, `npm run android:debug`(tools/android.js)가 그 JDK로 빌드한다. Android Studio에서 빌드할 때는 Settings → Build Tools → Gradle → Gradle JDK를 이 jdk-21로 지정.
+- **디버그 APK**: `npm run android:debug` → `android/app/build/outputs/apk/debug/app-debug.apk` (2026-09-30 첫 빌드 성공, 4.9MB).
 - 세로 고정(`AndroidManifest.xml` screenOrientation=portrait), 상태바는 어두운 배경용(SystemBars style DARK). 여백은 `--safe-area-inset-*` CSS 변수로 들어온다(shell.html에서 env()와 함께 사용).
 
 게임 코드를 고친 뒤에는 `npm run cap:sync`만 다시 하면 된다.
