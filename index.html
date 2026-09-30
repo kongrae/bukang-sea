@@ -1,0 +1,2720 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="수로에서 길을 잃은 상어를 밀어서 바다로 돌려보내는 슬라이드 퍼즐">
+<meta name="theme-color" content="#0c3340">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="길 잃은 상어">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+@font-face { font-family: "Bukang Display"; font-weight: 400; font-display: swap; src: url("fonts/jua-400.woff2") format("woff2"); }
+@font-face { font-family: "Bukang Body"; font-weight: 400; font-display: swap; src: url("fonts/noto-sans-kr-400.woff2") format("woff2"); }
+@font-face { font-family: "Bukang Body"; font-weight: 500; font-display: swap; src: url("fonts/noto-sans-kr-500.woff2") format("woff2"); }
+@font-face { font-family: "Bukang Body"; font-weight: 700; font-display: swap; src: url("fonts/noto-sans-kr-700.woff2") format("woff2"); }
+</style>
+</head>
+<body style="margin:0">
+<title>길 잃은 상어</title>
+<style>
+/* Layout: one-screen harbour app that behaves like a native game. Board takes every spare pixel, compact HUD above,
+   thumb-sized control bar below. Screens push/pop sideways, results arrive as a bottom sheet. Single committed "북항 수로" look. */
+:root {
+  --harbor: #0c3340;       /* page ground: deep harbour water */
+  --harbor-2: #124452;     /* raised panels */
+  --harbor-3: #1b5766;     /* hover / pressed */
+  --water: #1e7482;        /* canal water */
+  --water-hi: #6fd0cc;     /* ripples, jets */
+  --sea: #0f4f6e;          /* open sea at the exit */
+  --concrete: #d9d1c1;     /* promenade */
+  --concrete-2: #c4b9a3;   /* paver seams */
+  --rail: #eef0ea;
+  --park: #6b9a5b;
+  --ink: #0a232b;
+  --text: #ecf5f2;
+  --muted: #9dbfbe;
+  --buoy: #ff6b3d;         /* accent: lifebuoy orange */
+  --buoy-deep: #c8441b;
+  --star: #ffc94a;
+  --net: #ecd9a0;
+  --shark: #c1baa6;        /* warm shark back, distinct from teal water */
+  --shark-2: #938d79;
+  /* "Bukang *" = bundled subset fonts (www/ build only, renamed per OFL); the Google Fonts names serve the other builds */
+  --font-display: "Bukang Display", "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "Bukang Body", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --ease-out: cubic-bezier(.2, .85, .25, 1);
+  --ease-sheet: cubic-bezier(.16, 1, .3, 1);
+  --ease-spring: cubic-bezier(.3, 1.5, .5, 1);
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; overscroll-behavior: none; }
+body {
+  background: var(--harbor);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -.01em;
+  /* Korean typesetting: break between words (not inside them), never fake a bold on single-weight faces */
+  word-break: keep-all; overflow-wrap: break-word;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow: hidden;
+  /* app feel: no text selection, no long-press callouts, no tap flash, no double-tap zoom */
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button { font: inherit; color: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.app {
+  height: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  /* safe-area insets matter when installed (PWA standalone, native app with notch / gesture bar).
+     Capacitor 8 on Android reports them as --safe-area-inset-* variables (SystemBars insetsHandling "css"); browsers use env(). */
+  padding-inline: max(12px, var(--safe-area-inset-left, env(safe-area-inset-left))) max(12px, var(--safe-area-inset-right, env(safe-area-inset-right)));
+  padding-block: max(8px, var(--safe-area-inset-top, env(safe-area-inset-top))) max(10px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.screen { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.screen.enter-fwd { animation: push-in .34s var(--ease-out) both; }
+.screen.enter-back { animation: pop-in .34s var(--ease-out) both; }
+@keyframes push-in { from { transform: translateX(30%); opacity: 0; } }
+@keyframes pop-in { from { transform: translateX(-16%); opacity: 0; } }
+
+/* ----- Title ----- */
+.title-screen { overflow-y: auto; gap: 12px; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.title-screen::-webkit-scrollbar { display: none; }
+.hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--water); flex-shrink: 0; }
+.hero canvas { display: block; width: 100%; height: 128px; }
+.hero-text { position: absolute; left: 16px; bottom: 12px; right: 16px; pointer-events: none; }
+.eyebrow { font-size: 13px; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
+.hero .eyebrow { font-size: 12.5px; color: var(--ink); opacity: .7; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(34px, 10vw, 42px);
+  line-height: 1;
+  margin: 2px 0 0;
+  color: var(--ink);
+  text-wrap: balance;
+  letter-spacing: -.01em;
+}
+h1 .sea { color: var(--buoy-deep); }
+.lede { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; text-wrap: pretty; }
+.lede b { color: var(--star); font-weight: 700; }
+/* daily canal card: the one bright block on the title, sea-to-canal gradient with a lifebuoy badge */
+.daily {
+  border: 0; border-radius: 18px; padding: 12px 14px; cursor: pointer; text-align: left; color: var(--text);
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; position: relative; overflow: hidden;
+  background: linear-gradient(120deg, var(--sea), var(--water));
+  transition: transform .2s var(--ease-spring), filter .15s;
+}
+.daily::after { content: ""; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px; border-radius: 50%; border: 18px solid rgba(255,255,255,.06); pointer-events: none; }
+.daily:active { transform: scale(.97); transition-duration: .08s; }
+.daily-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.daily-k { font-size: 12.5px; letter-spacing: .04em; color: var(--water-hi); font-weight: 700; }
+.daily-date { font-family: var(--font-display); font-size: 20px; line-height: 1.15; letter-spacing: 0; }
+.daily-meta { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.daily-state {
+  flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%; background: var(--buoy); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
+  box-shadow: inset 0 0 0 5px rgba(255,255,255,.35); z-index: 1;
+}
+.daily-state b { font-family: var(--font-display); font-weight: 400; font-size: 17px; letter-spacing: 0; }
+.daily-state span { font-size: 12px; font-weight: 700; }
+.daily-state b i { font-style: normal; opacity: .3; }
+.daily.done .daily-state { background: var(--star); }
+.daily.done .daily-state b { font-size: 13px; letter-spacing: 0; }
+@media (hover: hover) { .daily:hover { filter: brightness(1.06); } }
+/* my shark: preview of the skin in use */
+.myshark {
+  border: 0; border-radius: 18px; padding: 12px 14px; cursor: pointer; text-align: left; color: var(--text);
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; background: var(--harbor-2);
+  transition: transform .2s var(--ease-spring), background .15s;
+}
+.myshark:active { transform: scale(.97); transition-duration: .08s; }
+.myshark canvas { width: 68px; height: 44px; border-radius: 12px; flex-shrink: 0; }
+.myshark-name { font-family: var(--font-display); font-size: 19px; line-height: 1.15; letter-spacing: 0; }
+.myshark-go { flex-shrink: 0; font-size: 14px; font-weight: 700; color: var(--star); }
+@media (hover: hover) { .myshark:hover { background: var(--harbor-3); } }
+.section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.section-label h2 { font-size: 13.5px; letter-spacing: .02em; color: var(--muted); margin: 0; font-weight: 500; }
+.section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; flex-shrink: 0; }
+.chapter-btn { border: 1px solid var(--harbor-3); border-radius: 12px; padding: 7px 4px; min-height: 52px; cursor: pointer; background: var(--harbor-2); display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.chapter-btn b { font-family: var(--font-display); font-weight: 400; font-size: 19px; line-height: 1.2; }
+.chapter-btn span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter-btn[aria-pressed="true"] { border-color: var(--buoy); background: var(--harbor-3); }
+.chapter-btn:active { transform: scale(.96); }
+.chapters { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+.chapter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter-head:first-child { margin-top: 0; }
+.chapter-head h3 { font-family: var(--font-display); font-weight: 400; font-size: 23px; color: var(--text); margin: 0; line-height: 1.3; }
+.levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lv {
+  background: var(--harbor-2); border: 2px solid transparent; border-radius: 18px;
+  min-height: 80px; padding: 8px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-width: 0; transition: background .15s, transform .18s var(--ease-spring);
+  animation: tile-in .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 14ms);
+}
+@keyframes tile-in { from { transform: translateY(10px) scale(.96); opacity: 0; } }
+.lv:active { transform: scale(.93); transition-duration: .08s; }
+.lv:focus-visible, .chapter-btn:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible, .daily:focus-visible, .myshark:focus-visible, .skin:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+.lv .n { font-family: var(--font-display); font-size: 32px; line-height: 1.05; letter-spacing: 0; }
+.lv .nm { font-size: 13.5px; line-height: 1.25; color: var(--text); min-height: 2.5em; max-width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; }
+.lv .st { font-size: 13px; letter-spacing: 1px; color: var(--star); line-height: 1; }
+.lv .st i { font-style: normal; color: var(--harbor-3); }
+.lv.cur { border-color: var(--buoy); background: var(--harbor-3); }
+.lv[disabled] { opacity: .38; cursor: default; }
+.lv[disabled]:active { transform: none; }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; font-size: 14px; color: var(--muted); }
+.legend div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.legend canvas { width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px; }
+.note { font-size: 12px; color: var(--muted); border-top: 1px solid var(--harbor-3); padding-top: 12px; margin: 0; }
+.cta-bar { display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; flex-shrink: 0; }
+.journey-label { margin: 0; color: var(--muted); font-size: 14px; }
+.journey-label b { color: var(--text); font-weight: 500; }
+.extra-options { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; flex-shrink: 0; }
+
+/* ----- Buttons ----- */
+.btn {
+  border: 0; border-radius: 16px; min-height: 52px; padding: 12px 18px; cursor: pointer; font-weight: 700; font-size: 16px;
+  background: var(--harbor-2); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s, transform .2s var(--ease-spring), filter .15s;
+}
+.btn:active { transform: scale(.95); transition-duration: .08s; }
+.btn.primary { background: var(--buoy); color: var(--ink); box-shadow: 0 6px 0 var(--buoy-deep); }
+.btn.primary:active { transform: translateY(4px) scale(.98); box-shadow: 0 2px 0 var(--buoy-deep); }
+.btn.big { width: 100%; min-height: 58px; font-size: 17.5px; border-radius: 18px; }
+.btn[disabled] { opacity: .4; cursor: default; }
+.icon-btn {
+  border: 0; background: var(--harbor-2); border-radius: 14px; width: 46px; height: 46px; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; transition: background .15s, transform .2s var(--ease-spring);
+}
+.icon-btn:active { transform: scale(.9); transition-duration: .08s; }
+.hero .icon-btn { position: absolute; top: 12px; right: 12px; background: rgba(10,35,43,.28); color: #fff; z-index: 1; }
+@media (hover: hover) {
+  .lv:not([disabled]):hover, .btn:not(.primary):hover, .icon-btn:hover, .ctrl:hover { background: var(--harbor-3); }
+  .btn.primary:hover { filter: brightness(1.06); }
+}
+
+/* ----- Game ----- */
+.game-screen { gap: 6px; touch-action: none; }
+.topbar { display: flex; align-items: center; gap: 10px; min-height: 46px; }
+.topbar .lvl-title { flex: 1; min-width: 0; text-align: center; }
+.lvl-title .num { font-size: 13px; color: var(--muted); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.lvl-title .name { font-family: var(--font-display); font-size: 25px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats { display: flex; gap: 6px; flex-shrink: 0; }
+.chip {
+  background: var(--harbor-2); border-radius: 12px; padding: 4px 8px; font-size: 14px; min-width: 0;
+  display: flex; gap: 6px; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;
+}
+.chip b { font-weight: 700; display: inline-block; }
+.hud-stack { display: flex; flex-direction: column; gap: 2px; align-items: center; line-height: 1.2; }
+.chip.goal { flex: 1.25; background: var(--harbor-3); box-shadow: inset 3px 0 var(--water-hi); }
+.chip.goal b { font-size: 18px; color: var(--text); }
+.chip.goal .k { font-size: 13px; color: var(--text); }
+.chip.move { flex: 1; }
+.chip.move .count { font-size: 15px; white-space: nowrap; }
+.chip.move .k { font-size: 13px; }
+.chip svg.i { width: 22px; height: 22px; }
+.chip b.bump { animation: count-bump .35s var(--ease-spring); }
+@keyframes count-bump { 40% { transform: scale(1.35); } }
+.chip .k { color: var(--muted); }
+.chip.over b { color: var(--buoy); }
+.chip.done b { color: var(--star); }
+.chip.net { flex: .75; }
+.chip.net .k { font-size: 13px; white-space: nowrap; }
+.chip.net b { font-size: 18px; }
+.tip { font-size: 14px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.3; margin: 0; text-wrap: balance; display: flex; align-items: center; justify-content: center; }
+.tip.hint { color: var(--star); }
+.tip.flash { animation: tip-in .3s var(--ease-out); }
+@keyframes tip-in { from { transform: translateY(4px); opacity: 0; } }
+/* the playfield runs edge to edge between HUD and controls; the canvas fills it (camera view, see resize()) */
+.board { flex: 1; min-height: 0; position: relative; margin-inline: -12px; }
+.board .frame { position: absolute; inset: 0; overflow: hidden; will-change: transform; }
+.board .frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 12px 16px -12px rgba(0,0,0,.45), inset 0 -12px 16px -12px rgba(0,0,0,.45); }
+.board canvas { display: block; }
+.board .frame.enter { animation: board-in .42s var(--ease-out) both; }
+@keyframes board-in { from { transform: scale(.94); opacity: 0; } }
+.controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ctrl {
+  border: 0; border-radius: 16px; background: var(--harbor-2); cursor: pointer; min-height: 52px; padding: 8px 6px;
+  display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 14.5px; font-weight: 700;
+  transition: background .15s, transform .2s var(--ease-spring), opacity .15s;
+}
+.ctrl svg.i { width: 24px; height: 24px; }
+.ctrl:active { transform: scale(.92); transition-duration: .08s; }
+.ctrl[disabled] { opacity: .35; cursor: default; }
+.ctrl[disabled]:active { transform: none; }
+.kbd { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+@media (hover: none), (pointer: coarse), (max-height: 760px) { .kbd { display: none; } }
+
+/* ----- Clear sheet ----- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(4, 18, 24, .62); display: flex; align-items: flex-end; justify-content: center;
+  z-index: 10; animation: fade .3s ease-out;
+}
+.card {
+  background: var(--concrete); color: var(--ink); width: 100%; max-width: 520px;
+  border-radius: 28px 28px 0 0; padding: 10px 22px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
+  display: flex; flex-direction: column; gap: 14px; text-align: center; animation: sheet-up .5s var(--ease-sheet) both;
+  box-shadow: 0 -10px 40px rgba(0,0,0,.3);
+}
+.card::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: #b9ad95; margin: 0 auto 4px; }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@media (min-width: 640px) and (min-height: 640px) {
+  .overlay { align-items: center; }
+  .card { border-radius: 28px; padding-bottom: 22px; animation-name: pop; }
+  .card::before { display: none; }
+}
+.card h3 { font-family: var(--font-display); font-weight: 400; font-size: 38px; letter-spacing: 0; margin: 4px 0 0; line-height: 1.1; }
+.card .sub { margin: 0; font-size: 14px; color: #3d4d4f; }
+.stars { display: flex; justify-content: center; gap: 12px; }
+.star { width: 62px; height: 62px; }
+.star:nth-child(2) { transform: translateY(-8px); }
+.star path { fill: #b9ad95; }
+.star.on path { fill: var(--star); stroke: #c7881a; stroke-width: 1.5; }
+.star.on { animation: star-pop .55s var(--ease-spring) both; }
+.star.on:nth-child(2) { animation-name: star-pop-mid; }
+@keyframes star-pop { from { transform: scale(0) rotate(-30deg); opacity: 0; } }
+@keyframes star-pop-mid { from { transform: translateY(-8px) scale(0) rotate(-30deg); opacity: 0; } }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 15px; text-align: left; }
+.checks li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #b9ad95; padding: 6px 2px; font-variant-numeric: tabular-nums; }
+.checks li:last-child { border-bottom: 0; }
+.checks .ok { color: #1f6e4a; font-weight: 700; }
+.checks .no { color: #8a5a3a; }
+.card .row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; }
+.card .btn { background: #c8bea9; min-height: 56px; }
+.card .btn.primary { background: var(--buoy); }
+/* skins sheet */
+.skins { max-height: 88vh; overflow-y: auto; }
+.skin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.skin {
+  border: 2px solid transparent; border-radius: 16px; background: #c8bea9; padding: 8px 8px 10px; cursor: pointer; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; transition: transform .2s var(--ease-spring);
+}
+.skin canvas { width: 100%; aspect-ratio: 8 / 5; max-width: 100%; border-radius: 12px; }
+.skin-name { font-family: var(--font-display); font-size: 17px; letter-spacing: 0; }
+.skin-need { font-size: 12.5px; color: #5b6a6c; text-align: center; font-variant-numeric: tabular-nums; }
+.skin.sel { border-color: var(--buoy-deep); background: #e6dcc8; }
+.skin.sel .skin-need { color: var(--buoy-deep); font-weight: 700; }
+.skin[disabled] { cursor: default; }
+.skin[disabled] canvas { filter: grayscale(1) brightness(.55); }
+.skin[disabled] .skin-name { opacity: .55; }
+.skin:not([disabled]):active { transform: scale(.95); transition-duration: .08s; }
+.checks .new { color: var(--buoy-deep); font-weight: 700; }
+/* settings sheet: native-style switches */
+.settings { gap: 6px; }
+.settings h3 { margin-bottom: 6px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 4px 4px; border-bottom: 1px solid #c8bea9; font-size: 16.5px; font-weight: 500; text-align: left; cursor: pointer; }
+.switch small { display: block; font-size: 13px; font-weight: 400; color: #5b6a6c; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch .track { flex-shrink: 0; width: 54px; height: 32px; border-radius: 16px; background: #b9ad95; position: relative; transition: background .2s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.25); transition: transform .25s var(--ease-spring); }
+.switch input:checked + .track { background: #1f8a6e; }
+.switch input:checked + .track::after { transform: translateX(22px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--buoy-deep); outline-offset: 2px; }
+.settings .btn { margin-top: 10px; }
+.guide { max-height: 88vh; overflow: hidden; }
+.guide h3, .guide .btn { flex-shrink: 0; }
+.guide-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; text-align: left; min-height: 0; overflow-y: auto; }
+.guide-items li { display: flex; align-items: flex-start; gap: 12px; }
+.guide-items canvas { width: 44px; height: 44px; flex-shrink: 0; border-radius: 10px; }
+.guide-items b { font-size: 18px; }
+.guide-items p { margin: 4px 0 0; font-size: 15px; line-height: 1.6; }
+
+@keyframes fade { from { opacity: 0 } }
+@keyframes pop { from { transform: scale(.6); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+}
+@media (max-height: 640px) {
+  .tip { min-height: 0; }
+  .ctrl { min-height: 48px; }
+}
+@media (max-height: 700px) {
+  .title-screen { gap: 10px; }
+  .hero canvas { height: 110px; }
+  .game-screen { gap: 3px; }
+  .game-screen .topbar { min-height: 44px; }
+  .game-screen .icon-btn { width: 44px; height: 44px; }
+  .lvl-title .num { line-height: 1.3; }
+  .lvl-title .name { font-size: 23px; }
+  .chip { padding: 3px 6px; }
+  .ctrl { min-height: 48px; }
+}
+</style>
+
+<div class="app" id="app">
+  <section class="screen title-screen" id="titleScreen">
+    <div class="hero">
+      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+      <div class="hero-text">
+        <div class="eyebrow">부산 북항 친수공원 · 수로 탈출 퍼즐</div>
+        <h1>길 잃은 <span class="sea">상어</span></h1>
+      </div>
+    </div>
+    <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
+    <div class="cta-bar">
+      <p class="journey-label" id="journeyLabel"></p>
+      <button class="btn primary big" id="playBtn" type="button">시작하기</button>
+    </div>
+    <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
+    <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
+    <div class="chapters" id="levelGrid"></div>
+    <div class="extra-options">
+      <button class="daily" id="dailyBtn" type="button">
+        <span class="daily-text">
+          <span class="daily-k">오늘의 수로</span>
+          <span class="daily-date" id="dailyDate">오늘</span>
+          <span class="daily-meta" id="dailyMeta">매일 새로 열리는 수로</span>
+        </span>
+        <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
+      </button>
+      <button class="myshark" id="skinBtn" type="button">
+        <canvas id="skinPreview" aria-hidden="true"></canvas>
+        <span class="daily-text">
+          <span class="daily-k">내 상어</span>
+          <span class="myshark-name" id="skinName">무태상어</span>
+          <span class="daily-meta" id="skinCount">별을 모으면 새 상어가 열려요</span>
+        </span>
+        <span class="myshark-go">바꾸기</span>
+      </button>
+    </div>
+    <div class="section-label"><h2>수로에 있는 것들</h2></div>
+    <div class="legend" id="legend"></div>
+    <p class="note">2026년 9월 부산 북항 친수공원 수로에 들어온 무태상어(약 3.5m)에서 착안한 퍼즐 게임입니다. 실제 기관·캐릭터와 관련이 없습니다.</p>
+  </section>
+
+  <section class="screen game-screen" id="gameScreen" hidden>
+    <div class="topbar">
+      <button class="icon-btn" id="backBtn" type="button" aria-label="수로 목록으로">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="lvl-title"><div class="num" id="lvNum">1장 · 수로 1</div><div class="name" id="lvName">첫 굽이</div></div>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <p class="tip" id="tip"></p>
+    <div class="board" id="board"><div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div></div>
+    <div class="controls">
+      <button class="ctrl" id="undoBtn" type="button">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5"/><path d="M4 10h10a5 5 0 010 10h-3"/></svg>되돌리기
+      </button>
+      <button class="ctrl" id="restartBtn" type="button">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7"/><path d="M20.5 4v4.5H16"/></svg>처음부터
+      </button>
+      <button class="ctrl" id="hintBtn" type="button">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg>힌트
+      </button>
+    </div>
+    <p class="kbd">방향키·WASD로 이동 · Z 되돌리기 · R 처음부터 · H 힌트</p>
+  </section>
+</div>
+
+<div class="overlay" id="skinsOverlay" hidden>
+  <div class="card skins" role="dialog" aria-labelledby="skinsTitle">
+    <h3 id="skinsTitle">내 상어</h3>
+    <p class="sub" id="skinsSub">별을 모으면 새 상어가 열려요.</p>
+    <div class="skin-grid" id="skinGrid"></div>
+    <button class="btn primary" id="skinsDone" type="button">닫기</button>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOverlay" hidden>
+  <div class="card settings" role="dialog" aria-labelledby="settingsTitle">
+    <h3 id="settingsTitle">설정</h3>
+    <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
+    <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
+    <button class="btn primary" id="settingsDone" type="button">닫기</button>
+  </div>
+</div>
+
+<div class="overlay" id="clearOverlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="clearTitle">
+    <h3 id="clearTitle">바다로 나갔어요!</h3>
+    <div class="stars" id="clearStars"></div>
+    <ul class="checks" id="clearChecks"></ul>
+    <div class="row">
+      <button class="btn" id="againBtn" type="button">다시 하기</button>
+      <button class="btn primary" id="nextBtn" type="button">다음 수로</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="guideOverlay" hidden>
+  <div class="card guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <h3 id="guideTitle">장치 안내</h3>
+    <ul class="guide-items" id="guideItems"></ul>
+    <button class="btn primary" id="guideDone" type="button">확인</button>
+  </div>
+</div>
+
+<script>
+/* ---------- Engine: sliding rules + solver (shared with node tests) ---------- */
+const DIRS = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
+const JET = { '^': 'U', 'v': 'D', '<': 'L', '>': 'R' };
+const OPP = { U: 'D', D: 'U', L: 'R', R: 'L' };
+
+function parseLevel(level) {
+  const rows = level.map, h = rows.length, w = rows[0].length;
+  let start = null; const fish = [], cells = [], boats = [];
+  for (let y = 0; y < h; y++) {
+    if (rows[y].length !== w) throw new Error('ragged row ' + y + ' in ' + level.name);
+    for (let x = 0; x < w; x++) {
+      let c = rows[y][x];
+      if (c === 'S') { start = [x, y]; c = '.'; }
+      if (c === 'f') { fish.push([x, y]); c = '.'; }
+      // patrol boats: b = back and forth along the row (starts right), B = along the column (starts down)
+      if (c === 'b' || c === 'B') { boats.push([y * w + x, c === 'b' ? 'R' : 'D']); c = '.'; }
+      cells.push(c);
+    }
+  }
+  // whirlpools come in one pair: entering either one comes out of the other
+  const whirls = []; cells.forEach((c, i) => { if (c === 'w') whirls.push(i); });
+  if (whirls.length && whirls.length !== 2) throw new Error('whirlpools must come in a pair in ' + level.name);
+  const warp = new Map(whirls.length === 2 ? [[whirls[0], whirls[1]], [whirls[1], whirls[0]]] : []);
+  return { w, h, cells, start, fish, warp, boats, nets: level.nets || 0, par: level.par };
+}
+function cellAt(g, x, y) {
+  if (x < 0 || y < 0 || x >= g.w || y >= g.h) return '#';
+  return g.cells[y * g.w + x];
+}
+// boats: array of [cellIndex, dir] (the boats' current state); only their cells matter for blocking
+function isBlocked(g, x, y, nets, boats) {
+  const c = cellAt(g, x, y);
+  if (c === '#' || c === 'o') return true;
+  const i = y * g.w + x;
+  if (nets && nets.has(i)) return true;
+  if (boats) for (const b of boats) if (b[0] === i) return true;
+  return false;
+}
+// Slide until blocked. path excludes the start tile; each step is [x, y, dir] (a 4th element `true` marks
+// the tile reached by a whirlpool jump rather than by swimming). Stops on a sandbar 's'. Jets and whirlpools
+// passed twice in one move stop the slide (loop guard); the tile the move starts on never triggers anything.
+// Boats stand still while the shark slides; they move afterwards (stepBoats).
+function slide(g, pos, dir, nets, boats) {
+  let [x, y] = pos, d = dir;
+  const path = [], seen = new Set();
+  for (let guard = 0; guard < 500; guard++) {
+    const [dx, dy] = DIRS[d];
+    if (isBlocked(g, x + dx, y + dy, nets, boats)) break;
+    x += dx; y += dy; path.push([x, y, d]);
+    const c = cellAt(g, x, y);
+    if (c === 'E') return { path, end: [x, y], win: true };
+    if (c === 's') break;
+    if (JET[c] || c === 'w') {
+      const key = x + ',' + y;
+      if (seen.has(key)) break;
+      seen.add(key);
+      if (JET[c]) d = JET[c];
+      else {
+        const to = g.warp.get(y * g.w + x);
+        x = to % g.w; y = Math.floor(to / g.w); seen.add(x + ',' + y);
+        path.push([x, y, d, true]);
+      }
+    }
+  }
+  return { path, end: [x, y], win: false };
+}
+// After every shark move each boat, in order, steps one tile along its heading. A boat turns around when the
+// tile ahead is a wall, buoy, the sea exit, a net, the shark or another boat, and stays put if both ways are blocked.
+function stepBoats(g, boats, sharkIdx, nets) {
+  if (!boats.length) return boats;
+  const next = boats.map(b => b.slice());
+  const free = (i, self) => {
+    const x = i % g.w, y = Math.floor(i / g.w), c = cellAt(g, x, y);
+    if (c === '#' || c === 'o' || c === 'E' || i === sharkIdx || (nets && nets.has(i))) return false;
+    return !next.some((b, k) => k !== self && b[0] === i);
+  };
+  next.forEach((b, k) => {
+    const x = b[0] % g.w, y = Math.floor(b[0] / g.w);
+    for (const d of [b[1], OPP[b[1]]]) {
+      const [dx, dy] = DIRS[d], nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= g.w || ny >= g.h) continue;
+      if (free(ny * g.w + nx, k)) { b[0] = ny * g.w + nx; b[1] = d; return; }
+    }
+    b[1] = OPP[b[1]];
+  });
+  return next;
+}
+const boatsKey = boats => boats.map(b => b[0] + b[1]).join(',');
+// BFS over (position, fish mask, boats). Returns {moves, seq} or null. boats defaults to the level's start.
+function bfsFrom(g, pos, mask, nets, needAll, cap, boats) {
+  boats = boats || g.boats;
+  const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
+  const full = (1 << g.fish.length) - 1;
+  const seen = new Set([pos + '|' + mask + '|' + boatsKey(boats)]);
+  let q = [{ pos, mask, boats, seq: '' }], depth = 0;
+  while (q.length) {
+    depth++;
+    if (depth > cap) return null;
+    const nq = [];
+    for (const s of q) for (const d of 'UDLR') {
+      const r = slide(g, s.pos, d, nets, s.boats);
+      if (!r.path.length) continue;
+      let m = s.mask;
+      for (const [x, y] of r.path) { const k = y * g.w + x; if (fishIdx.has(k)) m |= 1 << fishIdx.get(k); }
+      if (r.win) { if (!needAll || m === full) return { moves: depth, seq: s.seq + d }; continue; }
+      const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], nets);
+      const key = r.end + '|' + m + '|' + boatsKey(nb);
+      if (seen.has(key)) continue;
+      seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, seq: s.seq + d });
+    }
+    q = nq;
+  }
+  return null;
+}
+// Fixed-placement search retained ONLY for the daily-v2 generator: changing its candidate scoring
+// would change already published date-seeded puzzles. Gameplay/hints use plan() below.
+function fixedNetPlan(g, pos, mask, nets, netsLeft, needAll, boats) {
+  boats = boats || g.boats;
+  const fishTiles = new Set(g.fish.map(f => f[1] * g.w + f[0])), boatTiles = new Set(boats.map(b => b[0]));
+  const here = pos[1] * g.w + pos[0];
+  const spots = [];
+  for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === '.' && i !== here && !fishTiles.has(i) && !boatTiles.has(i) && !nets.has(i)) spots.push(i);
+  const options = [[]];
+  if (netsLeft >= 1) for (const a of spots) options.push([a]);
+  if (netsLeft >= 2) for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) options.push([spots[i], spots[j]]);
+  let best = null;
+  for (const add of options) {
+    const n2 = new Set(nets); add.forEach(a => n2.add(a));
+    const r = bfsFrom(g, pos, mask, n2, needAll, best ? best.moves - 1 : 60, boats);
+    if (r && (!best || r.moves < best.moves)) best = { ...r, add };
+  }
+  return best;
+}
+
+// Minimum SWIPES under the live rules. Nets can be removed/replaced for free BETWEEN moves.
+// Thus a search node needs only (position, fish mask, boats): every legal net configuration is
+// reachable from every other one without moving the shark or boats. Each edge records the nets
+// to have on the board before its swipe; keeping that recipe is essential when replaying a plan.
+// `netsLeft` retains its old meaning (unused inventory); placed nets are also reusable.
+// Returns {moves, seq, add, remove, steps:[{dir, nets:[idx]}]} or null. add/remove concern step 1 only.
+function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats) {
+  boats = boats || g.boats;
+  const capacity = nets.size + netsLeft;
+  if (capacity > 2) throw new Error('plan supports at most 2 nets');
+  const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
+  const full = (1 << g.fish.length) - 1, empty = new Set();
+  const keyOf = (pos, mask, boats) => pos + '|' + mask + '|' + boatsKey(boats);
+  const root = { pos, mask, boats, parent: null }, seen = new Set([keyOf(pos, mask, boats)]);
+  const result = (parent, dir, placed) => {
+    const steps = [{ dir, nets: [...placed] }];
+    for (let s = parent; s.parent; s = s.parent) steps.push(s.step);
+    steps.reverse();
+    const first = new Set(steps[0].nets);
+    return { moves: steps.length, seq: steps.map(s => s.dir).join(''), steps,
+      add: [...first].filter(i => !nets.has(i)), remove: [...nets].filter(i => !first.has(i)) };
+  };
+  let q = [root], visited = 0;
+  while (q.length) {
+    const nq = [];
+    for (const s of q) {
+      // Browser hints consume one batch per task so input/painting can continue during a hard search.
+      if (++visited % 32 === 0) yield;
+      const here = s.pos[1] * g.w + s.pos[0], occupied = new Set(s.boats.map(b => b[0]));
+      const canPlace = i => g.cells[i] === '.' && i !== here && !occupied.has(i)
+        && (!fishIdx.has(i) || (s.mask & (1 << fishIdx.get(i))));
+      // A boat can only be stopped by a net on either neighboring tile of its patrol axis.
+      const boatSpots = new Set();
+      if (capacity) for (const b of s.boats) for (const d of [b[1], OPP[b[1]]]) {
+        const [dx, dy] = DIRS[d], x = b[0] % g.w + dx, y = Math.floor(b[0] / g.w) + dy;
+        if (x >= 0 && y >= 0 && x < g.w && y < g.h && canPlace(y * g.w + x)) boatSpots.add(y * g.w + x);
+      }
+      for (const dir of 'UDLR') {
+        const free = slide(g, s.pos, dir, empty, s.boats);
+        if (!free.path.length) continue; // adding blockers cannot make a blocked swipe move
+        // Nets off this unobstructed path AND off all boat-adjacent tiles cannot affect this turn.
+        // Dropping them is safe because all nets can be moved again before the next turn.
+        const relevant = new Set(boatSpots);
+        if (capacity) for (const [x, y] of free.path) if (canPlace(y * g.w + x)) relevant.add(y * g.w + x);
+        // Prefer retaining the current placement on equal-length routes, avoiding needless pickup hints.
+        // Other placements remain reachable for free, so merging nodes without nets still preserves optimality.
+        const carried = s.parent ? s.step.nets : [...nets];
+        const spots = [...relevant], configs = carried.length ? [carried, []] : [[]];
+        if (capacity) for (const i of spots) configs.push([i]);
+        // Only the first net hit can stop the shark. A second net matters only if it affects a boat.
+        if (capacity >= 2) for (let a = 0; a < spots.length; a++) for (let b = a + 1; b < spots.length; b++) {
+          if (boatSpots.has(spots[a]) || boatSpots.has(spots[b])) configs.push([spots[a], spots[b]]);
+        }
+        for (const cfg of configs) {
+          const placed = new Set(cfg), r = cfg.length ? slide(g, s.pos, dir, placed, s.boats) : free;
+          if (!r.path.length) continue;
+          let m = s.mask;
+          for (const [x, y] of r.path) { const fi = fishIdx.get(y * g.w + x); if (fi != null) m |= 1 << fi; }
+          if (r.win) { if (!needAll || m === full) return result(s, dir, placed); continue; }
+          const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], placed), key = keyOf(r.end, m, nb);
+          if (seen.has(key)) continue;
+          seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, parent: s, step: { dir, nets: cfg } });
+        }
+      }
+    }
+    q = nq;
+  }
+  return null;
+}
+function plan(g, pos, mask, nets, netsLeft, needAll, boats) {
+  const search = planSearch(g, pos, mask, nets, netsLeft, needAll, boats);
+  let step;
+  do { step = search.next(); } while (!step.done);
+  return step.value;
+}
+// A quick escape still clears the canal; fish completion is required before earning the move star.
+function starsForClear(allFish, inPar) {
+  return 1 + (allFish ? 1 : 0) + (allFish && inPar ? 1 : 0);
+}
+if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, starsForClear, cellAt, isBlocked, DIRS, JET, OPP };
+
+/* ---------- Levels: # 산책로  . 물  S 상어  E 바다  f 숭어  o 부표  b 구조정  ^v<> 물줄기 ---------- */
+// Three-star targets: practice allows two extra swipes, regular one, challenge the minimum.
+const LEVEL_ROLES = {
+  learn: { label: '연습', slack: 2 },
+  regular: { label: '일반', slack: 1 },
+  challenge: { label: '도전', slack: 0 },
+};
+const LEVELS = [
+  /* ----- 1장 북항 수로 ----- */
+  { par: 8, role: 'learn', name: '첫 굽이', tip: '밀면 벽에 닿을 때까지 헤엄쳐요. 굽은 수로를 따라 바다(맨 위 출구)까지 가 보세요.', map: [
+    '#####E#',
+    '#.....#',
+    '#.#####',
+    '#.....#',
+    '#####.#',
+    '#S....#',
+    '#######',
+  ] },
+  { par: 7, role: 'learn', name: '휘어진 수로', tip: '부표는 벽처럼 상어를 멈춰 세워요.', map: [
+    '#####E#',
+    '#.....#',
+    '#.o...#',
+    '#..####',
+    '#.o####',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '##S####',
+  ] },
+  { par: 7, role: 'learn', name: '숭어 한 마리', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요.', map: [
+    '#E#####',
+    '#.....#',
+    '#...o.#',
+    '#.....#',
+    '#.o..f#',
+    '#...o.#',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '####S##',
+  ] },
+  { par: 7, name: 'S자 물길', tip: '숭어를 모두 먹고 이동 기준 안에 나가면 세 번째 별이에요.', map: [
+    '######E',
+    '#......',
+    '#......',
+    '#..f###',
+    '#o..###',
+    '###.o.#',
+    '###...#',
+    '#...o.#',
+    '#..f..#',
+    '##S####',
+  ] },
+  { par: 8, name: '친수공원 한복판', tip: '구경꾼이 많아도 침착하게. 돌아가는 길이 더 빠를 때가 있어요.', map: [
+    '###E###',
+    '#...o.#',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '#.fo..#',
+    '#..o..#',
+    '#....f#',
+    '#o....#',
+    '###S###',
+  ] },
+  { par: 9, role: 'learn', name: '구조정 등장', tip: '상어가 한 번 헤엄친 뒤 구조정도 한 칸 움직여요. 부표처럼 앞에서 멈추니 돌아서 지나가요.', map: [
+    '###E###',
+    '##o..##',
+    '#....o#',
+    '#.fo..#',
+    '#.....#',
+    '#.f...#',
+    '#..b..#',
+    '##...##',
+    '###S###',
+  ] },
+  { par: 8, role: 'learn', name: '물대포', tip: '물줄기 칸을 지나면 화살표 방향으로 꺾여요.', map: [
+    '#E#####',
+    '#....f#',
+    '#..o..#',
+    '#...<.#',
+    '#.o...#',
+    '#.....#',
+    '#..o..#',
+    '#..>..#',
+    '#.....#',
+    '####S##',
+  ] },
+  { par: 9, name: '물줄기 미로', tip: '물줄기를 여러 번 타면 멀리 돌아갈 수 있어요.', map: [
+    '######E',
+    '#o...f.',
+    '#......',
+    '#...###',
+    '#.<.###',
+    '###...#',
+    '###^..#',
+    '#.>.o.#',
+    '#...f.#',
+    '##S####',
+  ] },
+  { par: 10, role: 'challenge', name: '소방정 총출동', tip: '숭어 세 마리. 순서를 잘 정해 보세요.', map: [
+    '###E###',
+    '#^..of#',
+    '#.o<..#',
+    '#..f.v#',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '#...fo#',
+    '#o....#',
+    '#.....#',
+    '###S###',
+  ] },
+  { par: 7, role: 'learn', name: '그물 작전', nets: 1, tip: '물 위를 톡 누르면 그물을 쳐요. 상어는 그물 앞에서 멈춰요. 다시 누르면 걷어요.', map: [
+    '#####E#',
+    '#f.o..#',
+    '#.....#',
+    '#..####',
+    '#..####',
+    '#.....#',
+    '#o....#',
+    '#.....#',
+    '##S####',
+  ] },
+  { par: 7, name: '그물과 물줄기', nets: 1, tip: '나가기만 하면 쉽지만, 숭어 두 마리를 다 먹으려면 그물이 필요해요.', map: [
+    '#E#####',
+    '#.f...#',
+    '#..f..#',
+    '#.....#',
+    '#..o<.#',
+    '#.....#',
+    '#^....#',
+    '#.....#',
+    '#o....#',
+    '####S##',
+  ] },
+  { par: 9, role: 'challenge', name: '바다로 가는 길', nets: 2, tip: '그물은 두 개까지 쓸 수 있어요. 숭어 세 마리를 챙기는 1장의 마지막 도전이에요.', map: [
+    '###E###',
+    '#.....#',
+    '#.oo..#',
+    '#f.bf.#',
+    '#.>...#',
+    '#.....#',
+    '#.....#',
+    '#..v..#',
+    '#...bf#',
+    '#.....#',
+    '###S###',
+  ] },
+  /* ----- 2장 친수공원 운하 ----- */
+  { par: 8, name: '작은 순환로', tip: '가운데 화단을 빙 돌 수 있어요. 숭어 두 마리를 챙겨요.', map: [
+    '####E##',
+    '#....o#',
+    '#..f..#',
+    '#..##.#',
+    '#.f##.#',
+    '#.....#',
+    '#..ob.#',
+    '##S####',
+  ] },
+  { par: 9, name: '옆문 출구', tip: '이번엔 바다가 오른쪽에 있어요.', map: [
+    '#######',
+    '#..o.o#',
+    '#.....E',
+    '#.....#',
+    '#o....#',
+    '#.....#',
+    '#..f..#',
+    '#.f...#',
+    '###S###',
+  ] },
+  { par: 10, name: '회오리 물길', tip: '물줄기 두 개가 상어를 빙글 돌려요.', map: [
+    '####E##',
+    '#.o.f.#',
+    '#...^.#',
+    '#..##.#',
+    '#..##.#',
+    '#<....#',
+    '#....f#',
+    '##S####',
+  ] },
+  { par: 10, name: '구조정 두 척', tip: '구조정 두 척이 오가요. 움직인 뒤의 자리를 생각해 보세요.', map: [
+    '#####E#',
+    '#.....#',
+    '#.....#',
+    '#...###',
+    '#.....#',
+    '###f..#',
+    '#.....#',
+    '#.vb###',
+    '#.b...#',
+    '#f.o..#',
+    '#S#####',
+  ] },
+  { par: 11, name: '분수 광장', tip: '물줄기 세 개. 어디서 타느냐가 중요해요.', map: [
+    '###E###',
+    '#o....#',
+    '#..>o.#',
+    '#.....#',
+    '#.....#',
+    '#.....#',
+    '#f....#',
+    '#.....#',
+    '#...f>#',
+    '#.^f..#',
+    '###S###',
+  ] },
+  { par: 7, name: '화단 옆 그물', nets: 1, tip: '그물 하나로 멈출 자리를 만들어 주세요.', map: [
+    '###E###',
+    '#.f...#',
+    '#...of#',
+    '#..#..#',
+    '#..#..#',
+    '#..o..#',
+    '#.....#',
+    '#..#..#',
+    '#.....#',
+    '###S###',
+  ] },
+  { par: 11, name: '지그재그', tip: '좌우로 꺾이는 물길에 숭어 세 마리가 숨어 있어요.', map: [
+    '#####E#',
+    '#.....#',
+    '#.....#',
+    '#v..###',
+    '#.....#',
+    '###...#',
+    '#o.f..#',
+    '#...###',
+    '#f..f.#',
+    '#..ob.#',
+    '#S#####',
+  ] },
+  { par: 7, name: '옆문과 그물', nets: 1, tip: '물줄기에 휩쓸리기 전에 그물로 세워요.', map: [
+    '#######',
+    '#.....#',
+    '#.o...E',
+    '#f....#',
+    '#.....#',
+    '#o..f.#',
+    '#...>.#',
+    '#.....#',
+    '###S###',
+  ] },
+  { par: 12, role: 'challenge', name: '갈림길', tip: '두 갈래 물길과 물줄기 두 개. 어느 쪽부터 갈까요?', map: [
+    '###E####',
+    '#.o....#',
+    '#......#',
+    '#..##.<#',
+    '#..##o.#',
+    '#f.##..#',
+    '#......#',
+    '#.ff>..#',
+    '####S###',
+  ] },
+  { par: 8, name: '화단 섬', nets: 1, tip: '그물 하나와 물줄기 하나. 멈출 자리를 잘 골라요.', map: [
+    '###E###',
+    '#..v..#',
+    '#f....#',
+    '#..#..#',
+    '#..#..#',
+    '#.....#',
+    '#...fo#',
+    '#.o#..#',
+    '#.....#',
+    '###S###',
+  ] },
+  { par: 14, name: '숭어 떼', tip: '가로로, 세로로 오가는 구조정 사이로 숭어를 모아요.', map: [
+    '###E###',
+    '#.....#',
+    '#..f..#',
+    '#^f...#',
+    '#...o.#',
+    '#o....#',
+    '#.....#',
+    '#B.>b.#',
+    '#.....#',
+    '#<f...#',
+    '###S###',
+  ] },
+  { par: 10, role: 'challenge', name: '운하의 끝', nets: 2, tip: '섬 양쪽의 숭어를 챙긴 뒤, 그물을 옮겨 출구로 가요. 2장의 마지막 도전이에요.', map: [
+    '###E####',
+    '#.f....#',
+    '#......#',
+    '#..##..#',
+    '#..##o.#',
+    '#.f##.f#',
+    '#.o...o#',
+    '#..o...#',
+    '####S###',
+  ] },
+  /* ----- 3장 방파제 너머 ----- */
+  { par: 11, name: '뱃길 물살', tip: '물줄기가 상어를 멀리 실어 날라요.', map: [
+    '####E####',
+    '#...^...#',
+    '#f.....>#',
+    '#..###..#',
+    '#..^....#',
+    '#.......#',
+    '#.......#',
+    '##o....##',
+    '#.......#',
+    '#f....o.#',
+    '####S####',
+  ] },
+  { par: 12, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
+    '#######E#',
+    '#.......#',
+    '#.......#',
+    '#.##....#',
+    '#.##o..>#',
+    '#.vf....#',
+    '#....##.#',
+    '#.o..##.#',
+    '#...f..f#',
+    '#S#######',
+  ] },
+  { par: 15, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
+    '########',
+    'Ef.....#',
+    '#......#',
+    '####...#',
+    '#..oo..#',
+    '#....>o#',
+    '#f..####',
+    '#......#',
+    '#.....v#',
+    '#....f.#',
+    '#.b...<#',
+    '######S#',
+  ] },
+  { par: 14, name: '잔잔한 석호', tip: '화단 두 개 사이로 숭어 세 마리를 찾아요.', map: [
+    '#######E#',
+    '#.......#',
+    '#.....>.#',
+    '#.##....#',
+    '#.##.voo#',
+    '#.o.....#',
+    '#....##.#',
+    '#f.f.##.#',
+    '#.....f.#',
+    '#S#######',
+  ] },
+  { par: 17, role: 'challenge', name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요.', map: [
+    '####E####',
+    '#....b..#',
+    '#.......#',
+    '#.>###f.#',
+    '#.......#',
+    '#..o...f#',
+    '#...<...#',
+    '##bf...##',
+    '#.......#',
+    '#.o.....#',
+    '####S####',
+  ] },
+  { par: 7, name: '방파제 그물', nets: 1, tip: '넓은 물에서는 그물이 멈춤표가 돼요.', map: [
+    '########',
+    'E......#',
+    '#......#',
+    '####..o#',
+    '#...f..#',
+    '#.f....#',
+    '#...####',
+    '#......#',
+    '#.....o#',
+    '#......#',
+    '#......#',
+    '######S#',
+  ] },
+  { par: 8, name: '파도 너머', nets: 1, tip: '물줄기와 그물을 함께 써야 해요.', map: [
+    '########',
+    'E.f...>#',
+    '#...f..#',
+    '####>.o#',
+    '#......#',
+    '#......#',
+    '#...####',
+    '#......#',
+    '#.o....#',
+    '#f.....#',
+    '#......#',
+    '######S#',
+  ] },
+  { par: 15, name: '방파제 길', tip: '세로로 오가는 구조정이 길을 열었다 닫았다 해요.', map: [
+    '########',
+    'E....f>#',
+    '#...o..#',
+    '####...#',
+    '#f..b..#',
+    '#......#',
+    '#...####',
+    '#.^..B.#',
+    '#...f..#',
+    '#.v....#',
+    '#..o...#',
+    '######S#',
+  ] },
+  { par: 8, name: '등대 아래', nets: 1, tip: '숭어를 다 먹으려면 그물이 꼭 필요해요.', map: [
+    '#######E#',
+    '#.......#',
+    '#<......#',
+    '#f##....#',
+    '#.##.o..#',
+    '#.....f.#',
+    '#....##.#',
+    '#o...##o#',
+    '#...f...#',
+    '#S#######',
+  ] },
+  { par: 10, role: 'challenge', name: '석호의 밤', nets: 1, tip: '그물을 걷어 옮기며 숭어 세 마리를 모아요. 물줄기에 타는 순서를 생각해 보세요.', map: [
+    '#######E#',
+    '#vf...o.#',
+    '#...o...#',
+    '#f##....#',
+    '#.##....#',
+    '#.....^o#',
+    '#o...##.#',
+    '#....##.#',
+    '#....f..#',
+    '#S#######',
+  ] },
+  { par: 7, name: '두 겹 그물', nets: 2, tip: '그물 두 개를 어디에 칠지 먼저 생각해 봐요.', map: [
+    '####E####',
+    '#..f....#',
+    '#.......#',
+    '#..###..#',
+    '#o.o....#',
+    '#.....f.#',
+    '#.v.....#',
+    '##.....##',
+    '#.......#',
+    '#.......#',
+    '####S####',
+  ] },
+  { par: 11, role: 'challenge', name: '넓은 바다로', nets: 2, tip: '아래쪽 숭어를 놓치지 마세요. 그물을 옮겨 물줄기를 타고 3장을 마무리해요.', map: [
+    '####E####',
+    '#.......#',
+    '#..o.f..#',
+    '#..###..#',
+    '#.......#',
+    '#....o..#',
+    '#.f.>.o.#',
+    '##.....##',
+    '#.>.o..f#',
+    '#.......#',
+    '####S####',
+  ] },
+  /* ----- 4장 외항 물길 ----- */
+  { par: 9, role: 'learn', name: '모래톱', tip: '모래톱에 올라서면 그 자리에서 멈춰요. 벽이 없어도 괜찮아요.', map: [
+    '####E####',
+    '#.f.....#',
+    '#.......#',
+    '#...s...#',
+    '#.......#',
+    '#.......#',
+    '#.......#',
+    '#.......#',
+    '#.s.so..#',
+    '####S####',
+  ] },
+  { par: 11, name: '모래 징검다리', tip: '모래톱을 디딤돌처럼 이어 가 보세요.', map: [
+    '####E####',
+    '#.o.....#',
+    '#....s..#',
+    '#..ss...#',
+    '#....o.s#',
+    '#.....f.#',
+    '#.......#',
+    '#.......#',
+    '#.....f.#',
+    '####S####',
+  ] },
+  { par: 14, role: 'challenge', name: '삼각주', tip: '물줄기와 모래톱이 함께 있어요.', map: [
+    '#E#######',
+    '#.......#',
+    '#..fs...#',
+    '#####..v#',
+    '#of.....#',
+    '#..s..s.#',
+    '#...#####',
+    '#.o.....#',
+    '#.......#',
+    '#######S#',
+  ] },
+  { par: 12, role: 'learn', name: '소용돌이', tip: '소용돌이에 들어가면 짝 소용돌이로 빨려 나와 같은 방향으로 계속 헤엄쳐요.', map: [
+    '#####E###',
+    '#...#...#',
+    '#w..#o..#',
+    '#...#...#',
+    '#...#...#',
+    '#...#...#',
+    '#..f#...#',
+    '#...#.w.#',
+    '#S#######',
+  ] },
+  { par: 12, name: '빙글빙글 모래섬', tip: '소용돌이를 지나 모래톱에서 멈춰 보세요.', map: [
+    '####E####',
+    '#.......#',
+    '#...s...#',
+    '#.......#',
+    '#.......#',
+    '#v......#',
+    '#.......#',
+    '#.....ff#',
+    '#w..w.s.#',
+    '####S####',
+  ] },
+  { par: 16, name: '쌍둥이 물길', tip: '두 물길은 소용돌이로만 이어져 있어요.', map: [
+    '#####E###',
+    '#...#...#',
+    '#w..#w..#',
+    '#...#..f#',
+    '#o..#...#',
+    '#..o#...#',
+    '#..f#...#',
+    '#...#...#',
+    '#S#######',
+  ] },
+  { par: 17, name: '해자', tip: '가운데 연못에도 소용돌이로 들어갈 수 있어요.', map: [
+    '####E####',
+    '#....o..#',
+    '#......f#',
+    '#.#####.#',
+    '#.#...#f#',
+    '#.#s.w#.#',
+    '#.#####o#',
+    '#..w....#',
+    '#.......#',
+    '####S####',
+  ] },
+  { par: 16, role: 'challenge', name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
+    '#####E###',
+    '#...#...#',
+    '#...#..w#',
+    '#..s#...#',
+    '#...#.ff#',
+    '#...#...#',
+    '#.w.#.f.#',
+    '#.s.#.v.#',
+    '#S#######',
+  ] },
+  { par: 10, name: '모래 그물', nets: 1, tip: '그물 하나로 멈출 곳을 하나 더 만들어요.', map: [
+    '#E#######',
+    '#...f.s.#',
+    '#.f.....#',
+    '#####...#',
+    '#.......#',
+    '#.......#',
+    '#oo.#####',
+    '#.....s.#',
+    '#.......#',
+    '#######S#',
+  ] },
+  { par: 15, name: '소용돌이 광장', tip: '물줄기 두 개, 모래톱 세 개, 소용돌이 한 쌍.', map: [
+    '####E####',
+    '#.......#',
+    '#...s...#',
+    '#....>..#',
+    '#.......#',
+    '#.....f.#',
+    '#<fw.o.w#',
+    '#....s..#',
+    '#..f...s#',
+    '####S####',
+  ] },
+  { par: 11, role: 'challenge', name: '성곽 수로', nets: 1, tip: '성곽 안에도 숭어가 있어요. 소용돌이로 들어갔다 돌아와 출구 앞에 그물을 쳐요.', map: [
+    '####E####',
+    '#.......#',
+    '#.......#',
+    '#.#####.#',
+    '#.#w.f#.#',
+    '#.#.s.#w#',
+    '#o#####.#',
+    '#.f.o...#',
+    '#.......#',
+    '####S####',
+  ] },
+  { par: 12, role: 'challenge', name: '먼바다로', nets: 1, tip: '마지막 도전! 양쪽 물길의 숭어 네 마리를 모두 챙겨 먼바다로 보내 주세요.', map: [
+    '#####E###',
+    '#...#...#',
+    '#..f#..o#',
+    '#...#ow.#',
+    '#.s.#.f.#',
+    '#..^#f..#',
+    '#f..#v..#',
+    '#.w.#.s.#',
+    '#S#######',
+  ] },
+];
+
+/* ---------- Chapters: consecutive runs of LEVELS (count 합계 = LEVELS.length) ---------- */
+const CHAPTERS = [
+  { name: '북항 수로', count: 12 },
+  { name: '친수공원 운하', count: 12 },
+  { name: '방파제 너머', count: 12 },
+  { name: '외항 물길', count: 12 },
+];
+
+/* ---------- Daily canal: one generated puzzle per calendar day, the same for every player ---------- */
+// Canal masks ('#' promenade, '.' water, S start, E sea exit). Shared with tools/gen.js.
+const MASKS = {
+  bend:   ['###E###', '##...##', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '##...##', '###S###'],
+  hook:   ['#####E#', '#.....#', '#.....#', '#..####', '#..####', '#.....#', '#.....#', '#.....#', '##S####'],
+  wide:   ['#E#####', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '####S##'],
+  scurve: ['######E', '#......', '#......', '#...###', '#...###', '###...#', '###...#', '#.....#', '#.....#', '##S####'],
+  basin:  ['###E###', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  // chapter 2: 친수공원 운하
+  island: ['###E###', '#.....#', '#.....#', '#..#..#', '#..#..#', '#.....#', '#.....#', '#..#..#', '#.....#', '###S###'],
+  ring:   ['####E##', '#.....#', '#.....#', '#..##.#', '#..##.#', '#.....#', '#.....#', '##S####'],
+  zigzag: ['#####E#', '#.....#', '#.....#', '#...###', '#.....#', '###...#', '#.....#', '#...###', '#.....#', '#.....#', '#S#####'],
+  side:   ['#######', '#.....#', '#.....E', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  fork:   ['###E####', '#......#', '#......#', '#..##..#', '#..##..#', '#..##..#', '#......#', '#......#', '####S###'],
+  // chapter 3: 방파제 너머
+  harbor: ['####E####', '#.......#', '#.......#', '#..###..#', '#.......#', '#.......#', '#.......#', '##.....##', '#.......#', '#.......#', '####S####'],
+  breakwater: ['########', 'E......#', '#......#', '####...#', '#......#', '#......#', '#...####', '#......#', '#......#', '#......#', '#......#', '######S#'],
+  lagoon: ['#######E#', '#.......#', '#.......#', '#.##....#', '#.##....#', '#.......#', '#....##.#', '#....##.#', '#.......#', '#S#######'],
+  // chapter 4: 외항 물길 (twin/moat have water that only a whirlpool pair can connect)
+  shoal:  ['####E####', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '#.......#', '####S####'],
+  twin:   ['#####E###', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#...#...#', '#S#######'],
+  moat:   ['####E####', '#.......#', '#.......#', '#.#####.#', '#.#...#.#', '#.#...#.#', '#.#####.#', '#.......#', '#.......#', '####S####'],
+  delta:  ['#E#######', '#.......#', '#.......#', '#####...#', '#.......#', '#.......#', '#...#####', '#.......#', '#.......#', '#######S#'],
+};
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+// drop objects onto random free water tiles of a mask
+function place(mask, spec, rand) {
+  const rows = mask.map(r => r.split(''));
+  const free = [];
+  rows.forEach((r, y) => r.forEach((c, x) => { if (c === '.') free.push([x, y]); }));
+  const put = (ch, n) => {
+    for (let i = 0; i < n && free.length; i++) {
+      const [x, y] = free.splice(Math.floor(rand() * free.length), 1)[0];
+      rows[y][x] = typeof ch === 'function' ? ch() : ch;
+    }
+  };
+  put('o', spec.buoys || 0);
+  put('b', spec.boats || 0);
+  put(() => '<>^v'[Math.floor(rand() * 4)], spec.jets || 0);
+  // later devices; a count of 0 draws no random numbers, so recipes without them are unaffected
+  put('B', spec.vboats || 0);   // patrol boat moving along its column ('b' = along its row)
+  put('s', spec.sand || 0);
+  put('w', spec.whirls ? 2 : 0);
+  put('f', spec.fish || 0);
+  return rows.map(r => r.join(''));
+}
+
+// Weekday recipe, index = Date#getDay() (0 = Sunday). Easy on Monday, hardest on the weekend, nets on Fri/Sun.
+// Changing a recipe changes past and future dailies, so bump DAILY_VERSION when you do.
+const DAILY_VERSION = 2;   // v2 (2026-09-30, before release): moving boats, sandbars and whirlpools in the mix
+const DAILY_TIERS = [
+  { stars: 5, label: '어려움', masks: ['twin', 'moat', 'delta'], spec: { nets: 1, whirls: 1, sand: 1, jets: 1, buoys: 2, fish: 3 }, par: [10, 15], tip: '일요일은 그물·소용돌이·모래톱을 모두 써요.' },
+  { stars: 1, label: '쉬움', masks: ['bend', 'hook', 'wide'], spec: { buoys: 2, fish: 1 }, par: [5, 7], tip: '한 주의 시작은 가볍게. 숭어 한 마리를 챙겨요.' },
+  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정은 한 칸씩 오가요. 때를 맞춰 보세요.' },
+  { stars: 2, label: '보통', masks: ['zigzag', 'scurve', 'fork'], spec: { buoys: 2, jets: 1, fish: 2 }, par: [7, 9], tip: '물줄기 하나가 길을 바꿔요.' },
+  { stars: 3, label: '보통', masks: ['basin', 'shoal', 'delta'], spec: { buoys: 2, jets: 1, sand: 2, fish: 2 }, par: [8, 11], tip: '모래톱에 올라서면 그 자리에서 멈춰요.' },
+  { stars: 3, label: '그물', masks: ['island', 'side', 'hook'], spec: { nets: 1, buoys: 2, fish: 2 }, par: [7, 10], tip: '금요일은 그물의 날. 멈출 자리를 만들어요.' },
+  { stars: 4, label: '어려움', masks: ['twin', 'moat', 'shoal', 'harbor'], spec: { jets: 2, buoys: 2, boats: 1, whirls: 1, sand: 1, fish: 3 }, par: [10, 14], tip: '주말 수로에는 소용돌이와 구조정이 함께 나와요.' },
+];
+
+// engine functions: globals in the browser build, required in node tools
+const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, fixedNetPlan, bfsFrom };
+
+function dailySeed(text) {   // FNV-1a
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function dailyDate(d = new Date()) {   // local calendar date, YYYY-MM-DD
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Returns { date, weekday, tier, level } or null. Same date -> same puzzle on every device.
+function makeDaily(date) {
+  const [y, m, d] = date.split('-').map(Number), weekday = new Date(y, m - 1, d).getDay(), tier = DAILY_TIERS[weekday];
+  const nets = tier.spec.nets || 0, tries = nets ? 40 : 150, mid = (tier.par[0] + tier.par[1]) / 2;
+  for (let salt = 0; salt < 6; salt++) {   // a salt round only fails if no candidate at all was solvable
+    const rand = rng(dailySeed(`lostshark-daily-v${DAILY_VERSION}-${date}-${salt}`));
+    const mask = MASKS[tier.masks[Math.floor(rand() * tier.masks.length)]];
+    let best = null;
+    for (let t = 0; t < tries; t++) {
+      const map = place(mask, tier.spec, rand);
+      if (map.some(r => /><|<>/.test(r))) continue;                         // facing jets read as a glitch
+      const g = DE.parseLevel({ name: 'daily', map, nets });
+      // Keep v2 puzzle selection and star targets stable; live hints use the movable-net solver.
+      const full = DE.fixedNetPlan(g, g.start, 0, new Set(), nets, true);
+      if (!full) continue;
+      if (nets && DE.bfsFrom(g, g.start, 0, new Set(), true, 60)) continue;  // the net must be needed
+      const escape = DE.fixedNetPlan(g, g.start, 0, new Set(), nets, false);
+      if (full.moves < tier.par[0] - 1 || escape.moves < 2) continue;         // too easy / straight shot to the sea
+      const inRange = full.moves >= tier.par[0] && full.moves <= tier.par[1], detour = full.moves - escape.moves;
+      const score = (inRange ? 100 : -Math.abs(full.moves - mid) * 10) + detour * 3;
+      if (!best || score > best.score) best = { score, map, par: full.moves };
+      if (inRange && detour >= 2 && t >= tries / 3) break;
+    }
+    if (best) return { date, weekday, tier, level: { par: best.par, name: '오늘의 수로', nets, tip: tier.tip, map: best.map } };
+  }
+  return null;
+}
+if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily };
+
+/* ---------- Game ---------- */
+(() => {
+const $ = id => document.getElementById(id);
+const css = getComputedStyle(document.documentElement);
+const C = {};
+['harbor','water','water-hi','sea','concrete','concrete-2','rail','park','ink','text','muted','buoy','star','net','shark','shark-2']
+  .forEach(k => C[k] = css.getPropertyValue('--' + k).trim());
+const SHIRTS = ['#e4572e', '#f3a712', '#29335c', '#a8c686', '#ffffff', '#669bbc', '#b56576', '#2b2d42'];
+const ANG = { R: 0, D: Math.PI / 2, L: Math.PI, U: -Math.PI / 2 };
+const DIR_KO = { U: '위로', D: '아래로', L: '왼쪽으로', R: '오른쪽으로' };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
+
+/* ---------- storage (per-viewer convenience only) ---------- */
+const STORE_KEY = 'bukang-sea-v1';
+// vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
+// daily: { YYYY-MM-DD: stars } for the daily canal; owned/skin: earned shark skins and the one in use
+// sessions: one unfinished story canal and today's daily; seenDevices: rules confirmed in the guide sheet
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {}, owned: null, skin: 'basic', sessions: {}, seenDevices: [] };
+try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
+if (!save.sessions || typeof save.sessions !== 'object' || Array.isArray(save.sessions)) save.sessions = {};
+if (!Array.isArray(save.seenDevices)) save.seenDevices = [];
+function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
+const unlocked = i => i === 0 || save.best[i - 1] != null;
+// chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
+function chapterOf(i) {
+  let start = 0;
+  for (let ci = 0; ci < CHAPTERS.length; ci++) {
+    const end = start + CHAPTERS[ci].count - 1;
+    if (i <= end) return { ci, start, end, name: CHAPTERS[ci].name };
+    start = end + 1;
+  }
+  return { ci: 0, start: 0, end: LEVELS.length - 1, name: '' };
+}
+
+/* ---------- shark skins: earned with story stars (one with a daily streak), kept once earned ---------- */
+// Decorations draw in the shark's own frame: x forward (head at +L/2), y across (+-W/2); `pattern` is clipped to the body.
+function flower(ctx, x, y, r) {
+  ctx.fillStyle = '#f6bfd0';
+  for (let k = 0; k < 5; k++) { const a = k * Math.PI * 0.4; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.75, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#e0708f'; ctx.beginPath(); ctx.arc(x, y, r * 0.5, 0, 7); ctx.fill();
+}
+function mapleLeaf(ctx, x, y, r) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#d9482b'; ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5 - Math.PI / 2, rr = k % 2 ? r * 0.45 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#8f2a17'; ctx.lineWidth = Math.max(1, r * 0.12); ctx.beginPath(); ctx.moveTo(0, r * 1.2); ctx.lineTo(0, -r * 0.6); ctx.stroke();
+  ctx.restore();
+}
+function sparkle(ctx, x, y, r) {
+  ctx.fillStyle = '#fff8d6'; ctx.beginPath();
+  ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.25, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.25, y); ctx.closePath();
+  ctx.moveTo(x - r, y); ctx.lineTo(x, y + r * 0.25); ctx.lineTo(x + r, y); ctx.lineTo(x, y - r * 0.25); ctx.closePath(); ctx.fill();
+}
+const SKINS = [
+  { id: 'basic', name: '무태상어', need: { stars: 0 } },
+  { id: 'sakura', name: '벚꽃 상어', need: { stars: 20 }, body: '#a8939a', fin: '#8b767d',
+    deco: (ctx, L, W, T) => { for (const [x, y, s] of [[0.28, -0.14, 1], [0.0, 0.2, 0.85], [-0.2, -0.16, 0.7]]) flower(ctx, L * x, W * y, T * 0.035 * s); } },
+  { id: 'wave', name: '파도 상어', need: { stars: 45 }, body: '#5f8ea2', fin: '#476f82',
+    pattern: (ctx, L, W, T) => {
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1.2, T * 0.03);
+      for (const off of [-0.24, 0.24]) {
+        ctx.beginPath();
+        for (let x = -0.36; x <= 0.5; x += 0.02) { const y = W * off + Math.sin(x * 24) * W * 0.09; x === -0.36 ? ctx.moveTo(L * x, y) : ctx.lineTo(L * x, y); }
+        ctx.stroke();
+      }
+    } },
+  { id: 'maple', name: '단풍 상어', need: { stars: 75 }, body: '#9b7b5b', fin: '#7c5f44',
+    deco: (ctx, L, W, T) => mapleLeaf(ctx, L * 0.22, 0, T * 0.11) },
+  { id: 'snow', name: '눈꽃 상어', need: { stars: 105 }, body: '#b9c5c9', fin: '#96a4a9',
+    deco: (ctx, L, W, T) => {
+      ctx.fillStyle = '#d23c3c';
+      ctx.beginPath(); ctx.moveTo(L * 0.17, W * 0.42); ctx.lineTo(-L * 0.06, W * 1.0); ctx.lineTo(L * 0.02, W * 1.02); ctx.lineTo(L * 0.22, W * 0.46); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(L * 0.2, 0, L * 0.05, W * 0.58, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(1, T * 0.018);
+      ctx.beginPath(); ctx.moveTo(L * 0.2, -W * 0.5); ctx.lineTo(L * 0.2, W * 0.5); ctx.stroke();
+      ctx.fillStyle = '#fff'; for (const [x, y] of [[0.02, -0.22], [-0.18, 0.12], [0.34, 0.18]]) { ctx.beginPath(); ctx.arc(L * x, W * y, T * 0.02, 0, 7); ctx.fill(); }
+    } },
+  { id: 'gold', name: '황금 상어', need: { stars: 144 }, body: '#d6aa3e', fin: '#b3862b',
+    pattern: (ctx, L, W, T, t) => {
+      const p = ((t * 0.5) % 1.6) - 0.3;   // a glint sweeping from tail to head
+      ctx.fillStyle = 'rgba(255,248,214,.45)'; ctx.beginPath();
+      ctx.moveTo(L * (p - 0.5), -W); ctx.lineTo(L * (p - 0.38), -W); ctx.lineTo(L * (p - 0.48), W); ctx.lineTo(L * (p - 0.6), W); ctx.fill();
+    },
+    deco: (ctx, L, W, T, t) => { ctx.globalAlpha *= 0.6 + 0.4 * Math.sin(t * 5); sparkle(ctx, L * 0.3, -W * 0.18, T * 0.07); ctx.globalAlpha = 1; } },
+  { id: 'lighthouse', name: '등대 상어', need: { streak: 7 }, body: '#ece6dc', fin: '#c9c2b6',
+    pattern: (ctx, L, W) => { ctx.fillStyle = '#cf3b33'; for (const x of [0.3, 0.02, -0.26]) ctx.fillRect(L * (x - 0.05), -W, L * 0.1, W * 2); } },
+];
+const totalStars = () => Object.values(save.best).reduce((n, b) => n + b, 0);
+// longest run of consecutive daily clears in the kept history
+function bestStreak() {
+  const days = Object.keys(save.daily || {}).sort();
+  let best = 0, run = 0, prev = null;
+  for (const d of days) {
+    const cur = new Date(d + 'T00:00:00');
+    run = prev && Math.round((cur - prev) / 86400000) === 1 ? run + 1 : 1;
+    best = Math.max(best, run); prev = cur;
+  }
+  return best;
+}
+const skinEarned = s => s.need.streak ? bestStreak() >= s.need.streak : totalStars() >= s.need.stars;
+// adds newly earned skins to save.owned and returns them (owned skins never lock again)
+function refreshSkins() {
+  const owned = new Set(save.owned || ['basic']), fresh = SKINS.filter(s => !owned.has(s.id) && skinEarned(s));
+  if (fresh.length || !save.owned) { fresh.forEach(s => owned.add(s.id)); save.owned = [...owned]; persist(); }
+  return fresh;
+}
+function currentSkin() { return SKINS.find(s => s.id === save.skin && (save.owned || []).includes(s.id)) || SKINS[0]; }
+
+/* ---------- haptics: Capacitor Haptics plugin in the app, navigator.vibrate on Android browsers ---------- */
+const Hap = window.Capacitor?.Plugins?.Haptics;
+const VIB = { tick: 4, light: 9, medium: 16, heavy: 26, success: [12, 60, 20, 60, 28] };
+function haptic(kind) {
+  if (!save.vibe) return;
+  try {
+    if (Hap) {
+      const p = kind === 'success' ? Hap.notification({ type: 'SUCCESS' })
+        : Hap.impact({ style: kind === 'heavy' ? 'HEAVY' : kind === 'medium' ? 'MEDIUM' : 'LIGHT' });
+      if (p && p.catch) p.catch(() => {});
+    } else if (navigator.vibrate) navigator.vibrate(VIB[kind] || 6);
+  } catch (e) {}
+}
+
+/* ---------- sound ---------- */
+let actx = null;
+function ac() {
+  if (!save.sound) return null;
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return null; }
+  return actx;
+}
+function tone(freq, dur, type = 'sine', vol = 0.12, slide = 0, delay = 0) {
+  const a = ac(); if (!a) return;
+  const t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+}
+// filtered noise burst: water swooshes and splashes
+function noise(len, vol, f0, f1, q = 0.8, type = 'bandpass') {
+  const a = ac(); if (!a) return;
+  const buf = a.createBuffer(1, Math.floor(a.sampleRate * len), a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(Math.sin(Math.PI * i / d.length), 1.5);
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  f.type = type; f.frequency.setValueAtTime(f0, a.currentTime); f.frequency.exponentialRampToValueAtTime(f1, a.currentTime + len); f.Q.value = q;
+  g.gain.value = vol; src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start();
+}
+const sfx = {
+  move: () => noise(0.26, 0.15, 500, 1400),
+  stop: (amp = 0.5) => { noise(0.2, 0.07 + amp * 0.08, 1400, 350, 0.7, 'lowpass'); tone(150, 0.1, 'sine', 0.04 + amp * 0.05, -60); },
+  bump: () => tone(110, 0.14, 'triangle', 0.16, -40),
+  eat: () => { tone(660, 0.08, 'square', 0.05); tone(990, 0.1, 'square', 0.05, 0, 0.06); },
+  net: () => tone(330, 0.12, 'triangle', 0.1, 120),
+  jet: () => tone(480, 0.1, 'sine', 0.06, 320),
+  undo: () => tone(520, 0.09, 'sine', 0.06, -200),
+  exit: () => { noise(0.5, 0.2, 400, 2400, 0.6); tone(330, 0.3, 'sine', 0.05, 330); },
+  warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
+  sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
+};
+
+/* ---------- easing ---------- */
+// position curve built from a velocity profile: quick push-off, long glide that settles into the stop
+function easeTable(vel) {
+  const N = 96, out = new Float32Array(N + 1); let acc = 0;
+  for (let i = 1; i <= N; i++) { acc += vel((i - 0.5) / N); out[i] = acc; }
+  for (let i = 1; i <= N; i++) out[i] /= acc;
+  return u => { const x = Math.min(1, Math.max(0, u)) * N, i = Math.floor(x); return i >= N ? 1 : out[i] + (out[i + 1] - out[i]) * (x - i); };
+}
+const GLIDE = easeTable(u => Math.min(u / 0.12, 1) * Math.pow(1 - u, 1.4) + 0.02);
+const DASH = easeTable(u => Math.min(u / 0.12, 1) * (1 - 0.3 * u));          // escaping: keeps speed into the sea
+const easeOutBack = k => 1 + 2.70158 * Math.pow(k - 1, 3) + 1.70158 * Math.pow(k - 1, 2);
+const clamp01 = v => Math.max(0, Math.min(1, v));
+
+/* ---------- drawing primitives ---------- */
+function hash(n) { n = (n ^ 61) ^ (n >>> 16); n += n << 3; n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return (n >>> 0) / 4294967295; }
+
+// stretch > 1 lengthens the body along its heading (speed), < 1 squashes it (impact); skin = colours + decoration (SKINS)
+function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin = currentSkin()) {
+  if (alpha <= 0) return;
+  const fin = skin.fin || C['shark-2'], body = skin.body || C.shark;
+  const L = T * 1.08, W = T * 0.44;
+  const wag = reduceMotion ? 0 : Math.sin(t * (moving ? 18 : 5)) * (moving ? 0.28 : 0.14);
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(stretch, 1 + (1 - stretch) * 0.8);
+  ctx.fillStyle = 'rgba(4,20,26,.22)';
+  ctx.beginPath(); ctx.ellipse(T * 0.03, T * 0.05, L * 0.46, W * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+  // A light rim keeps every skin legible against the water without changing its pattern.
+  ctx.strokeStyle = C.rail; ctx.lineWidth = Math.max(1.2, T * 0.028); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // Narrow tail root and a deep fork stay separate from the broad head at small sizes.
+  ctx.save(); ctx.translate(-L * 0.3, 0); ctx.rotate(wag);
+  ctx.fillStyle = fin;
+  ctx.beginPath();
+  ctx.moveTo(0, -W * 0.2); ctx.lineTo(-L * 0.23, -W * 0.08); ctx.lineTo(-L * 0.23, W * 0.08); ctx.lineTo(0, W * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-L * 0.19, 0); ctx.lineTo(-L * 0.37, -W * 0.76);
+  ctx.quadraticCurveTo(-L * 0.35, -W * 0.23, -L * 0.27, 0);
+  ctx.quadraticCurveTo(-L * 0.33, W * 0.2, -L * 0.34, W * 0.62); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // pectoral fins
+  ctx.fillStyle = fin;
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(L * 0.1, s * W * 0.36); ctx.lineTo(-L * 0.22, s * W * 1.02);
+    ctx.quadraticCurveTo(-L * 0.19, s * W * 0.62, -L * 0.11, s * W * 0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // body
+  const bodyPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(L * 0.5, -W * 0.08);
+    ctx.bezierCurveTo(L * 0.49, -W * 0.38, L * 0.29, -W * 0.56, L * 0.1, -W * 0.5);
+    ctx.bezierCurveTo(-L * 0.12, -W * 0.46, -L * 0.3, -W * 0.17, -L * 0.36, -W * 0.08);
+    ctx.lineTo(-L * 0.36, W * 0.08);
+    ctx.bezierCurveTo(-L * 0.3, W * 0.17, -L * 0.12, W * 0.46, L * 0.1, W * 0.5);
+    ctx.bezierCurveTo(L * 0.29, W * 0.56, L * 0.49, W * 0.38, L * 0.5, W * 0.08);
+    ctx.quadraticCurveTo(L * 0.52, 0, L * 0.5, -W * 0.08); ctx.closePath();
+  };
+  ctx.fillStyle = body; bodyPath(); ctx.fill();
+  if (skin.pattern) { ctx.save(); bodyPath(); ctx.clip(); skin.pattern(ctx, L, W, T, t); ctx.restore(); }
+  bodyPath(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.beginPath(); ctx.ellipse(L * 0.25, 0, L * 0.2, W * 0.33, 0, 0, Math.PI * 2); ctx.fill();
+  // Three short gill marks behind each eye; the top fin has a triangular folded face.
+  ctx.strokeStyle = 'rgba(10,35,43,.48)'; ctx.lineWidth = Math.max(0.65, T * 0.017);
+  for (const s of [-1, 1]) for (const x of [0.12, 0.055, -0.01]) {
+    ctx.beginPath(); ctx.moveTo(L * x, s * W * 0.25);
+    ctx.quadraticCurveTo(L * (x - 0.02), s * W * 0.34, L * (x - 0.015), s * W * 0.4); ctx.stroke();
+  }
+  ctx.fillStyle = fin;
+  ctx.beginPath(); ctx.moveTo(L * 0.055, W * 0.04); ctx.lineTo(-L * 0.14, -W * 0.34);
+  ctx.quadraticCurveTo(-L * 0.12, -W * 0.05, -L * 0.24, W * 0.12); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(238,240,234,.65)'; ctx.lineWidth = Math.max(0.7, T * 0.018);
+  ctx.beginPath(); ctx.moveTo(L * 0.055, W * 0.04); ctx.lineTo(-L * 0.14, -W * 0.34); ctx.stroke();
+  if (skin.deco) { ctx.save(); skin.deco(ctx, L, W, T, t); ctx.restore(); }
+  // Paired eyes give the player a clear face without a mouth or teeth obscuring its heading.
+  for (const s of [-1, 1]) {
+    ctx.fillStyle = C.rail; ctx.beginPath(); ctx.ellipse(L * 0.3, s * W * 0.34, T * 0.05, T * 0.043, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(L * 0.31, s * W * 0.34, T * 0.03, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(L * 0.32, s * W * 0.34 - T * 0.01, T * 0.01, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawFish(ctx, cx, cy, T, t, seed, scale = 1) {
+  const a = Math.sin(t * 3 + seed * 6) * 0.5 + seed * 6;
+  ctx.save(); ctx.translate(cx + Math.cos(t + seed * 9) * T * 0.06, cy + Math.sin(t * 1.3 + seed) * T * 0.05); ctx.rotate(a); ctx.scale(scale, scale);
+  const l = T * 0.23, w = T * 0.085;
+  ctx.fillStyle = 'rgba(4,20,26,.2)'; ctx.beginPath(); ctx.ellipse(2, 3, l, w, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c9d6d8';
+  ctx.beginPath(); ctx.moveTo(-l * 0.8, 0); ctx.lineTo(-l * 1.4, -w * 1.1); ctx.lineTo(-l * 1.4, w * 1.1); ctx.fill();
+  ctx.fillStyle = '#e8f0ef'; ctx.beginPath(); ctx.ellipse(0, 0, l, w, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#8fa3a8'; ctx.beginPath(); ctx.ellipse(-l * 0.1, -w * 0.3, l * 0.7, w * 0.35, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(l * 0.6, -w * 0.15, T * 0.018, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function drawBuoy(ctx, cx, cy, T, t) {
+  const r = T * 0.26, b = Math.sin(t * 2 + cx) * T * 0.02;
+  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.beginPath(); ctx.arc(cx + 3, cy + 4 + b, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy + b, r * (1.25 + (t * 0.6 % 1) * 0.4), 0, 7); ctx.stroke();
+  ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r, 0, 7); ctx.fill();
+  ctx.fillStyle = C.rail; ctx.beginPath(); ctx.ellipse(cx, cy + b, r, r * 0.32, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r * 0.22, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + b - r * 0.45, r * 0.16, 0, 7); ctx.fill();
+}
+// ang: heading (0 = bow up); arrow: show a small chevron ahead of the bow (where it goes next)
+function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
+  const L = T * 0.44, W = T * 0.23;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang + Math.sin(t * 1.6 + cx) * 0.05);
+  if (arrow) {
+    const bob = reduceMotion ? 0 : Math.sin(t * 4) * T * 0.02;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-T * 0.09, -L - T * 0.02 - bob); ctx.lineTo(0, -L - T * 0.1 - bob); ctx.lineTo(T * 0.09, -L - T * 0.02 - bob); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(4,20,26,.28)';
+  ctx.beginPath(); ctx.ellipse(3, 5, W * 1.05, L * 1.02, 0, 0, 7); ctx.fill();
+  const hull = () => { ctx.beginPath(); ctx.moveTo(0, -L); ctx.bezierCurveTo(W * 1.1, -L * 0.5, W, L * 0.6, W * 0.85, L); ctx.lineTo(-W * 0.85, L); ctx.bezierCurveTo(-W, L * 0.6, -W * 1.1, -L * 0.5, 0, -L); };
+  hull(); ctx.fillStyle = C.rail; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.ink; ctx.stroke();
+  ctx.save(); hull(); ctx.clip(); ctx.fillStyle = C.buoy; ctx.fillRect(-W * 1.2, L * 0.05, W * 2.4, L * 0.22); ctx.restore();
+  ctx.fillStyle = '#28505c'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-W * 0.55, -L * 0.35, W * 1.1, L * 0.36, 3); else ctx.rect(-W * 0.55, -L * 0.35, W * 1.1, L * 0.36); ctx.fill();
+  ctx.fillStyle = C['water-hi']; ctx.fillRect(-W * 0.4, -L * 0.3, W * 0.8, L * 0.08);
+  ctx.restore();
+}
+function drawJet(ctx, x, y, T, dir, t, flash = 0) {
+  ctx.save();
+  const p = T * 0.08;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x + p, y + p, T - p * 2, T - p * 2, T * 0.13);
+  else ctx.rect(x + p, y + p, T - p * 2, T - p * 2);
+  ctx.fillStyle = C['harbor']; ctx.fill();
+  ctx.strokeStyle = flash ? '#fff' : C['water-hi']; ctx.lineWidth = Math.max(1.25, T * 0.035); ctx.stroke();
+  ctx.clip();
+  ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
+  ctx.strokeStyle = C['water-hi']; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const off = reduceMotion ? 0 : (t * (1.4 + flash * 3) % 1) * T * 0.5;
+  for (let k = -2; k <= 1; k++) {
+    const px = k * T * 0.5 + off;
+    ctx.globalAlpha = 0.22;
+    ctx.beginPath(); ctx.moveTo(px - T * 0.12, -T * 0.2); ctx.lineTo(px + T * 0.08, 0); ctx.lineTo(px - T * 0.12, T * 0.2); ctx.stroke();
+  }
+  // The central arrow never moves or fades: direction must remain readable at every frame.
+  ctx.globalAlpha = 1; ctx.fillStyle = C.rail; ctx.strokeStyle = C.ink; ctx.lineWidth = Math.max(1, T * 0.025);
+  ctx.beginPath(); ctx.moveTo(-T * 0.27, -T * 0.075); ctx.lineTo(T * 0.04, -T * 0.075);
+  ctx.lineTo(T * 0.04, -T * 0.23); ctx.lineTo(T * 0.3, 0); ctx.lineTo(T * 0.04, T * 0.23);
+  ctx.lineTo(T * 0.04, T * 0.075); ctx.lineTo(-T * 0.27, T * 0.075); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function drawNet(ctx, x, y, T, ghost, t, scale = 1) {
+  const p = T * 0.1, s = T - p * 2;
+  ctx.save();
+  if (scale !== 1) { ctx.translate(x + T / 2, y + T / 2); ctx.scale(scale, scale); ctx.translate(-x - T / 2, -y - T / 2); }
+  if (ghost) { ctx.globalAlpha = 0.55 + Math.sin(t * 6) * 0.25; ctx.setLineDash([4, 3]); }
+  ctx.fillStyle = 'rgba(236,217,160,.16)'; ctx.fillRect(x + p, y + p, s, s);
+  ctx.strokeStyle = ghost ? C.star : C.net; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= 4; i++) {
+    const k = x + p + (s * i) / 4; ctx.moveTo(k, y + p); ctx.lineTo(k, y + p + s);
+    const m = y + p + (s * i) / 4; ctx.moveTo(x + p, m); ctx.lineTo(x + p + s, m);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = ghost ? C.star : C.buoy;
+  for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(x + p + a * s, y + p + b * s, T * 0.055, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function drawPerson(ctx, px, py, T, seed) {
+  const r = T * 0.075;
+  ctx.fillStyle = SHIRTS[Math.floor(seed * SHIRTS.length)];
+  ctx.beginPath(); ctx.ellipse(px, py, r * 1.6, r * 1.05, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = seed > 0.8 ? '#c9a27a' : '#2a2320';
+  ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+  if (seed > 0.45) { ctx.fillStyle = '#e9fbff'; ctx.fillRect(px + r * 0.6, py - r * 1.6, r * 0.8, r * 1.1); }
+}
+function drawExit(ctx, x, y, T, g, gx, gy, t) {
+  const grad = ctx.createLinearGradient(x, y, x, y + T);
+  grad.addColorStop(0, C.sea); grad.addColorStop(1, C.water);
+  ctx.fillStyle = grad; ctx.fillRect(x, y, T, T);
+  let dir = 'U';
+  if (gy !== 0) { if (gy === g.h - 1) dir = 'D'; else if (gx === 0) dir = 'L'; else dir = 'R'; }
+  ctx.save(); ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(2, T * 0.06); ctx.lineCap = 'round';
+  const bob = reduceMotion ? 0 : Math.sin(t * 3) * T * 0.06;
+  for (const k of [-0.12, 0.1]) { ctx.beginPath(); ctx.moveTo(k * T + bob - T * 0.08, -T * 0.16); ctx.lineTo(k * T + bob + T * 0.08, 0); ctx.lineTo(k * T + bob - T * 0.08, T * 0.16); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = `700 ${Math.round(T * 0.2)}px ${css.getPropertyValue('--font-body')}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('바다', x + T / 2, dir === 'U' ? y + T * 0.8 : y + T * 0.2);
+}
+// sandbar: a low mound of sand in the water, with a foam line where the water laps it
+function drawSand(ctx, x, y, T, seed) {
+  const cx = x + T / 2, cy = y + T / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1.5, T * 0.04);
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.44, T * 0.38, 0, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#cdb27a';
+  ctx.beginPath(); ctx.ellipse(cx, cy + T * 0.02, T * 0.4, T * 0.34, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e3cd96';
+  ctx.beginPath(); ctx.ellipse(cx - T * 0.05, cy - T * 0.04, T * 0.3, T * 0.22, -0.3, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(120,90,50,.45)';
+  for (let k = 0; k < 6; k++) {
+    const a = hash(seed * 13 + k * 7) * Math.PI * 2, r = T * 0.08 + hash(seed + k * 3) * T * 0.2;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.8, T * 0.022, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+// whirlpool: dark eye with three turning spiral arms; `flash` brightens it right after a jump
+function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
+  const r = T * 0.46;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, `rgba(4,22,30,${0.8 - flash * 0.3})`); grad.addColorStop(1, 'rgba(4,22,30,0)');
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(reduceMotion ? 0.6 : t * (2.4 + flash * 6));
+  ctx.strokeStyle = flash ? '#ffffff' : C['water-hi']; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, T * 0.05);
+  for (let k = 0; k < 3; k++) {
+    ctx.rotate(Math.PI * 2 / 3); ctx.globalAlpha = 0.8; ctx.beginPath();
+    for (let a = 0; a <= 1.001; a += 0.1) { const ang = a * 2.6, rr = r * (0.12 + a * 0.8); a ? ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+// tileable light pattern for the water surface (computed once)
+const caustic = (() => {
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d'), img = x.createImageData(S, S);
+  for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+    const u = i / S * Math.PI * 2, v = j / S * Math.PI * 2;
+    const a = Math.sin(u * 2 + Math.sin(v * 3) * 1.3) + Math.sin(v * 2 + Math.sin(u * 3) * 1.1) + 0.6 * Math.sin((u + v) * 2 + Math.sin(u - v));
+    const o = (j * S + i) * 4;
+    img.data[o] = 220; img.data[o + 1] = 255; img.data[o + 2] = 250;
+    img.data[o + 3] = Math.round(Math.pow(Math.max(0, 1 - Math.abs(a) * 0.9), 4) * 255);
+  }
+  x.putImageData(img, 0, 0); return c;
+})();
+
+/* ---------- level state ---------- */
+let LVL = 0, g = null, st = null, anim = null, bump = null, hint = null, cleared = false;
+let hintRequest = 0;
+let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
+const particles = [], wake = [];
+const view = { x: 0, y: 0, ang: 0, target: 0 };
+let settle = null, pop = null, queued = null, clock = 0;
+let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
+const netPop = new Map(), jetFlash = new Map();
+let hudLast = { moves: -1, fish: -1 };
+// DAILY = the daily canal being played ({ date, weekday, tier, level } from makeDaily), null while in the story levels
+let DAILY = null, deco = 0;   // deco: seed for onlookers/trees so each canal gets its own crowd
+const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
+
+function freshState(level) {
+  g = parseLevel(level);
+  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
+}
+function netSet() { return new Set(st.nets); }
+function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
+
+// Resume only matching layouts and complete, structurally valid turns. Effects and pending input are not saved.
+function levelSignature(level) { return JSON.stringify([level.map, level.nets || 0]); }
+function copyTurn(s) {
+  return { pos: s.pos.slice(), dir: s.dir, fish: s.fish.slice(), nets: s.nets.slice(), boats: s.boats.map(b => b.slice()), moves: s.moves };
+}
+function restoreSession(record, level, id) {
+  if (!record || record.version !== 1 || record.id !== id || record.layout !== levelSignature(level)) return null;
+  const grid = parseLevel(level), s = record.state;
+  const ints = (a, limit) => Array.isArray(a) && a.length <= limit && new Set(a).size === a.length && a.every(i => Number.isInteger(i) && i >= 0);
+  const valid = v => {
+    if (!v || !Array.isArray(v.pos) || v.pos.length !== 2 || !v.pos.every(Number.isInteger) || !['U', 'D', 'L', 'R'].includes(v.dir)
+      || !Number.isSafeInteger(v.moves) || v.moves < 0 || !ints(v.fish, grid.fish.length) || v.fish.some(i => i >= grid.fish.length)
+      || !ints(v.nets, grid.nets) || !Array.isArray(v.boats) || v.boats.length !== grid.boats.length) return false;
+    const [x, y] = v.pos, index = y * grid.w + x;
+    const open = i => Number.isInteger(i) && i >= 0 && i < grid.cells.length && !['#', 'o', 'E'].includes(grid.cells[i]);
+    if (x < 0 || x >= grid.w || y < 0 || y >= grid.h || !open(index)) return false;
+    if (v.boats.some((b, k) => !Array.isArray(b) || b.length !== 2 || !open(b[0]) || b[0] === index
+      || !(grid.boats[k][1] === 'R' ? ['R', 'L'] : ['D', 'U']).includes(b[1]))) return false;
+    if (new Set(v.boats.map(b => b[0])).size !== v.boats.length) return false;
+    return v.nets.every(i => grid.cells[i] === '.' && i !== index && !v.boats.some(b => b[0] === i)
+      && !grid.fish.some((f, k) => f[1] * grid.w + f[0] === i && !v.fish.includes(k)));
+  };
+  if (!valid(s) || !Array.isArray(s.history) || s.history.length > 200 || s.history.some(h => !valid(h) || h.moves > s.moves)) return null;
+  return Object.assign(copyTurn(s), { history: s.history.map(copyTurn) });
+}
+function storySession(i = save.sessions.story?.id) {
+  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, LEVELS[i], i) : null;
+}
+function dailySession(daily) { return daily ? restoreSession(save.sessions.daily, daily.level, daily.date) : null; }
+function checkpoint() {
+  if (!st || cleared || (anim && anim.win)) return;
+  const state = Object.assign(copyTurn(st), { history: st.history.map(copyTurn) });
+  // Position and boats commit at swipe time; include ALL fish on that path, even before their visual effects finish.
+  if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
+  save.sessions[DAILY ? 'daily' : 'story'] = { version: 1, id: DAILY ? DAILY.date : LVL, layout: levelSignature(curLevel()), state };
+  persist();
+}
+function pauseGame() {
+  if ($('gameScreen').hidden || !st) return;
+  queued = null; gest = null;
+  if (anim) finishAnim();
+  checkpoint();
+}
+
+// effects live in tile units; x, y are tile coordinates of the cell's top-left
+const ring = (x, y, size = 1, alpha = 0.55) => particles.push({ kind: 'ring', x, y, life: 1, size, alpha });
+function splashAt(x, y, n, dir, force = 1) {
+  if (reduceMotion) return;
+  for (let k = 0; k < n; k++) {
+    const a = dir ? ANG[dir] + (Math.random() - 0.5) * 2.2 : Math.random() * Math.PI * 2, sp = (1.5 + Math.random() * 3) * force;
+    particles.push({ kind: 'drop', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, size: 0.035 + Math.random() * 0.04 });
+  }
+}
+
+function loadLevel(i, keep) {
+  DAILY = null; LVL = i; save.last = i; deco = i;
+  const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
+  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
+}
+function loadDaily(daily, keep) {
+  DAILY = daily; deco = dailySeed(daily.date) % 997;
+  enter(daily.level, keep, `${dateLabel(daily.date)} · ${daily.tier.label}`);
+}
+const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
+function enter(level, keep, label) {
+  hintRequest++;
+  st = keep || freshState(level);
+  if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
+  anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
+  settle = null; pop = { t: 0 }; queued = null; netPop.clear(); jetFlash.clear();
+  view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
+  $('lvNum').textContent = label;
+  $('lvName').textContent = level.name;
+  setTip(level.tip);
+  $('clearOverlay').hidden = true;
+  hudLast = { moves: -1, fish: -1 };
+  resize(); updateHud();
+  frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
+  ring(st.pos[0], st.pos[1], 0.9, 0.4);
+  setupCoach();
+  checkpoint();
+  showDeviceGuide(true);
+}
+// shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
+function setupCoach() {
+  coach = null;
+  if (!DAILY && LVL === 0 && !save.coachSwipe && !st.moves && !st.history.length) {
+    const p = plan(g, st.pos, 0, new Set(), 0, true);
+    if (p) coach = { kind: 'swipe', dir: p.seq[0] };
+  } else if (g.nets && !save.coachNet) {
+    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats);
+    if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
+  }
+}
+function coachDone(kind) {
+  if (!coach || coach.kind !== kind) return;
+  coach = null;
+  if (kind === 'swipe') save.coachSwipe = true; else save.coachNet = true;
+  persist();
+}
+function setTip(text, isHint) {
+  const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+function updateHud() {
+  const L = curLevel(), parts = [];
+  const done = g.fish.length && st.fish.length === g.fish.length;
+  const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
+  parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료' : '숭어 모으기' : '목표'}</span><b>${g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '바다로 탈출'}</b></span></span>`);
+  parts.push(`<span class="chip move${st.moves > L.par ? ' over' : ''}"><span class="hud-stack"><span class="count">이동 <b>${st.moves}</b></span><span class="k">기준 ${L.par}회</span></span></span>`);
+  if (g.nets) parts.push(`<span class="chip net"><span class="hud-stack"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span></span>`);
+  $('stats').innerHTML = parts.join('');
+  if (hudLast.moves >= 0 && st.moves !== hudLast.moves) $('stats').querySelector('.move b').classList.add('bump');
+  if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
+  hudLast = { moves: st.moves, fish: st.fish.length };
+  $('undoBtn').disabled = !st.history.length;
+}
+function pushHistory() {
+  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), boats: st.boats.map(b => b.slice()), moves: st.moves });
+  if (st.history.length > 200) st.history.shift();
+}
+
+// The result is committed at once; the screen follows through `anim`. A swipe during the glide is queued (one deep).
+function tryMove(d) {
+  if (cleared) return;
+  if (anim) { queued = d; return; }
+  hintRequest++;
+  const r = slide(g, st.pos, d, netSet(), st.boats);
+  hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
+  if (!r.path.length) {
+    bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
+    sfx.bump();
+    const [dx, dy] = DIRS[d]; splashAt(st.pos[0] + dx * 0.45, st.pos[1] + dy * 0.45, 5, d, 0.6);
+    return;
+  }
+  pushHistory();
+  const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
+  const eats = [], jets = [];
+  r.path.forEach(([x, y], k) => {
+    const fi = fishIdx.get(y * g.w + x);
+    if (fi != null && !st.fish.includes(fi) && !eats.some(e => e.fi === fi)) eats.push({ fi, k: k + 1 });
+    if (JET[cellAt(g, x, y)]) jets.push({ k: k + 1, x, y, done: false });
+  });
+  const pts = [st.pos.slice(), ...r.path.map(p => [p[0], p[1]])];
+  const warps = new Set(); r.path.forEach((p, k) => { if (p[3]) warps.add(k + 1); });   // pts index reached by a jump
+  const dirs = [d, ...r.path.map(p => p[2])];
+  if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
+  const steps = r.path.length;
+  st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
+  const boatsFrom = st.boats;
+  if (!r.win) st.boats = stepBoats(g, st.boats, r.end[1] * g.w + r.end[0], netSet());
+  // Show the same turn order as the engine: shark swims, then boats move. Input stays queued until both finish.
+  const boatDur = !reduceMotion && !r.win && boatsFrom.some((b, k) => b[0] !== st.boats[k][0] || b[1] !== st.boats[k][1]) ? 0.16 : 0;
+  anim = { boatsFrom, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+    dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
+  settle = null; pop = null;
+  ring(pts[0][0], pts[0][1], 0.7, 0.35);
+  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
+}
+function eatFish(fi) {
+  anim.eaten.add(fi); sfx.eat(); haptic('light');
+  if (!st.fish.includes(fi)) st.fish.push(fi);
+  const [fx, fy] = g.fish[fi];
+  particles.push({ kind: 'fish', x: fx, y: fy, fi, life: 1 });
+  particles.push({ kind: 'text', x: fx, y: fy, vx: 0, vy: -1.3, life: 1 });
+  ring(fx, fy, 0.9, 0.5);
+  if (!reduceMotion) for (let s = 0; s < 7; s++) { const a = s / 7 * Math.PI * 2 + Math.random() * 0.4; particles.push({ kind: 'spark', x: fx, y: fy, vx: Math.cos(a) * 2.4, vy: Math.sin(a) * 2.4, life: 1, rot: Math.random() * 6 }); }
+  updateHud();
+}
+function finishAnim() {
+  const a = anim; anim = null;
+  const last = a.pts[a.win ? a.n : a.steps]; view.x = last[0]; view.y = last[1];
+  a.eats.forEach(e => { if (!st.fish.includes(e.fi)) st.fish.push(e.fi); });
+  updateHud();
+  if (a.win) { onClear(); return; }
+  if (g.nets && !save.coachNet && !queued) setupCoach();
+  if (cellAt(g, view.x, view.y) === 's') {
+    settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
+    if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x: view.x, y: view.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
+    if (queued) { const q = queued; queued = null; tryMove(q); }
+    return;
+  }
+  const d = a.dirs[a.steps], amp = Math.min(1, a.steps / 5), [dx, dy] = DIRS[d];
+  settle = { t: 0, d, amp };
+  ring(view.x + dx * 0.3, view.y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
+  splashAt(view.x + dx * 0.45, view.y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
+  sfx.stop(amp);
+  if (queued) { const q = queued; queued = null; tryMove(q); }
+}
+function undo() {
+  if (anim || !st.history.length) return;
+  hintRequest++;
+  const h = st.history.pop();
+  Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
+  view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
+  cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
+  ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
+  setTip(curLevel().tip); updateHud(); checkpoint();
+}
+function restart() { if (anim) return; replay(); haptic('light'); }
+
+function tapTile(gx, gy) {
+  if (anim || cleared) return;
+  if (!g.nets) { setTip('화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
+  const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
+  const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
+  const at = st.nets.indexOf(idx);
+  if (at >= 0) {
+    hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
+    sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
+    if (hint) refreshHint(); else setTip(curLevel().tip);
+    return;
+  }
+  if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
+  if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
+  hintRequest++; pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
+  ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
+  updateHud(); checkpoint();
+  if (hint) refreshHint(); else setTip(curLevel().tip);
+}
+
+// Keep the same next-move recipe while the player performs its free net edits. Replanning after
+// each tap could choose a different equally short solution and send the player back and forth.
+function refreshHint() {
+  hint.remove = st.nets.filter(i => !hint.target.includes(i));
+  hint.nets = hint.target.filter(i => !st.nets.includes(i));
+  const action = hint.remove.length ? '반짝이는 그물을 눌러 걷어요.'
+    : hint.nets.length ? '반짝이는 칸에 그물을 쳐요.' : `${DIR_KO[hint.dir]} 밀어 보세요.`;
+  const more = hint.partial ? ' 숭어를 모두 먹으려면 되돌리기가 필요해요.' : ` 앞으로 ${hint.moves}번이면 나가요.`;
+  setTip(`힌트: ${action}${more}`, true);
+}
+async function showHint() {
+  if (anim || cleared) return;
+  if (hint) { haptic('tick'); refreshHint(); return; }
+  const request = ++hintRequest, state = st, map = g;
+  const current = () => request === hintRequest && st === state && g === map && !anim && !cleared
+    && !$('gameScreen').hidden && !settingsOpen();
+  haptic('tick');
+  setTip('길을 찾는 중…', true);
+  await new Promise(resolve => setTimeout(resolve, 30));
+  if (!current()) return;
+  const ns = netSet(), left = g.nets - st.nets.length;
+  const find = async needAll => {
+    const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats);
+    while (current()) {
+      const step = search.next();
+      if (step.done) return step.value;
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    return undefined; // cancelled; null means the complete search found no route
+  };
+  let p = await find(true), partial = false;
+  if (p === null) { p = await find(false); partial = true; }
+  if (!current() || p === undefined) return;
+  if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
+  hint = { dir: p.seq[0], target: p.steps[0].nets, moves: p.moves, partial };
+  refreshHint();
+}
+
+function onClear() {
+  cleared = true;
+  delete save.sessions[DAILY ? 'daily' : 'story'];
+  const L = curLevel();
+  const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
+  const stars = starsForClear(allFish, inPar);
+  const earned = [true, stars >= 2, stars === 3];
+  if (DAILY) recordDaily(DAILY.date, stars);
+  else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
+  const freshSkins = refreshSkins();
+  sfx.win();
+  const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
+  $('clearStars').innerHTML = earned.map(starSvg).join('');
+  $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
+  const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
+  const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
+  $('clearTitle').textContent = DAILY ? (stars === 3 ? '오늘의 수로 완벽!' : '오늘의 수로 완료!')
+    : last ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
+  const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
+  $('clearChecks').innerHTML =
+    row('바다로 탈출', '성공', true) +
+    row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
+    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
+    (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
+    (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
+  $('nextBtn').textContent = DAILY || last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
+  setTimeout(() => {
+    if (!cleared) return;
+    $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
+    earned.forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
+    if (freshSkins.length) setTimeout(() => haptic('success'), 600);
+  }, reduceMotion ? 50 : 650);
+  renderLevelGrid();
+}
+
+/* ---------- daily canal: record, streak, title card ---------- */
+const WEEKDAY_KO = '일월화수목금토';
+function dateLabel(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${m}월 ${d}일 ${WEEKDAY_KO[new Date(y, m - 1, d).getDay()]}요일`;
+}
+function recordDaily(date, stars) {
+  const done = Object.assign({}, save.daily);
+  done[date] = Math.max(done[date] || 0, stars);
+  const keys = Object.keys(done).sort();
+  keys.slice(0, Math.max(0, keys.length - 120)).forEach(k => delete done[k]);   // keep ~4 months
+  save.daily = done; persist();
+}
+// consecutive days cleared, counting back from today (or from yesterday if today is not done yet)
+function dailyStreak() {
+  const done = save.daily || {}, d = new Date();
+  if (!done[dailyDate(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (done[dailyDate(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+let todayDaily = null;   // generated once per date
+function getTodayDaily() {
+  const date = dailyDate();
+  if (!todayDaily || todayDaily.date !== date) todayDaily = makeDaily(date);
+  return todayDaily;
+}
+function renderDaily() {
+  const date = dailyDate(), stars = (save.daily || {})[date] || 0, streak = dailyStreak();
+  if (save.sessions.daily && save.sessions.daily.id !== date) { delete save.sessions.daily; persist(); }
+  const [y, m, d] = date.split('-').map(Number), tier = DAILY_TIERS[new Date(y, m - 1, d).getDay()];
+  $('dailyDate').textContent = dateLabel(date);
+  $('dailyMeta').textContent = `난이도 ${'●'.repeat(tier.stars)}${'○'.repeat(5 - tier.stars)} ${tier.label}` + (streak ? ` · 연속 ${streak}일` : '');
+  const resume = save.sessions.daily && dailySession(getTodayDaily());
+  $('dailyState').innerHTML = resume ? `<b>이어서</b><span>${resume.moves}회 진행</span>` : stars ? `<b>${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></b><span>완료</span>` : `<b>도전</b><span>하기</span>`;
+  $('dailyBtn').classList.toggle('done', !!stars);
+  $('dailyBtn').setAttribute('aria-label', `오늘의 수로, ${dateLabel(date)}, ${tier.label}${resume ? `, ${resume.moves}회 진행 이어서 하기` : stars ? `, 별 ${stars}개 완료` : ''}`);
+}
+/* ---------- my shark: title card and skin picker ---------- */
+function drawSkinPreview(canvas, skin) {
+  const r = canvas.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2.5);
+  if (!r.width) return;
+  canvas.width = Math.round(r.width * d); canvas.height = Math.round(r.height * d);
+  const x = canvas.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
+  x.fillStyle = C.water; x.fillRect(0, 0, r.width, r.height);
+  x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1.5;
+  for (const yy of [0.25, 0.8]) { x.beginPath(); for (let px = 0; px <= r.width; px += 6) { const py = r.height * yy + Math.sin(px * 0.12) * 2; px ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
+  drawShark(x, r.width * 0.52, r.height * 0.5, -0.12, Math.min(r.width / 1.5, r.height * 1.05), 0.5, false, 1, 1, skin);
+}
+function renderSkinCard() {
+  const skin = currentSkin(), owned = (save.owned || ['basic']).length;
+  $('skinName').textContent = skin.name;
+  $('skinCount').textContent = `${owned} / ${SKINS.length} 모음 · 별 ${totalStars()}개`;
+  requestAnimationFrame(() => drawSkinPreview($('skinPreview'), skin));
+}
+function skinNeedText(skin) {
+  if (skin.need.streak) return `오늘의 수로 ${skin.need.streak}일 연속 (최고 ${bestStreak()}일)`;
+  return `별 ${skin.need.stars}개 (지금 ${Math.min(totalStars(), skin.need.stars)}개)`;
+}
+function renderSkinGrid() {
+  const owned = new Set(save.owned || ['basic']), cur = currentSkin().id;
+  $('skinGrid').innerHTML = SKINS.map(skin => {
+    const has = owned.has(skin.id), sel = skin.id === cur;
+    return `<button class="skin${sel ? ' sel' : ''}" type="button" data-id="${skin.id}" ${has ? '' : 'disabled'} aria-pressed="${sel}">
+      <canvas aria-hidden="true"></canvas><span class="skin-name">${skin.name}</span>
+      <span class="skin-need">${has ? (sel ? '사용 중' : '고르기') : skinNeedText(skin)}</span></button>`;
+  }).join('');
+  $('skinsSub').textContent = `${owned.size} / ${SKINS.length} 모음 · 별을 모으면 새 상어가 열려요.`;
+  requestAnimationFrame(() => $('skinGrid').querySelectorAll('.skin').forEach(b => drawSkinPreview(b.querySelector('canvas'), SKINS.find(k => k.id === b.dataset.id))));
+}
+const skinsOpen = () => !$('skinsOverlay').hidden;
+function openSkins() { $('skinsOverlay').hidden = false; renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
+function closeSkins() { $('skinsOverlay').hidden = true; renderSkinCard(); }
+function startDaily() {
+  const daily = getTodayDaily();
+  if (!daily) return;
+  const keep = dailySession(daily);
+  show('game'); loadDaily(daily, keep);
+}
+
+/* ---------- rendering ---------- */
+const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx = cvs.getContext('2d');
+// Camera view: the canvas fills the whole board area. The canal is drawn as large as fits (outer promenade columns may be
+// cut by CROP when width is the limit) and the rest of the screen continues the world: promenade all around (the engine
+// already treats everything outside the grid as '#'), and open sea running out from each exit to the screen edge.
+const CROP = 0.3;   // share of each outer promenade column that may fall outside the view to make the tiles bigger
+let OX = 0, OY = 0, CW = 0, CH = 0, seaCells = new Set();
+function resize() {
+  if (!g || $('gameScreen').hidden) return;
+  const r = board.getBoundingClientRect();
+  CW = Math.floor(r.width); CH = Math.floor(r.height);
+  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / g.h, 132)));
+  OX = Math.round((CW - g.w * T) / 2); OY = Math.round((CH - g.h * T) / 2);
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
+  cvs.width = Math.round(CW * dpr); cvs.height = Math.round(CH * dpr);
+  cvs.dataset.tile = T; cvs.dataset.ox = OX; cvs.dataset.oy = OY;   // grid placement, read by tools/shots.js
+  causticPat = null;
+  buildStatic();
+}
+// Hints, wrapped counters and font loading can change board space without a window resize.
+// Keep the canvas and tap coordinates fitted to the actual board after those layout changes.
+if (typeof ResizeObserver !== 'undefined') {
+  const boardResize = new ResizeObserver(() => {
+    if (!g || $('gameScreen').hidden) return;
+    const r = board.getBoundingClientRect();
+    if (Math.floor(r.width) !== CW || Math.floor(r.height) !== CH) resize();
+  });
+  boardResize.observe(board);
+}
+// '~' = open sea beyond an exit, '#' = promenade everywhere else outside the grid
+function exitDir(x, y) { return y === 0 ? 'U' : y === g.h - 1 ? 'D' : x === 0 ? 'L' : 'R'; }
+function buildSea() {
+  seaCells = new Set();
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 'E') {
+    const [dx, dy] = DIRS[exitDir(x, y)];
+    for (let k = 1; k <= 40; k++) seaCells.add((x + dx * k) + ',' + (y + dy * k));
+  }
+}
+const cellType = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h) ? (seaCells.has(x + ',' + y) ? '~' : '#') : cellAt(g, x, y);
+const isLand = (x, y) => cellType(x, y) === '#';
+function buildStatic() {
+  buildSea();
+  staticLayer = document.createElement('canvas');
+  staticLayer.width = cvs.width; staticLayer.height = cvs.height;
+  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  // every cell that is at least partly on screen
+  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  waterPath = new Path2D();
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const px = x * T, py = y * T, c = cellType(x, y);
+    if (c === '~') {
+      // open sea: deepens with distance from the canal
+      const d = Math.max(Math.abs(Math.min(x, g.w - 1 - x, 0)), Math.abs(Math.min(y, g.h - 1 - y, 0)));
+      s.fillStyle = C.sea; s.fillRect(px, py, T, T);
+      s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
+      waterPath.rect(px, py, T, T); continue;
+    }
+    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
+    s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
+    s.strokeStyle = C['concrete-2']; s.lineWidth = 1; s.globalAlpha = 0.4;
+    s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
+    const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke(); s.globalAlpha = 1;
+  }
+  // shade on water next to land, railings and onlookers on land next to water
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const px = x * T, py = y * T, seed = hash(y * 97 + x * 31 + deco * 7);
+    const inside = x >= 0 && y >= 0 && x < g.w && y < g.h;
+    const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    if (!isLand(x, y)) {
+      s.fillStyle = 'rgba(6,30,38,.28)';
+      nb.forEach(([dx, dy]) => {
+        if (!isLand(x + dx, y + dy)) return;
+        const w = Math.max(3, T * 0.09);
+        if (dy === -1) s.fillRect(px, py, T, w); if (dy === 1) s.fillRect(px, py + T - w, T, w);
+        if (dx === -1) s.fillRect(px, py, w, T); if (dx === 1) s.fillRect(px + T - w, py, w, T);
+      });
+      continue;
+    }
+    const waterSides = nb.filter(([dx, dy]) => !isLand(x + dx, y + dy));
+    if (!waterSides.length) {
+      if (seed < (inside ? 0.25 : 0.16)) {
+        s.save(); s.globalAlpha = 0.6; s.fillStyle = C.park;
+        s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill();
+        s.fillStyle = 'rgba(255,255,255,.1)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); s.restore();
+      }
+      continue;
+    }
+    waterSides.forEach(([dx, dy], k) => {
+      s.strokeStyle = C.rail; s.lineWidth = Math.max(1.5, T * 0.045);
+      s.beginPath();
+      if (dy === -1) { s.moveTo(px, py + 2); s.lineTo(px + T, py + 2); }
+      if (dy === 1) { s.moveTo(px, py + T - 2); s.lineTo(px + T, py + T - 2); }
+      if (dx === -1) { s.moveTo(px + 2, py); s.lineTo(px + 2, py + T); }
+      if (dx === 1) { s.moveTo(px + T - 2, py); s.lineTo(px + T - 2, py + T); }
+      s.stroke();
+      if (T < 44 || waterSides.length !== 1 || seed > 0.18) return; // keep small boards and narrow islands free of onlookers
+      const n = 1;
+      for (let j = 0; j < n; j++) {
+        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.3;
+        let qx = px + T * along, qy = py + T * along;
+        if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
+        if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
+        if (dy) qx = px + T * along; else qy = py + T * along;
+        s.save(); s.globalAlpha = 0.4; drawPerson(s, qx, qy, T, sd); s.restore();
+      }
+    });
+  }
+}
+
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  const t = now / 1000;
+  if (!$('gameScreen').hidden && g && staticLayer) {
+    if (!guideOpen()) step(dt);
+    draw(t);
+  }
+  if (!$('titleScreen').hidden) drawHero(t);
+  requestAnimationFrame(frame);
+}
+function step(dt) {
+  clock += dt;
+  if (anim) {
+    const a = anim;
+    a.t += dt * (reduceMotion ? 2 : 1);
+    const u = Math.min(1, a.t / a.dur), prev = a.p;
+    a.p = (a.win ? DASH : GLIDE)(u) * a.n;
+    a.speed = (a.p - prev) / Math.max(dt, 1e-3);
+    const i = Math.min(Math.floor(a.p), a.n - 1), f = a.p - i, A = a.pts[i], B = a.pts[i + 1];
+    if (a.warps.has(i + 1)) {
+      const out = f >= 0.5; view.x = out ? B[0] : A[0]; view.y = out ? B[1] : A[1]; a.warpScale = out ? (f - 0.5) * 2 : 1 - f * 2;
+      if (!a.warpDone.has(i + 1)) {
+        a.warpDone.add(i + 1); sfx.warp(); haptic('medium');
+        jetFlash.set(A[1] * g.w + A[0], 1); jetFlash.set(B[1] * g.w + B[0], 1); ring(A[0], A[1], 1, 0.6); ring(B[0], B[1], 1.2, 0.6);
+      }
+    } else { a.warpScale = 1; view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f; }
+    view.target = ANG[a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
+    for (const e of a.eats) if (!a.eaten.has(e.fi) && a.p >= e.k - 0.35) eatFish(e.fi);
+    for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
+    if (a.win && !a.exitFx && a.p >= a.steps - 0.2) {
+      a.exitFx = true; const [ex, ey] = a.pts[a.steps];
+      ring(ex, ey, 1.6, 0.7); ring(ex, ey, 0.9, 0.5); splashAt(ex, ey, 16, a.dirs[a.steps], 1.3);
+      sfx.exit(); haptic('success');
+    }
+    if (a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: view.ang, age: 0, sp: Math.min(1, a.speed / 14) });
+    if (Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
+    if (a.t >= a.dur + a.boatDur) finishAnim();
+  }
+  let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
+  view.ang += da * (1 - Math.exp(-dt * 18));
+  if (bump) { bump.t += dt; if (bump.t > 0.25) bump = null; }
+  if (settle) { settle.t += dt; if (settle.t > 0.6) settle = null; }
+  if (pop) { pop.t += dt; if (pop.t > 0.4) pop = null; }
+  for (let k = wake.length - 1; k >= 0; k--) { wake[k].age += dt; if (wake[k].age > 0.9) wake.splice(k, 1); }
+  for (const [k, v] of jetFlash) { const nv = v - dt * 2.5; if (nv <= 0) jetFlash.delete(k); else jetFlash.set(k, nv); }
+  for (let k = particles.length - 1; k >= 0; k--) {
+    const p = particles[k];
+    if (p.kind === 'fish') { p.life -= dt * 4.5; p.x += (view.x - p.x) * Math.min(1, dt * 16); p.y += (view.y - p.y) * Math.min(1, dt * 16); }
+    else if (p.kind === 'ring') p.life -= dt * 1.5;
+    else { p.life -= dt * (p.kind === 'text' ? 1.1 : p.kind === 'spark' ? 2.2 : 1.6); p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92; if (p.kind === 'spark') p.rot += dt * 8; }
+    if (p.life <= 0) particles.splice(k, 1);
+  }
+}
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(staticLayer, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);   // from here on: grid coordinates
+  const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
+  // light on the water
+  ctx.save(); ctx.clip(waterPath);
+  if (!causticPat) causticPat = ctx.createPattern(caustic, 'repeat');
+  const ct = reduceMotion ? 0 : t, sc = T / 60;
+  ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = causticPat;
+  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.02], [-ct * 5, ct * 6, sc * 1.4, 0.012]]) {
+    ctx.save(); ctx.globalAlpha = al; ctx.scale(s, s); ctx.translate(ox % 128, oy % 128);
+    ctx.fillRect(-OX / s - 256, -OY / s - 256, CW / s + 512, CH / s + 512); ctx.restore();
+  }
+  ctx.restore();
+  // ripples
+  ctx.strokeStyle = 'rgba(255,255,255,.028)'; ctx.lineWidth = 1.5;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const c = cellAt(g, x, y); if (c === '#') continue;
+    const px = x * T, py = y * T;
+    if (c === 'E') { drawExit(ctx, px, py, T, g, x, y, t); continue; }
+    if (c !== '.' || hash(x * 19 + y * 23 + deco) > 0.4) continue;
+    const ph = reduceMotion ? 0 : t * 0.8 + hash(x * 5 + y * 11) * 6;
+    ctx.beginPath();
+    for (let k = 0; k <= 8; k++) { const qx = px + T * 0.18 + k * T * 0.08, qy = py + T * (0.35 + hash(x + y * 3) * 0.3) + Math.sin(ph + k * 0.8) * T * 0.035; k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); }
+    ctx.stroke();
+  }
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    const c = cellAt(g, x, y), px = x * T, py = y * T;
+    if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
+    else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
+    else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
+  }
+  // surface rings and the wake behind the shark
+  for (const p of particles) if (p.kind === 'ring') {
+    const k = 1 - p.life;
+    ctx.strokeStyle = `rgba(255,255,255,${(p.life * p.alpha).toFixed(3)})`; ctx.lineWidth = Math.max(1.2, T * 0.05 * p.life);
+    ctx.beginPath(); ctx.arc(p.x * T + T / 2, p.y * T + T / 2, T * (0.15 + k * 0.6 * p.size), 0, 7); ctx.stroke();
+  }
+  for (const w of wake) {
+    const k = w.age / 0.9, a = (1 - k) * 0.34 * w.sp; if (a <= 0.01) continue;
+    const spread = (0.12 + k * 0.5) * T, back = T * 0.45, r = T * (0.035 + k * 0.05);
+    const cx = w.x * T + T / 2 - Math.cos(w.ang) * back, cy = w.y * T + T / 2 - Math.sin(w.ang) * back, nx = -Math.sin(w.ang), ny = Math.cos(w.ang);
+    ctx.fillStyle = `rgba(236,245,242,${a.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.moveTo(cx + nx * spread + r, cy + ny * spread); ctx.arc(cx + nx * spread, cy + ny * spread, r, 0, 7);
+    ctx.moveTo(cx - nx * spread + r, cy - ny * spread); ctx.arc(cx - nx * spread, cy - ny * spread, r, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${(a * 0.45).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(cx, cy, T * (0.07 + k * 0.12), 0, 7); ctx.fill();
+  }
+  // Patrol boats remain on their old tile during the swim and glide only after the shark arrives.
+  const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
+  const bk = anim ? (anim.t < anim.dur ? 0 : anim.boatDur ? 1 - Math.pow(1 - clamp01((anim.t - anim.dur) / anim.boatDur), 2) : 1) : 1;
+  st.boats.forEach((b, k) => {
+    const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
+    const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
+    const heading = anim && anim.t < anim.dur ? anim.boatsFrom[k][1] : b[1];
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim);
+  });
+  st.nets.forEach(i => {
+    const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;
+    drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
+  });
+  if (hint) {
+    if (!hint.remove.length) hint.nets.forEach(i => drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, true, t));
+    hint.remove.forEach(i => {
+      const x = (i % g.w + 0.5) * T, y = (Math.floor(i / g.w) + 0.5) * T;
+      ctx.save(); ctx.strokeStyle = C.star; ctx.lineWidth = Math.max(2, T * 0.05);
+      ctx.globalAlpha = 0.7 + Math.sin(t * 6) * 0.25;
+      ctx.beginPath(); ctx.arc(x, y, T * 0.43, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - T * 0.16, y - T * 0.16); ctx.lineTo(x + T * 0.16, y + T * 0.16);
+      ctx.moveTo(x + T * 0.16, y - T * 0.16); ctx.lineTo(x - T * 0.16, y + T * 0.16); ctx.stroke(); ctx.restore();
+    });
+  }
+  g.fish.forEach(([fx, fy], i) => { if (!eatenNow.has(i)) drawFish(ctx, fx * T + T / 2, fy * T + T / 2, T, t, hash(i * 17 + deco)); });
+  for (const p of particles) if (p.kind === 'fish') drawFish(ctx, p.x * T + T / 2, p.y * T + T / 2, T, t * 4, hash(p.fi * 17 + deco), Math.max(0.05, p.life));
+  // bubbles under shark
+  particles.forEach(p => { if (p.kind === 'bubble') { ctx.strokeStyle = `rgba(255,255,255,${p.life * 0.5})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x * T + T / 2, p.y * T + T / 2, T * 0.05 * (1.5 - p.life), 0, 7); ctx.stroke(); } });
+  // shark: stretch with speed, squash + spring on impact, fade into the sea on escape
+  let sx = view.x, sy = view.y, stretch = 1, alpha = 1, size = 1;
+  if (anim) {
+    stretch = 1 + 0.16 * Math.min(1, anim.speed / 16);
+    if (anim.win) alpha = clamp01(1 - (anim.p - anim.steps) / 2.4);
+  } else if (cleared) alpha = 0;
+  if (bump && !reduceMotion) { const [dx, dy] = DIRS[bump.d], k = Math.sin(bump.t / 0.25 * Math.PI) * 0.12; sx += dx * k; sy += dy * k; stretch = 1 - k * 0.8; }
+  if (settle && !reduceMotion) {
+    const k = settle.t, e = Math.exp(-k * 9), [dx, dy] = DIRS[settle.d], off = 0.1 * settle.amp * Math.sin(k * 24) * e;
+    sx += dx * off; sy += dy * off; stretch = 1 - 0.14 * settle.amp * e * Math.cos(k * 20);
+  }
+  if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
+  if (anim && anim.warpScale < 1) size *= Math.max(0.05, anim.warpScale);
+  const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
+  drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
+  if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
+  if (hint && !anim && !hint.remove.length && !hint.nets.length) {
+    const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
+    ctx.save(); ctx.translate((sx + dx * pulse) * T + T / 2, (sy + dy * pulse) * T + T / 2); ctx.rotate(ANG[hint.dir]);
+    ctx.fillStyle = C.star; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(T * 0.2, 0); ctx.lineTo(-T * 0.12, -T * 0.18); ctx.lineTo(-T * 0.12, T * 0.18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  particles.forEach(p => {
+    const px = p.x * T + T / 2, py = p.y * T + T / 2;
+    if (p.kind === 'text') {
+      const s = 1 + 0.5 * clamp01((p.life - 0.8) / 0.2);
+      ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = C.star; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
+      ctx.font = `400 ${Math.round(T * 0.36 * s)}px ${css.getPropertyValue('--font-display')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.strokeText('냠!', px, p.y * T + T * 0.4); ctx.fillText('냠!', px, p.y * T + T * 0.4);
+      ctx.globalAlpha = 1;
+    } else if (p.kind === 'grain') {
+      ctx.fillStyle = `rgba(214,188,130,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size, 0, 7); ctx.fill();
+    } else if (p.kind === 'drop') {
+      ctx.fillStyle = `rgba(236,245,242,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size * (0.6 + 0.4 * p.life), 0, 7); ctx.fill();
+    } else if (p.kind === 'spark') {
+      const r = T * 0.09 * p.life;
+      ctx.save(); ctx.translate(px, py); ctx.rotate(p.rot); ctx.globalAlpha = p.life; ctx.fillStyle = C.star;
+      ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r * 0.3, 0); ctx.lineTo(0, r); ctx.lineTo(-r * 0.3, 0); ctx.closePath();
+      ctx.moveTo(-r, 0); ctx.lineTo(0, r * 0.3); ctx.lineTo(r, 0); ctx.lineTo(0, -r * 0.3); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  });
+}
+
+// fingertip: soft white disc with a ring; `press` 0..1 shrinks it like a finger touching glass
+function drawFinger(x, y, press, alpha) {
+  const r = T * 0.2 * (1 - press * 0.18);
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.beginPath(); ctx.arc(x + 2, y + 4, r, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.star; ctx.lineWidth = Math.max(2, T * 0.05); ctx.beginPath(); ctx.arc(x, y, r + T * 0.07, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function drawCoach(sx, sy, t) {
+  if (coach.kind === 'swipe') {
+    // finger lands beside the shark, drags one and a half tiles in the move direction, lifts, repeats
+    const [dx, dy] = DIRS[coach.dir], cyc = (t % 1.6) / 1.6;
+    const move = clamp01((cyc - 0.15) / 0.45), e = 1 - Math.pow(1 - move, 3);
+    const alpha = cyc < 0.1 ? cyc / 0.1 : cyc > 0.75 ? clamp01((0.95 - cyc) / 0.2) : 1;
+    const bx = (sx + 0.5) * T + dy * T * 0.55, by = (sy + 0.5) * T - dx * T * 0.55;   // start just to the side of the shark
+    const x = bx + dx * T * 1.5 * e, y = by + dy * T * 1.5 * e;
+    if (move > 0) {
+      ctx.save(); ctx.globalAlpha = alpha * 0.5; ctx.strokeStyle = '#fff'; ctx.lineWidth = T * 0.12; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(x, y); ctx.stroke(); ctx.restore();
+    }
+    drawFinger(x, y, move > 0 && move < 1 ? 1 : 0, alpha);
+  } else {
+    // finger taps the tile where the net should go
+    const cyc = (t % 1.2) / 1.2, cx = (coach.x + 0.5) * T, cy = (coach.y + 0.5) * T;
+    const press = cyc < 0.25 ? cyc / 0.25 : cyc < 0.4 ? 1 : clamp01(1 - (cyc - 0.4) / 0.2);
+    ctx.save(); ctx.strokeStyle = C.star; ctx.lineWidth = 2; ctx.globalAlpha = clamp01(1 - cyc) * 0.8;
+    ctx.beginPath(); ctx.arc(cx, cy, T * (0.25 + cyc * 0.35), 0, 7); ctx.stroke(); ctx.restore();
+    drawFinger(cx + T * 0.18, cy + T * 0.22 - press * T * 0.1, press, 1);
+  }
+}
+
+/* ---------- title hero ---------- */
+const hero = $('heroCanvas'), hctx = hero.getContext('2d');
+let heroW = 0, heroH = 0;
+function sizeHero() {
+  const r = hero.getBoundingClientRect(); const d = Math.min(window.devicePixelRatio || 1, 2.5);
+  heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
+  hctx.setTransform(d, 0, 0, d, 0, 0);
+}
+function drawHero(t) {
+  if (!heroW) sizeHero();
+  const W = heroW, H = heroH, waterH = H - 78, T = Math.min(64, waterH * 1.2, W / 5.2);   // compact promenade header, with room for the title
+  hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
+  hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
+  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
+  hctx.fillStyle = C.concrete; hctx.fillRect(0, waterH, W, H - waterH);
+  hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
+  hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
+  const span = W + T * 2, sx = ((t * 60) % span) - T, sy = waterH * 0.52 + Math.sin(t * 1.5) * waterH * 0.12;
+  const ang = Math.atan2(Math.cos(t * 1.5) * waterH * 0.12 * 1.5, 60);
+  drawShark(hctx, sx, sy, ang, T, t, true, 1.05);
+  drawFish(hctx, ((W * 0.8 + t * 20) % (W + 40)) - 20, waterH * 0.26, T * 0.9, t, 0.3);
+  drawBuoy(hctx, W * 0.86, waterH * 0.68, T * 0.8, t);
+}
+
+/* ---------- UI wiring ---------- */
+let selectedChapter = null;
+function renderLevelGrid(followProgress = false) {
+  const resume = storySession(), target = resume ? save.sessions.story.id : nextLevel();
+  if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
+  const grid = $('levelGrid'), total = totalStars();
+  const button = (L, i, k) => {
+    const b = save.best[i] || 0; const ok = unlocked(i);
+    const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
+    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
+      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span><span class="st">${stars}</span></button>`;
+  };
+  let start = 0;
+  $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
+    const idx = Array.from({ length: ch.count }, (_, k) => start + k); start += ch.count;
+    const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]);
+    if (ci === selectedChapter) {
+      grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span>★ ${stars} / ${ch.count * 3}</span></div>
+        <div class="levels">${idx.map((i, k) => button(LEVELS[i], i, k)).join('')}</div>`;
+    }
+    return `<button class="chapter-btn" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
+  }).join('');
+  $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
+  $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
+  const chap = chapterOf(target);
+  $('journeyLabel').innerHTML = `${chap.ci + 1}장 ${chap.name} · <b>${LEVELS[target].name}</b>`;
+  $('playBtn').textContent = resume ? `이어서 하기 · 수로 ${save.sessions.story.id + 1} · ${resume.moves}회 진행`
+    : Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
+}
+function nextLevel() {
+  for (let i = 0; i < LEVELS.length; i++) if (save.best[i] == null) return i;
+  return Math.min(save.last, LEVELS.length - 1);
+}
+function renderLegend() {
+  const items = [
+    ['fish', '숭어 · 모두 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
+    ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
+    ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
+    ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
+  ];
+  $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
+  $('legend').querySelectorAll('canvas').forEach(drawLegendIcon);
+}
+function drawLegendIcon(c) {
+  const x = c.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); const S = 36, k = c.dataset.k;
+  x.fillStyle = C.water; x.fillRect(0, 0, S, S);
+  if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
+  if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
+  if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
+  if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
+  if (k === 'net') drawNet(x, 0, 0, S, false, 0);
+  if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
+  if (k === 'sand') drawSand(x, 0, 0, S, 5);
+  if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
+}
+/* ---------- device rules: once on first encounter, always available from settings ---------- */
+const DEVICE_GUIDES = [
+  { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 치거나 회수할 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
+  { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
+  { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
+  { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
+  { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
+];
+let guideKeys = [];
+const guideOpen = () => !$('guideOverlay').hidden;
+function showDeviceGuide(firstOnly = false) {
+  const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
+  if (firstOnly && !devices.length) return;
+  guideKeys = devices.map(d => d.key);
+  $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
+  $('guideItems').innerHTML = devices.length ? devices.map(d => `<li><canvas data-k="${d.key}" width="72" height="72" aria-hidden="true"></canvas><div><b>${d.name}</b><p>${d.text}</p></div></li>`).join('')
+    : '<li><div><b>상어를 바다로 보내요</b><p>화면을 밀면 막힐 때까지 헤엄쳐요. 방향키로도 움직일 수 있어요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.</p></div></li>';
+  $('guideItems').querySelectorAll('canvas').forEach(drawLegendIcon);
+  $('app').inert = true;
+  $('guideOverlay').hidden = false; $('guideDone').focus({ preventScroll: true });
+}
+function closeGuide() {
+  save.seenDevices = [...new Set([...save.seenDevices, ...guideKeys])]; persist();
+  guideKeys = []; $('guideOverlay').hidden = true; $('app').inert = false;
+  $($('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn').focus({ preventScroll: true });
+}
+// screen change with a native-style push (into a level) or pop (back to the list)
+function show(which, animate = true) {
+  if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; cleared = false; }
+  const el = which === 'title' ? $('titleScreen') : $('gameScreen');
+  $('titleScreen').hidden = which !== 'title';
+  $('gameScreen').hidden = which !== 'game';
+  el.classList.remove('enter-fwd', 'enter-back');
+  if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
+  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderSkinCard(); $('titleScreen').scrollTop = 0; heroW = 0; }
+  else requestAnimationFrame(resize);
+}
+function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
+
+$('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
+$('chapterPicker').addEventListener('click', e => {
+  const b = e.target.closest('.chapter-btn'); if (!b) return;
+  selectedChapter = +b.dataset.chapter; renderLevelGrid();
+  $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
+});
+$('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
+$('dailyBtn').addEventListener('click', () => { ac(); startDaily(); });
+$('skinBtn').addEventListener('click', openSkins);
+$('skinsDone').addEventListener('click', closeSkins);
+$('skinsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSkins(); });
+$('skinGrid').addEventListener('click', e => {
+  const b = e.target.closest('.skin'); if (!b || b.disabled) return;
+  save.skin = b.dataset.id; persist(); haptic('medium'); renderSkinGrid(); heroW = 0;
+});
+$('backBtn').addEventListener('click', () => show('title'));
+$('undoBtn').addEventListener('click', undo);
+$('restartBtn').addEventListener('click', restart);
+$('hintBtn').addEventListener('click', showHint);
+$('againBtn').addEventListener('click', replay);
+$('nextBtn').addEventListener('click', () => { if (!DAILY && LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
+// settings sheet (sound, vibration) — opened from the gear on the title and in a level
+const settingsOpen = () => !$('settingsOverlay').hidden;
+function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
+function closeSettings() { $('settingsOverlay').hidden = true; }
+$('settingsBtn').addEventListener('click', openSettings);
+$('titleSettingsBtn').addEventListener('click', openSettings);
+$('settingsDone').addEventListener('click', closeSettings);
+$('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
+$('guideDone').addEventListener('click', closeGuide);
+$('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
+$('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
+$('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });
+// light tick on every enabled button press, like native controls
+document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// swipe anywhere on the game screen (fires as soon as the finger has travelled SWIPE px), tap on the board for nets
+const gameScreen = $('gameScreen');
+let gest = null;
+const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
+gameScreen.addEventListener('pointerdown', e => {
+  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
+  gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
+  ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
+});
+gameScreen.addEventListener('pointermove', e => {
+  if (!gest || gest.fired || e.pointerId !== gest.id) return;
+  const dx = e.clientX - gest.x, dy = e.clientY - gest.y;
+  if (Math.hypot(dx, dy) >= SWIPE) { gest.fired = true; tryMove(swipeDir(dx, dy)); }
+});
+gameScreen.addEventListener('pointerup', e => {
+  if (!gest || e.pointerId !== gest.id) return;
+  const g0 = gest; gest = null;
+  if (g0.fired) return;
+  const dx = e.clientX - g0.x, dy = e.clientY - g0.y;
+  if (Math.hypot(dx, dy) >= SWIPE) { tryMove(swipeDir(dx, dy)); return; }
+  if (!g0.onBoard) return;
+  const r = cvs.getBoundingClientRect();
+  const gx = Math.floor((e.clientX - r.left - OX) / T), gy = Math.floor((e.clientY - r.top - OY) / T);
+  if (gx >= 0 && gy >= 0 && gx < g.w && gy < g.h) tapTile(gx, gy);
+});
+gameScreen.addEventListener('pointercancel', () => { gest = null; });
+window.addEventListener('keydown', e => {
+  if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
+  if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
+  if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
+  if (!$('clearOverlay').hidden) { if (e.key === 'Escape') replay(); return; }
+  if ($('gameScreen').hidden) return;
+  const map = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R', w: 'U', s: 'D', a: 'L', d: 'R', W: 'U', S: 'D', A: 'L', D: 'R' };
+  if (map[e.key]) { e.preventDefault(); if (e.repeat) return; ac(); tryMove(map[e.key]); }
+  else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { e.preventDefault(); undo(); }
+  else if (e.key === 'r' || e.key === 'R') restart();
+  else if (e.key === 'h' || e.key === 'H') showHint();
+  else if (e.key === 'Escape') show('title');
+});
+window.addEventListener('resize', () => { resize(); heroW = 0; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+window.addEventListener('pagehide', pauseGame);
+// native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
+const capApp = window.Capacitor?.Plugins?.App;
+if (capApp) capApp.addListener('backButton', () => {
+  if (guideOpen()) closeGuide();
+  else if (settingsOpen()) closeSettings();
+  else if (skinsOpen()) closeSkins();
+  else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
+});
+if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) pauseGame(); });
+
+/* ---------- boot (keeps a game in progress across live page updates) ---------- */
+function start(data) {
+  refreshSkins();   // grant skins already earned by existing progress
+  renderLegend(); renderLevelGrid();
+  const resumeDaily = data && data.daily === dailyDate() && makeDaily(data.daily);
+  const level = resumeDaily ? resumeDaily.level : data && LEVELS[data.lvl];
+  const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
+  if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
+  else if (data && !data.daily && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
+  else show('title', false);
+  requestAnimationFrame(frame);
+}
+window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null, st: st && !anim ? st : null }));
+const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
+})();
+
+</script>
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && !window.Capacitor) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

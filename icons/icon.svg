@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon source. Full-bleed so it also works as a maskable icon (keep art inside the centre 80% circle).
+       Shark shape uses the same coordinates as drawShark() in src/game.js with T = 100. -->
+  <rect width="512" height="512" fill="#1e7482"/>
+  <g fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="6" stroke-linecap="round">
+    <path d="M40 110 q30 -14 60 0 t60 0 t60 0"/>
+    <path d="M300 430 q30 -14 60 0 t60 0 t60 0"/>
+    <path d="M330 90 q24 -12 48 0 t48 0"/>
+  </g>
+  <g transform="translate(150 150)">
+    <circle cx="5" cy="7" r="34" fill="#04141a" fill-opacity=".25"/>
+    <circle r="34" fill="#ff6b3d"/>
+    <ellipse rx="34" ry="11" fill="#eef0ea"/>
+    <circle r="7.5" fill="#ff6b3d"/>
+    <circle cx="-13.6" cy="-15.3" r="5.4" fill="#fff" fill-opacity=".55"/>
+  </g>
+  <g transform="translate(270 262) rotate(-40) scale(2.3) translate(8 0)">
+    <ellipse cx="5" cy="7" rx="55.2" ry="23.8" fill="#04141a" fill-opacity=".22"/>
+    <g transform="translate(-36 0) rotate(12)" fill="#6f6e5f">
+      <path d="M0 -8.16 L-24 -2.72 L-24 2.72 L0 8.16 Z"/>
+      <path d="M-19.2 0 L-40.8 -28.9 Q-30 -3.4 -36 0 Q-30 3.4 -37.2 18.7 Z"/>
+    </g>
+    <g fill="#6f6e5f">
+      <path d="M16.8 12.92 L-12 44.2 Q-2.4 20.4 -4.8 11.56 Z"/>
+      <path d="M16.8 -12.92 L-12 -44.2 Q-2.4 -20.4 -4.8 -11.56 Z"/>
+    </g>
+    <path fill="#8b8a78" d="M60 0 C56.4 -17.68 24 -19.04 0 -17 C-21.6 -14.96 -36 -8.16 -40.8 0 C-36 8.16 -21.6 14.96 0 17 C24 19.04 56.4 17.68 60 0 Z"/>
+    <ellipse cx="14.4" cy="-4.08" rx="33.6" ry="5.44" fill="#fff" fill-opacity=".12"/>
+    <path fill="#6f6e5f" d="M12 0 Q-2.4 -6.8 -16.8 0 Q-2.4 6.8 12 0 Z"/>
+    <circle cx="42" cy="-10.2" r="3.4" fill="#0a232b"/>
+    <circle cx="42" cy="10.2" r="3.4" fill="#0a232b"/>
+    <circle cx="43.2" cy="-11.4" r="1.1" fill="#fff"/>
+    <circle cx="43.2" cy="9" r="1.1" fill="#fff"/>
+  </g>
+</svg>
