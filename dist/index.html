@@ -407,16 +407,19 @@ h1 .sea { color: var(--buoy-deep); }
 /* ---------- Engine: sliding rules + solver (shared with node tests) ---------- */
 const DIRS = { U: [0, -1], D: [0, 1], L: [-1, 0], R: [1, 0] };
 const JET = { '^': 'U', 'v': 'D', '<': 'L', '>': 'R' };
+const OPP = { U: 'D', D: 'U', L: 'R', R: 'L' };
 
 function parseLevel(level) {
   const rows = level.map, h = rows.length, w = rows[0].length;
-  let start = null; const fish = []; const cells = [];
+  let start = null; const fish = [], cells = [], boats = [];
   for (let y = 0; y < h; y++) {
     if (rows[y].length !== w) throw new Error('ragged row ' + y + ' in ' + level.name);
     for (let x = 0; x < w; x++) {
       let c = rows[y][x];
       if (c === 'S') { start = [x, y]; c = '.'; }
       if (c === 'f') { fish.push([x, y]); c = '.'; }
+      // patrol boats: b = back and forth along the row (starts right), B = along the column (starts down)
+      if (c === 'b' || c === 'B') { boats.push([y * w + x, c === 'b' ? 'R' : 'D']); c = '.'; }
       cells.push(c);
     }
   }
@@ -424,26 +427,31 @@ function parseLevel(level) {
   const whirls = []; cells.forEach((c, i) => { if (c === 'w') whirls.push(i); });
   if (whirls.length && whirls.length !== 2) throw new Error('whirlpools must come in a pair in ' + level.name);
   const warp = new Map(whirls.length === 2 ? [[whirls[0], whirls[1]], [whirls[1], whirls[0]]] : []);
-  return { w, h, cells, start, fish, warp, nets: level.nets || 0, par: level.par };
+  return { w, h, cells, start, fish, warp, boats, nets: level.nets || 0, par: level.par };
 }
 function cellAt(g, x, y) {
   if (x < 0 || y < 0 || x >= g.w || y >= g.h) return '#';
   return g.cells[y * g.w + x];
 }
-function isBlocked(g, x, y, nets) {
+// boats: array of [cellIndex, dir] (the boats' current state); only their cells matter for blocking
+function isBlocked(g, x, y, nets, boats) {
   const c = cellAt(g, x, y);
-  if (c === '#' || c === 'o' || c === 'b') return true;
-  return !!(nets && nets.has(y * g.w + x));
+  if (c === '#' || c === 'o') return true;
+  const i = y * g.w + x;
+  if (nets && nets.has(i)) return true;
+  if (boats) for (const b of boats) if (b[0] === i) return true;
+  return false;
 }
 // Slide until blocked. path excludes the start tile; each step is [x, y, dir] (a 4th element `true` marks
 // the tile reached by a whirlpool jump rather than by swimming). Stops on a sandbar 's'. Jets and whirlpools
 // passed twice in one move stop the slide (loop guard); the tile the move starts on never triggers anything.
-function slide(g, pos, dir, nets) {
+// Boats stand still while the shark slides; they move afterwards (stepBoats).
+function slide(g, pos, dir, nets, boats) {
   let [x, y] = pos, d = dir;
   const path = [], seen = new Set();
   for (let guard = 0; guard < 500; guard++) {
     const [dx, dy] = DIRS[d];
-    if (isBlocked(g, x + dx, y + dy, nets)) break;
+    if (isBlocked(g, x + dx, y + dy, nets, boats)) break;
     x += dx; y += dy; path.push([x, y, d]);
     const c = cellAt(g, x, y);
     if (c === 'E') return { path, end: [x, y], win: true };
@@ -462,48 +470,73 @@ function slide(g, pos, dir, nets) {
   }
   return { path, end: [x, y], win: false };
 }
-// BFS over (position, fish mask). Returns {moves, seq} or null.
-function bfsFrom(g, pos, mask, nets, needAll, cap) {
+// After every shark move each boat, in order, steps one tile along its heading. A boat turns around when the
+// tile ahead is a wall, buoy, the sea exit, a net, the shark or another boat, and stays put if both ways are blocked.
+function stepBoats(g, boats, sharkIdx, nets) {
+  if (!boats.length) return boats;
+  const next = boats.map(b => b.slice());
+  const free = (i, self) => {
+    const x = i % g.w, y = Math.floor(i / g.w), c = cellAt(g, x, y);
+    if (c === '#' || c === 'o' || c === 'E' || i === sharkIdx || (nets && nets.has(i))) return false;
+    return !next.some((b, k) => k !== self && b[0] === i);
+  };
+  next.forEach((b, k) => {
+    const x = b[0] % g.w, y = Math.floor(b[0] / g.w);
+    for (const d of [b[1], OPP[b[1]]]) {
+      const [dx, dy] = DIRS[d], nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= g.w || ny >= g.h) continue;
+      if (free(ny * g.w + nx, k)) { b[0] = ny * g.w + nx; b[1] = d; return; }
+    }
+    b[1] = OPP[b[1]];
+  });
+  return next;
+}
+const boatsKey = boats => boats.map(b => b[0] + b[1]).join(',');
+// BFS over (position, fish mask, boats). Returns {moves, seq} or null. boats defaults to the level's start.
+function bfsFrom(g, pos, mask, nets, needAll, cap, boats) {
+  boats = boats || g.boats;
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const full = (1 << g.fish.length) - 1;
-  const seen = new Set([pos + '|' + mask]);
-  let q = [{ pos, mask, seq: '' }], depth = 0;
+  const seen = new Set([pos + '|' + mask + '|' + boatsKey(boats)]);
+  let q = [{ pos, mask, boats, seq: '' }], depth = 0;
   while (q.length) {
     depth++;
     if (depth > cap) return null;
     const nq = [];
     for (const s of q) for (const d of 'UDLR') {
-      const r = slide(g, s.pos, d, nets);
+      const r = slide(g, s.pos, d, nets, s.boats);
       if (!r.path.length) continue;
       let m = s.mask;
       for (const [x, y] of r.path) { const k = y * g.w + x; if (fishIdx.has(k)) m |= 1 << fishIdx.get(k); }
       if (r.win) { if (!needAll || m === full) return { moves: depth, seq: s.seq + d }; continue; }
-      const key = r.end + '|' + m;
+      const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], nets);
+      const key = r.end + '|' + m + '|' + boatsKey(nb);
       if (seen.has(key)) continue;
-      seen.add(key); nq.push({ pos: r.end, mask: m, seq: s.seq + d });
+      seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, seq: s.seq + d });
     }
     q = nq;
   }
   return null;
 }
 // Best plan from a state, allowed to add up to `netsLeft` more nets. Returns {moves, seq, add:[idx]} or null.
-function plan(g, pos, mask, nets, netsLeft, needAll) {
-  const fishTiles = new Set(g.fish.map(f => f[1] * g.w + f[0]));
+function plan(g, pos, mask, nets, netsLeft, needAll, boats) {
+  boats = boats || g.boats;
+  const fishTiles = new Set(g.fish.map(f => f[1] * g.w + f[0])), boatTiles = new Set(boats.map(b => b[0]));
   const here = pos[1] * g.w + pos[0];
   const spots = [];
-  for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === '.' && i !== here && !fishTiles.has(i) && !nets.has(i)) spots.push(i);
+  for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === '.' && i !== here && !fishTiles.has(i) && !boatTiles.has(i) && !nets.has(i)) spots.push(i);
   const options = [[]];
   if (netsLeft >= 1) for (const a of spots) options.push([a]);
   if (netsLeft >= 2) for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) options.push([spots[i], spots[j]]);
   let best = null;
   for (const add of options) {
     const n2 = new Set(nets); add.forEach(a => n2.add(a));
-    const r = bfsFrom(g, pos, mask, n2, needAll, best ? best.moves - 1 : 60);
+    const r = bfsFrom(g, pos, mask, n2, needAll, best ? best.moves - 1 : 60, boats);
     if (r && (!best || r.moves < best.moves)) best = { ...r, add };
   }
   return best;
 }
-if (typeof module !== 'undefined') module.exports = { parseLevel, slide, bfsFrom, plan, cellAt, isBlocked, DIRS, JET };
+if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, plan, cellAt, isBlocked, DIRS, JET, OPP };
 
 /* ---------- Levels: # 산책로  . 물  S 상어  E 바다  f 숭어  o 부표  b 구조정  ^v<> 물줄기 ---------- */
 const LEVELS = [
@@ -565,7 +598,7 @@ const LEVELS = [
     '#o....#',
     '###S###',
   ] },
-  { par: 7, name: '구조정 등장', tip: '구조정에 부딪히면 그 앞에서 멈춰요.', map: [
+  { par: 7, name: '구조정 등장', tip: '구조정은 상어가 한 번 헤엄칠 때마다 한 칸씩 오가요. 부딪히면 그 앞에서 멈춰요.', map: [
     '###E###',
     '##o..##',
     '#....o#',
@@ -636,7 +669,7 @@ const LEVELS = [
     '#o....#',
     '####S##',
   ] },
-  { par: 9, name: '바다로 가는 길', nets: 2, tip: '그물 두 개. 1장 마지막 수로예요.', map: [
+  { par: 7, name: '바다로 가는 길', nets: 2, tip: '그물 두 개. 1장 마지막 수로예요.', map: [
     '###E###',
     '#.....#',
     '#.o...#',
@@ -681,17 +714,17 @@ const LEVELS = [
     '#....f#',
     '##S####',
   ] },
-  { par: 9, name: '구조정 두 척', tip: '구조정 앞에서 멈추는 걸 이용해 보세요.', map: [
+  { par: 9, name: '구조정 두 척', tip: '구조정 두 척이 오가요. 움직인 뒤의 자리를 생각해 보세요.', map: [
     '#####E#',
     '#.....#',
-    '#...b.#',
-    '#.f.###',
-    '#b....#',
-    '###...#',
     '#.....#',
-    '#>..###',
+    '#...###',
     '#.....#',
-    '#.of..#',
+    '###f..#',
+    '#.....#',
+    '#.vb###',
+    '#.b...#',
+    '#f.o..#',
     '#S#####',
   ] },
   { par: 10, name: '분수 광장', tip: '물줄기 세 개. 어디서 타느냐가 중요해요.', map: [
@@ -766,17 +799,17 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 14, name: '숭어 떼', tip: '숭어 세 마리가 물줄기 사이에 흩어져 있어요.', map: [
+  { par: 13, name: '숭어 떼', tip: '가로로, 세로로 오가는 구조정 사이로 숭어를 모아요.', map: [
     '###E###',
     '#.....#',
-    '#.....#',
-    '#.....#',
-    '#.....#',
+    '#..f..#',
+    '#^f...#',
     '#...o.#',
-    '#o.f..#',
-    '#.vb..#',
-    '#.<...#',
-    '#.f^f.#',
+    '#o....#',
+    '#.....#',
+    '#B.>b.#',
+    '#.....#',
+    '#<f...#',
     '###S###',
   ] },
   { par: 10, name: '운하의 끝', nets: 2, tip: '그물 두 개. 2장 마지막 수로예요.', map: [
@@ -804,7 +837,19 @@ const LEVELS = [
     '#f....o.#',
     '####S####',
   ] },
-  { par: 13, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
+  { par: 11, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
+    '#######E#',
+    '#.......#',
+    '#.......#',
+    '#.##....#',
+    '#.##o..>#',
+    '#.vf....#',
+    '#....##.#',
+    '#.o..##.#',
+    '#...f..f#',
+    '#S#######',
+  ] },
+  { par: 14, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
     '########',
     'Ef.....#',
     '#......#',
@@ -818,18 +863,6 @@ const LEVELS = [
     '#.b...<#',
     '######S#',
   ] },
-  { par: 11, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
-    '#######E#',
-    '#.......#',
-    '#.......#',
-    '#.##....#',
-    '#.##o..>#',
-    '#.vf....#',
-    '#....##.#',
-    '#.o..##.#',
-    '#...f..f#',
-    '#S#######',
-  ] },
   { par: 13, name: '잔잔한 석호', tip: '화단 두 개 사이로 숭어 세 마리를 찾아요.', map: [
     '#######E#',
     '#.......#',
@@ -842,7 +875,7 @@ const LEVELS = [
     '#.....f.#',
     '#S#######',
   ] },
-  { par: 15, name: '구조정 호위', tip: '구조정 두 척과 물줄기 두 개를 멈춤표로 써요.', map: [
+  { par: 17, name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요.', map: [
     '####E####',
     '#....b..#',
     '#.......#',
@@ -883,18 +916,18 @@ const LEVELS = [
     '#......#',
     '######S#',
   ] },
-  { par: 14, name: '방파제 길', tip: '물줄기 세 개가 방파제를 따라 흘러요.', map: [
+  { par: 14, name: '방파제 길', tip: '세로로 오가는 구조정이 길을 열었다 닫았다 해요.', map: [
     '########',
-    'E..^...#',
-    '#....v.#',
-    '####f^.#',
+    'E....f>#',
+    '#...o..#',
+    '####...#',
+    '#f..b..#',
     '#......#',
-    '#.b....#',
     '#...####',
-    '#......#',
-    '#.o...f#',
-    '#f...o.#',
-    '#......#',
+    '#.^..B.#',
+    '#...f..#',
+    '#.v....#',
+    '#..o...#',
     '######S#',
   ] },
   { par: 12, name: '등대 아래', nets: 1, tip: '숭어를 다 먹으려면 그물이 꼭 필요해요.', map: [
@@ -1138,7 +1171,8 @@ function place(mask, spec, rand) {
   put('o', spec.buoys || 0);
   put('b', spec.boats || 0);
   put(() => '<>^v'[Math.floor(rand() * 4)], spec.jets || 0);
-  // chapter 4 devices; a count of 0 draws no random numbers, so existing daily recipes are unaffected
+  // later devices; a count of 0 draws no random numbers, so recipes without them are unaffected
+  put('B', spec.vboats || 0);   // patrol boat moving along its column ('b' = along its row)
   put('s', spec.sand || 0);
   put('w', spec.whirls ? 2 : 0);
   put('f', spec.fish || 0);
@@ -1147,15 +1181,15 @@ function place(mask, spec, rand) {
 
 // Weekday recipe, index = Date#getDay() (0 = Sunday). Easy on Monday, hardest on the weekend, nets on Fri/Sun.
 // Changing a recipe changes past and future dailies, so bump DAILY_VERSION when you do.
-const DAILY_VERSION = 1;
+const DAILY_VERSION = 2;   // v2 (2026-09-30, before release): moving boats, sandbars and whirlpools in the mix
 const DAILY_TIERS = [
-  { stars: 5, label: '어려움', masks: ['harbor', 'breakwater', 'lagoon'], spec: { nets: 1, jets: 2, buoys: 2, fish: 3 }, par: [10, 14], tip: '일요일은 그물까지 쓰는 긴 수로예요.' },
+  { stars: 5, label: '어려움', masks: ['twin', 'moat', 'delta'], spec: { nets: 1, whirls: 1, sand: 1, jets: 1, buoys: 2, fish: 3 }, par: [10, 15], tip: '일요일은 그물·소용돌이·모래톱을 모두 써요.' },
   { stars: 1, label: '쉬움', masks: ['bend', 'hook', 'wide'], spec: { buoys: 2, fish: 1 }, par: [5, 7], tip: '한 주의 시작은 가볍게. 숭어 한 마리를 챙겨요.' },
-  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정 앞에서 멈추는 걸 이용해 보세요.' },
+  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정은 한 칸씩 오가요. 때를 맞춰 보세요.' },
   { stars: 2, label: '보통', masks: ['zigzag', 'scurve', 'fork'], spec: { buoys: 2, jets: 1, fish: 2 }, par: [7, 9], tip: '물줄기 하나가 길을 바꿔요.' },
-  { stars: 3, label: '보통', masks: ['fork', 'basin', 'island'], spec: { buoys: 2, jets: 2, fish: 2 }, par: [8, 10], tip: '물줄기 두 개. 타는 순서가 중요해요.' },
+  { stars: 3, label: '보통', masks: ['basin', 'shoal', 'delta'], spec: { buoys: 2, jets: 1, sand: 2, fish: 2 }, par: [8, 11], tip: '모래톱에 올라서면 그 자리에서 멈춰요.' },
   { stars: 3, label: '그물', masks: ['island', 'side', 'hook'], spec: { nets: 1, buoys: 2, fish: 2 }, par: [7, 10], tip: '금요일은 그물의 날. 멈출 자리를 만들어요.' },
-  { stars: 4, label: '어려움', masks: ['harbor', 'lagoon', 'breakwater'], spec: { jets: 3, buoys: 2, boats: 1, fish: 3 }, par: [10, 13], tip: '주말 수로는 물줄기가 얽혀 있어요.' },
+  { stars: 4, label: '어려움', masks: ['twin', 'moat', 'shoal', 'harbor'], spec: { jets: 2, buoys: 2, boats: 1, whirls: 1, sand: 1, fish: 3 }, par: [10, 14], tip: '주말 수로에는 소용돌이와 구조정이 함께 나와요.' },
 ];
 
 // engine functions: globals in the browser build, required in node tools
@@ -1442,9 +1476,15 @@ function drawBuoy(ctx, cx, cy, T, t) {
   ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r * 0.22, 0, 7); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + b - r * 0.45, r * 0.16, 0, 7); ctx.fill();
 }
-function drawBoat(ctx, cx, cy, T, t) {
+// ang: heading (0 = bow up); arrow: show a small chevron ahead of the bow (where it goes next)
+function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
   const L = T * 0.44, W = T * 0.23;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.sin(t * 1.6 + cx) * 0.05);
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang + Math.sin(t * 1.6 + cx) * 0.05);
+  if (arrow) {
+    const bob = reduceMotion ? 0 : Math.sin(t * 4) * T * 0.02;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-T * 0.09, -L - T * 0.02 - bob); ctx.lineTo(0, -L - T * 0.1 - bob); ctx.lineTo(T * 0.09, -L - T * 0.02 - bob); ctx.stroke();
+  }
   ctx.fillStyle = 'rgba(4,20,26,.28)';
   ctx.beginPath(); ctx.ellipse(3, 5, W * 1.05, L * 1.02, 0, 0, 7); ctx.fill();
   const hull = () => { ctx.beginPath(); ctx.moveTo(0, -L); ctx.bezierCurveTo(W * 1.1, -L * 0.5, W, L * 0.6, W * 0.85, L); ctx.lineTo(-W * 0.85, L); ctx.bezierCurveTo(-W, L * 0.6, -W * 1.1, -L * 0.5, 0, -L); };
@@ -1568,7 +1608,7 @@ const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
 
 function freshState(level) {
   g = parseLevel(level);
-  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], moves: 0, history: [] };
+  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
 }
 function netSet() { return new Set(st.nets); }
 function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
@@ -1594,7 +1634,7 @@ function loadDaily(daily, keep) {
 const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
   st = keep || freshState(level);
-  if (keep) g = parseLevel(level);
+  if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
   anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
   settle = null; pop = { t: 0 }; queued = null; netPop.clear(); jetFlash.clear();
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
@@ -1643,7 +1683,7 @@ function updateHud() {
   $('undoBtn').disabled = !st.history.length;
 }
 function pushHistory() {
-  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), moves: st.moves });
+  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), boats: st.boats.map(b => b.slice()), moves: st.moves });
   if (st.history.length > 200) st.history.shift();
 }
 
@@ -1651,7 +1691,7 @@ function pushHistory() {
 function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
-  const r = slide(g, st.pos, d, netSet());
+  const r = slide(g, st.pos, d, netSet(), st.boats);
   hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
   if (!r.path.length) {
     bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
@@ -1673,7 +1713,9 @@ function tryMove(d) {
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+  const boatsFrom = st.boats;   // boats glide one tile while the shark swims (rules: they move right after it)
+  if (!r.win) st.boats = stepBoats(g, st.boats, r.end[1] * g.w + r.end[0], netSet());
+  anim = { boatsFrom, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
@@ -1711,7 +1753,7 @@ function finishAnim() {
 function undo() {
   if (anim || !st.history.length) return;
   const h = st.history.pop();
-  Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, moves: h.moves });
+  Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
   view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
   cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
@@ -1723,7 +1765,7 @@ function tapTile(gx, gy) {
   if (anim || cleared) return;
   if (!g.nets) { setTip('화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
-  const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i));
+  const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
   const at = st.nets.indexOf(idx);
   if (at >= 0) { pushHistory(); st.nets.splice(at, 1); netPop.delete(idx); sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); hint = null; updateHud(); return; }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
@@ -1739,8 +1781,8 @@ function showHint() {
   setTip('길을 찾는 중…', true);
   setTimeout(() => {
     const ns = netSet(), left = g.nets - st.nets.length;
-    let p = plan(g, st.pos, fishMask(), ns, left, true), partial = false;
-    if (!p) { p = plan(g, st.pos, fishMask(), ns, left, false); partial = true; }
+    let p = plan(g, st.pos, fishMask(), ns, left, true, st.boats), partial = false;
+    if (!p) { p = plan(g, st.pos, fishMask(), ns, left, false, st.boats); partial = true; }
     if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
     hint = { dir: p.seq[0], nets: p.add };
     const netTxt = p.add.length ? `반짝이는 칸에 그물을 치고, ` : '';
@@ -2037,7 +2079,6 @@ function draw(t) {
     const c = cellAt(g, x, y), px = x * T, py = y * T;
     if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
     else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
-    else if (c === 'b') drawBoat(ctx, px + T / 2, py + T / 2, T, t);
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
   // surface rings and the wake behind the shark
@@ -2058,6 +2099,14 @@ function draw(t) {
     ctx.fillStyle = `rgba(255,255,255,${(a * 0.45).toFixed(3)})`;
     ctx.beginPath(); ctx.arc(cx, cy, T * (0.07 + k * 0.12), 0, 7); ctx.fill();
   }
+  // patrol boats: glide from their old tile while the shark swims; bow faces the way they are heading
+  const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
+  const bk = anim && anim.boatsFrom ? 1 - Math.pow(1 - clamp01(anim.t / anim.dur), 2) : 1;
+  st.boats.forEach((b, k) => {
+    const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
+    const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[b[1]], !anim);
+  });
   st.nets.forEach(i => {
     const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;
     drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
@@ -2196,7 +2245,7 @@ function nextLevel() {
 function renderLegend() {
   const items = [
     ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
-    ['boat', '구조정 · 앞에서 멈춰요'], ['jet', '물줄기 · 방향이 꺾여요'],
+    ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
   ];
@@ -2206,7 +2255,7 @@ function renderLegend() {
     x.fillStyle = C.water; x.fillRect(0, 0, S, S);
     if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
     if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
-    if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0);
+    if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
     if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
     if (k === 'net') drawNet(x, 0, 0, S, false, 0);
     if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);

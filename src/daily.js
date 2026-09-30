@@ -38,7 +38,8 @@ function place(mask, spec, rand) {
   put('o', spec.buoys || 0);
   put('b', spec.boats || 0);
   put(() => '<>^v'[Math.floor(rand() * 4)], spec.jets || 0);
-  // chapter 4 devices; a count of 0 draws no random numbers, so existing daily recipes are unaffected
+  // later devices; a count of 0 draws no random numbers, so recipes without them are unaffected
+  put('B', spec.vboats || 0);   // patrol boat moving along its column ('b' = along its row)
   put('s', spec.sand || 0);
   put('w', spec.whirls ? 2 : 0);
   put('f', spec.fish || 0);
@@ -47,15 +48,15 @@ function place(mask, spec, rand) {
 
 // Weekday recipe, index = Date#getDay() (0 = Sunday). Easy on Monday, hardest on the weekend, nets on Fri/Sun.
 // Changing a recipe changes past and future dailies, so bump DAILY_VERSION when you do.
-const DAILY_VERSION = 1;
+const DAILY_VERSION = 2;   // v2 (2026-09-30, before release): moving boats, sandbars and whirlpools in the mix
 const DAILY_TIERS = [
-  { stars: 5, label: '어려움', masks: ['harbor', 'breakwater', 'lagoon'], spec: { nets: 1, jets: 2, buoys: 2, fish: 3 }, par: [10, 14], tip: '일요일은 그물까지 쓰는 긴 수로예요.' },
+  { stars: 5, label: '어려움', masks: ['twin', 'moat', 'delta'], spec: { nets: 1, whirls: 1, sand: 1, jets: 1, buoys: 2, fish: 3 }, par: [10, 15], tip: '일요일은 그물·소용돌이·모래톱을 모두 써요.' },
   { stars: 1, label: '쉬움', masks: ['bend', 'hook', 'wide'], spec: { buoys: 2, fish: 1 }, par: [5, 7], tip: '한 주의 시작은 가볍게. 숭어 한 마리를 챙겨요.' },
-  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정 앞에서 멈추는 걸 이용해 보세요.' },
+  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정은 한 칸씩 오가요. 때를 맞춰 보세요.' },
   { stars: 2, label: '보통', masks: ['zigzag', 'scurve', 'fork'], spec: { buoys: 2, jets: 1, fish: 2 }, par: [7, 9], tip: '물줄기 하나가 길을 바꿔요.' },
-  { stars: 3, label: '보통', masks: ['fork', 'basin', 'island'], spec: { buoys: 2, jets: 2, fish: 2 }, par: [8, 10], tip: '물줄기 두 개. 타는 순서가 중요해요.' },
+  { stars: 3, label: '보통', masks: ['basin', 'shoal', 'delta'], spec: { buoys: 2, jets: 1, sand: 2, fish: 2 }, par: [8, 11], tip: '모래톱에 올라서면 그 자리에서 멈춰요.' },
   { stars: 3, label: '그물', masks: ['island', 'side', 'hook'], spec: { nets: 1, buoys: 2, fish: 2 }, par: [7, 10], tip: '금요일은 그물의 날. 멈출 자리를 만들어요.' },
-  { stars: 4, label: '어려움', masks: ['harbor', 'lagoon', 'breakwater'], spec: { jets: 3, buoys: 2, boats: 1, fish: 3 }, par: [10, 13], tip: '주말 수로는 물줄기가 얽혀 있어요.' },
+  { stars: 4, label: '어려움', masks: ['twin', 'moat', 'shoal', 'harbor'], spec: { jets: 2, buoys: 2, boats: 1, whirls: 1, sand: 1, fish: 3 }, par: [10, 14], tip: '주말 수로에는 소용돌이와 구조정이 함께 나와요.' },
 ];
 
 // engine functions: globals in the browser build, required in node tools

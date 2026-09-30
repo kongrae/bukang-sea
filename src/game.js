@@ -243,9 +243,15 @@ function drawBuoy(ctx, cx, cy, T, t) {
   ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r * 0.22, 0, 7); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + b - r * 0.45, r * 0.16, 0, 7); ctx.fill();
 }
-function drawBoat(ctx, cx, cy, T, t) {
+// ang: heading (0 = bow up); arrow: show a small chevron ahead of the bow (where it goes next)
+function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
   const L = T * 0.44, W = T * 0.23;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.sin(t * 1.6 + cx) * 0.05);
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang + Math.sin(t * 1.6 + cx) * 0.05);
+  if (arrow) {
+    const bob = reduceMotion ? 0 : Math.sin(t * 4) * T * 0.02;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-T * 0.09, -L - T * 0.02 - bob); ctx.lineTo(0, -L - T * 0.1 - bob); ctx.lineTo(T * 0.09, -L - T * 0.02 - bob); ctx.stroke();
+  }
   ctx.fillStyle = 'rgba(4,20,26,.28)';
   ctx.beginPath(); ctx.ellipse(3, 5, W * 1.05, L * 1.02, 0, 0, 7); ctx.fill();
   const hull = () => { ctx.beginPath(); ctx.moveTo(0, -L); ctx.bezierCurveTo(W * 1.1, -L * 0.5, W, L * 0.6, W * 0.85, L); ctx.lineTo(-W * 0.85, L); ctx.bezierCurveTo(-W, L * 0.6, -W * 1.1, -L * 0.5, 0, -L); };
@@ -369,7 +375,7 @@ const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
 
 function freshState(level) {
   g = parseLevel(level);
-  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], moves: 0, history: [] };
+  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
 }
 function netSet() { return new Set(st.nets); }
 function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
@@ -395,7 +401,7 @@ function loadDaily(daily, keep) {
 const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
   st = keep || freshState(level);
-  if (keep) g = parseLevel(level);
+  if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
   anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
   settle = null; pop = { t: 0 }; queued = null; netPop.clear(); jetFlash.clear();
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
@@ -444,7 +450,7 @@ function updateHud() {
   $('undoBtn').disabled = !st.history.length;
 }
 function pushHistory() {
-  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), moves: st.moves });
+  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), boats: st.boats.map(b => b.slice()), moves: st.moves });
   if (st.history.length > 200) st.history.shift();
 }
 
@@ -452,7 +458,7 @@ function pushHistory() {
 function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
-  const r = slide(g, st.pos, d, netSet());
+  const r = slide(g, st.pos, d, netSet(), st.boats);
   hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
   if (!r.path.length) {
     bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
@@ -474,7 +480,9 @@ function tryMove(d) {
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  anim = { pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+  const boatsFrom = st.boats;   // boats glide one tile while the shark swims (rules: they move right after it)
+  if (!r.win) st.boats = stepBoats(g, st.boats, r.end[1] * g.w + r.end[0], netSet());
+  anim = { boatsFrom, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
@@ -512,7 +520,7 @@ function finishAnim() {
 function undo() {
   if (anim || !st.history.length) return;
   const h = st.history.pop();
-  Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, moves: h.moves });
+  Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
   view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
   cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
@@ -524,7 +532,7 @@ function tapTile(gx, gy) {
   if (anim || cleared) return;
   if (!g.nets) { setTip('화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
-  const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i));
+  const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
   const at = st.nets.indexOf(idx);
   if (at >= 0) { pushHistory(); st.nets.splice(at, 1); netPop.delete(idx); sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); hint = null; updateHud(); return; }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
@@ -540,8 +548,8 @@ function showHint() {
   setTip('길을 찾는 중…', true);
   setTimeout(() => {
     const ns = netSet(), left = g.nets - st.nets.length;
-    let p = plan(g, st.pos, fishMask(), ns, left, true), partial = false;
-    if (!p) { p = plan(g, st.pos, fishMask(), ns, left, false); partial = true; }
+    let p = plan(g, st.pos, fishMask(), ns, left, true, st.boats), partial = false;
+    if (!p) { p = plan(g, st.pos, fishMask(), ns, left, false, st.boats); partial = true; }
     if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
     hint = { dir: p.seq[0], nets: p.add };
     const netTxt = p.add.length ? `반짝이는 칸에 그물을 치고, ` : '';
@@ -838,7 +846,6 @@ function draw(t) {
     const c = cellAt(g, x, y), px = x * T, py = y * T;
     if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
     else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
-    else if (c === 'b') drawBoat(ctx, px + T / 2, py + T / 2, T, t);
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
   // surface rings and the wake behind the shark
@@ -859,6 +866,14 @@ function draw(t) {
     ctx.fillStyle = `rgba(255,255,255,${(a * 0.45).toFixed(3)})`;
     ctx.beginPath(); ctx.arc(cx, cy, T * (0.07 + k * 0.12), 0, 7); ctx.fill();
   }
+  // patrol boats: glide from their old tile while the shark swims; bow faces the way they are heading
+  const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
+  const bk = anim && anim.boatsFrom ? 1 - Math.pow(1 - clamp01(anim.t / anim.dur), 2) : 1;
+  st.boats.forEach((b, k) => {
+    const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
+    const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[b[1]], !anim);
+  });
   st.nets.forEach(i => {
     const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;
     drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
@@ -997,7 +1012,7 @@ function nextLevel() {
 function renderLegend() {
   const items = [
     ['fish', '숭어 · 먹으면 별 +1'], ['buoy', '부표 · 앞에서 멈춰요'],
-    ['boat', '구조정 · 앞에서 멈춰요'], ['jet', '물줄기 · 방향이 꺾여요'],
+    ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
   ];
@@ -1007,7 +1022,7 @@ function renderLegend() {
     x.fillStyle = C.water; x.fillRect(0, 0, S, S);
     if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
     if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
-    if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0);
+    if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
     if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
     if (k === 'net') drawNet(x, 0, 0, S, false, 0);
     if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
