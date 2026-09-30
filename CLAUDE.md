@@ -24,6 +24,7 @@ npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-ke
 npm run verify           # 모든 레벨이 풀리는지, par가 최적 이동 수와 같은지 검사 (실패 시 exit 1)
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
 npm run difficulty       # 장별 난이도 곡선(bits) 출력, 앞 수로보다 쉬워지면 ▼ 표시
+npm run daily -- 365     # 오늘의 수로: 앞으로 N일 치를 미리 생성해 전부 풀리는지·생성 시간 확인
 ```
 
 게임과 tools/ 는 외부 의존성 없음(Node 18+). Capacitor(앱 빌드)만 npm 패키지와 Node 22+ 가 필요하다. 출시 절차는 docs/RELEASE.md.
@@ -35,6 +36,7 @@ src/
   shell.html   마크업 + CSS (디자인 토큰은 :root 변수)
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
   levels.js    LEVELS 배열 (36개 수로) + CHAPTERS (장 이름, 레벨 수)
+  daily.js     오늘의 수로 생성기 + 수로 마스크(MASKS)·rng·place (tools/gen.js도 공유). 브라우저·node 겸용
   game.js      렌더링(canvas), 입력, 상태, UI. IIFE 하나
 tools/
   build.js     src 파일들을 이어 붙여 단일 HTML 생성
@@ -51,7 +53,7 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 단순 연결이라 `engine.js → levels.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다.
+빌드는 단순 연결이라 `engine.js → levels.js → daily.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -100,6 +102,7 @@ par는 "숭어를 전부 먹고 탈출하는 최소 이동 수"(그물 사용 �
 - 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·상어는 매 프레임.
 - 힌트는 현재 상태에서 `plan()`을 돌려 첫 방향과 필요한 그물 위치를 보여준다.
 - 진행 상황은 `localStorage['bukang-sea-v1']` = `{ best: {레벨인덱스: 별}, last, sound }`. 접근 실패해도 동작해야 하므로 try/catch 유지.
+- **오늘의 수로**: `makeDaily(YYYY-MM-DD)`가 날짜 시드(FNV-1a, `DAILY_VERSION` 포함)로 요일별 레시피(`DAILY_TIERS`: 월 쉬움 → 주말 어려움, 금·일 그물)에 맞춰 수로를 생성·검증한다. 같은 날짜면 모든 기기에서 같은 퍼즐. 레시피·마스크·place를 바꾸면 과거·미래 퍼즐이 전부 바뀌므로 DAILY_VERSION을 올리고 `npm run daily`로 확인. 기록은 `save.daily = { 날짜: 별 }`(최근 120일), 연속 일수는 오늘(없으면 어제)부터 거꾸로 센다. 게임 안에서는 `DAILY`가 null이 아니면 오늘의 수로 모드(`curLevel()`, `replay()`, `deco` 시드 사용), 스토리 기록(save.best/last)은 건드리지 않는다.
 - 제목 화면 수로 목록은 CHAPTERS 단위로 묶어 그림. 장의 마지막 수로를 깨면 '○○ 통과!' / '다음 장으로'.
 - 화면 전환은 push(목록→수로)/pop(수로→목록) 슬라이드, 결과는 아래에서 올라오는 시트(넓은 화면에서는 가운데 카드).
 - `window.Capacitor?.Plugins?.App`이 있으면(네이티브 앱) 하드웨어 뒤로가기 = 목록으로, 목록에서는 앱 종료.

@@ -1,0 +1,90 @@
+/* ---------- Daily canal: one generated puzzle per calendar day, the same for every player ---------- */
+// Canal masks ('#' promenade, '.' water, S start, E sea exit). Shared with tools/gen.js.
+const MASKS = {
+  bend:   ['###E###', '##...##', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '##...##', '###S###'],
+  hook:   ['#####E#', '#.....#', '#.....#', '#..####', '#..####', '#.....#', '#.....#', '#.....#', '##S####'],
+  wide:   ['#E#####', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '####S##'],
+  scurve: ['######E', '#......', '#......', '#...###', '#...###', '###...#', '###...#', '#.....#', '#.....#', '##S####'],
+  basin:  ['###E###', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  // chapter 2: 친수공원 운하
+  island: ['###E###', '#.....#', '#.....#', '#..#..#', '#..#..#', '#.....#', '#.....#', '#..#..#', '#.....#', '###S###'],
+  ring:   ['####E##', '#.....#', '#.....#', '#..##.#', '#..##.#', '#.....#', '#.....#', '##S####'],
+  zigzag: ['#####E#', '#.....#', '#.....#', '#...###', '#.....#', '###...#', '#.....#', '#...###', '#.....#', '#.....#', '#S#####'],
+  side:   ['#######', '#.....#', '#.....E', '#.....#', '#.....#', '#.....#', '#.....#', '#.....#', '###S###'],
+  fork:   ['###E####', '#......#', '#......#', '#..##..#', '#..##..#', '#..##..#', '#......#', '#......#', '####S###'],
+  // chapter 3: 방파제 너머
+  harbor: ['####E####', '#.......#', '#.......#', '#..###..#', '#.......#', '#.......#', '#.......#', '##.....##', '#.......#', '#.......#', '####S####'],
+  breakwater: ['########', 'E......#', '#......#', '####...#', '#......#', '#......#', '#...####', '#......#', '#......#', '#......#', '#......#', '######S#'],
+  lagoon: ['#######E#', '#.......#', '#.......#', '#.##....#', '#.##....#', '#.......#', '#....##.#', '#....##.#', '#.......#', '#S#######'],
+};
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+// drop objects onto random free water tiles of a mask
+function place(mask, spec, rand) {
+  const rows = mask.map(r => r.split(''));
+  const free = [];
+  rows.forEach((r, y) => r.forEach((c, x) => { if (c === '.') free.push([x, y]); }));
+  const put = (ch, n) => {
+    for (let i = 0; i < n && free.length; i++) {
+      const [x, y] = free.splice(Math.floor(rand() * free.length), 1)[0];
+      rows[y][x] = typeof ch === 'function' ? ch() : ch;
+    }
+  };
+  put('o', spec.buoys || 0);
+  put('b', spec.boats || 0);
+  put(() => '<>^v'[Math.floor(rand() * 4)], spec.jets || 0);
+  put('f', spec.fish || 0);
+  return rows.map(r => r.join(''));
+}
+
+// Weekday recipe, index = Date#getDay() (0 = Sunday). Easy on Monday, hardest on the weekend, nets on Fri/Sun.
+// Changing a recipe changes past and future dailies, so bump DAILY_VERSION when you do.
+const DAILY_VERSION = 1;
+const DAILY_TIERS = [
+  { stars: 5, label: '어려움', masks: ['harbor', 'breakwater', 'lagoon'], spec: { nets: 1, jets: 2, buoys: 2, fish: 3 }, par: [10, 14], tip: '일요일은 그물까지 쓰는 긴 수로예요.' },
+  { stars: 1, label: '쉬움', masks: ['bend', 'hook', 'wide'], spec: { buoys: 2, fish: 1 }, par: [5, 7], tip: '한 주의 시작은 가볍게. 숭어 한 마리를 챙겨요.' },
+  { stars: 1, label: '쉬움', masks: ['island', 'ring', 'side'], spec: { buoys: 2, boats: 1, fish: 2 }, par: [6, 8], tip: '구조정 앞에서 멈추는 걸 이용해 보세요.' },
+  { stars: 2, label: '보통', masks: ['zigzag', 'scurve', 'fork'], spec: { buoys: 2, jets: 1, fish: 2 }, par: [7, 9], tip: '물줄기 하나가 길을 바꿔요.' },
+  { stars: 3, label: '보통', masks: ['fork', 'basin', 'island'], spec: { buoys: 2, jets: 2, fish: 2 }, par: [8, 10], tip: '물줄기 두 개. 타는 순서가 중요해요.' },
+  { stars: 3, label: '그물', masks: ['island', 'side', 'hook'], spec: { nets: 1, buoys: 2, fish: 2 }, par: [7, 10], tip: '금요일은 그물의 날. 멈출 자리를 만들어요.' },
+  { stars: 4, label: '어려움', masks: ['harbor', 'lagoon', 'breakwater'], spec: { jets: 3, buoys: 2, boats: 1, fish: 3 }, par: [10, 13], tip: '주말 수로는 물줄기가 얽혀 있어요.' },
+];
+
+// engine functions: globals in the browser build, required in node tools
+const DE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, plan, bfsFrom };
+
+function dailySeed(text) {   // FNV-1a
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function dailyDate(d = new Date()) {   // local calendar date, YYYY-MM-DD
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Returns { date, weekday, tier, level } or null. Same date -> same puzzle on every device.
+function makeDaily(date) {
+  const [y, m, d] = date.split('-').map(Number), weekday = new Date(y, m - 1, d).getDay(), tier = DAILY_TIERS[weekday];
+  const nets = tier.spec.nets || 0, tries = nets ? 40 : 150, mid = (tier.par[0] + tier.par[1]) / 2;
+  for (let salt = 0; salt < 6; salt++) {   // a salt round only fails if no candidate at all was solvable
+    const rand = rng(dailySeed(`lostshark-daily-v${DAILY_VERSION}-${date}-${salt}`));
+    const mask = MASKS[tier.masks[Math.floor(rand() * tier.masks.length)]];
+    let best = null;
+    for (let t = 0; t < tries; t++) {
+      const map = place(mask, tier.spec, rand);
+      if (map.some(r => /><|<>/.test(r))) continue;                         // facing jets read as a glitch
+      const g = DE.parseLevel({ name: 'daily', map, nets });
+      const full = DE.plan(g, g.start, 0, new Set(), nets, true);
+      if (!full) continue;
+      if (nets && DE.bfsFrom(g, g.start, 0, new Set(), true, 60)) continue;  // the net must be needed
+      const escape = DE.plan(g, g.start, 0, new Set(), nets, false);
+      if (full.moves < tier.par[0] - 1 || escape.moves < 2) continue;         // too easy / straight shot to the sea
+      const inRange = full.moves >= tier.par[0] && full.moves <= tier.par[1], detour = full.moves - escape.moves;
+      const score = (inRange ? 100 : -Math.abs(full.moves - mid) * 10) + detour * 3;
+      if (!best || score > best.score) best = { score, map, par: full.moves };
+      if (inRange && detour >= 2 && t >= tries / 3) break;
+    }
+    if (best) return { date, weekday, tier, level: { par: best.par, name: '오늘의 수로', nets, tip: tier.tip, map: best.map } };
+  }
+  return null;
+}
+if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily };

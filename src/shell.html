@@ -96,6 +96,30 @@ h1 {
 h1 .sea { color: var(--buoy-deep); }
 .lede { margin: 0; color: var(--text); font-size: 16px; line-height: 1.6; max-width: 34em; text-wrap: pretty; }
 .lede b { color: var(--star); font-weight: 700; }
+/* daily canal card: the one bright block on the title, sea-to-canal gradient with a lifebuoy badge */
+.daily {
+  border: 0; border-radius: 22px; padding: 16px 16px 16px 20px; cursor: pointer; text-align: left; color: var(--text);
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0; position: relative; overflow: hidden;
+  background: linear-gradient(120deg, var(--sea), var(--water)); box-shadow: 0 8px 22px rgba(0,0,0,.25);
+  transition: transform .2s var(--ease-spring), filter .15s;
+}
+.daily::after { content: ""; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px; border-radius: 50%; border: 18px solid rgba(255,255,255,.06); pointer-events: none; }
+.daily:active { transform: scale(.97); transition-duration: .08s; }
+.daily-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.daily-k { font-size: 12.5px; letter-spacing: .04em; color: var(--water-hi); font-weight: 700; }
+.daily-date { font-family: var(--font-display); font-size: 24px; line-height: 1.15; letter-spacing: 0; }
+.daily-meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.daily-state {
+  flex-shrink: 0; width: 76px; height: 76px; border-radius: 50%; background: var(--buoy); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
+  box-shadow: inset 0 0 0 7px rgba(255,255,255,.35); z-index: 1;
+}
+.daily-state b { font-family: var(--font-display); font-weight: 400; font-size: 20px; letter-spacing: 0; }
+.daily-state span { font-size: 12px; font-weight: 700; }
+.daily-state b i { font-style: normal; opacity: .3; }
+.daily.done .daily-state { background: var(--star); }
+.daily.done .daily-state b { font-size: 15px; letter-spacing: 1px; }
+@media (hover: hover) { .daily:hover { filter: brightness(1.06); } }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
 .section-label h2 { font-size: 13.5px; letter-spacing: .02em; color: var(--muted); margin: 0; font-weight: 500; }
 .section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -113,7 +137,7 @@ h1 .sea { color: var(--buoy-deep); }
 }
 @keyframes tile-in { from { transform: translateY(10px) scale(.96); opacity: 0; } }
 .lv:active { transform: scale(.93); transition-duration: .08s; }
-.lv:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
+.lv:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .ctrl:focus-visible, .daily:focus-visible { outline: 2px solid var(--star); outline-offset: 2px; }
 .lv .n { font-family: var(--font-display); font-size: 32px; line-height: 1.05; letter-spacing: 0; }
 .lv .nm { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lv .st { font-size: 13px; letter-spacing: 1px; color: var(--star); line-height: 1; }
@@ -263,6 +287,14 @@ h1 .sea { color: var(--buoy-deep); }
       </div>
     </div>
     <p class="lede">굽은 수로에 들어와 길을 잃은 상어. 화면을 밀어 헤엄치게 하고, 숭어를 먹으며 <b>바다</b>로 보내 주세요.</p>
+    <button class="daily" id="dailyBtn" type="button">
+      <span class="daily-text">
+        <span class="daily-k">오늘의 수로</span>
+        <span class="daily-date" id="dailyDate">오늘</span>
+        <span class="daily-meta" id="dailyMeta">매일 새로 열리는 수로</span>
+      </span>
+      <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
+    </button>
     <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
     <div class="chapters" id="levelGrid"></div>
     <div class="section-label"><h2>수로에 있는 것들</h2></div>

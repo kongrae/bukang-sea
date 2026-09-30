@@ -16,7 +16,8 @@
     "cap:sync": "npm run build:web && cap sync android",
     "cap:open": "cap open android",
     "android:debug": "npm run cap:sync && node tools/android.js",
-    "android:release": "npm run cap:sync && node tools/android.js release"
+    "android:release": "npm run cap:sync && node tools/android.js release",
+    "daily": "node tools/daily.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

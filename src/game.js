@@ -14,7 +14,8 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 /* ---------- storage (per-viewer convenience only) ---------- */
 const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
-let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false };
+// daily: { YYYY-MM-DD: stars } for the daily canal
+let save = { best: {}, last: 0, sound: true, vibe: true, coachSwipe: false, coachNet: false, daily: {} };
 try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.best) save = Object.assign(save, s); } catch (e) {}
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) {} }
 const unlocked = i => i === 0 || save.best[i - 1] != null;
@@ -249,9 +250,12 @@ let settle = null, pop = null, queued = null, clock = 0;
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 let hudLast = { moves: -1, fish: -1 };
+// DAILY = the daily canal being played ({ date, weekday, tier, level } from makeDaily), null while in the story levels
+let DAILY = null, deco = 0;   // deco: seed for onlookers/trees so each canal gets its own crowd
+const curLevel = () => DAILY ? DAILY.level : LEVELS[LVL];
 
-function freshState(i) {
-  g = parseLevel(LEVELS[i]);
+function freshState(level) {
+  g = parseLevel(level);
   return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], moves: 0, history: [] };
 }
 function netSet() { return new Set(st.nets); }
@@ -268,15 +272,23 @@ function splashAt(x, y, n, dir, force = 1) {
 }
 
 function loadLevel(i, keep) {
-  LVL = i; save.last = i; persist();
-  st = keep || freshState(i);
-  if (keep) g = parseLevel(LEVELS[i]);
+  DAILY = null; LVL = i; save.last = i; persist(); deco = i;
+  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length}`);
+}
+function loadDaily(daily, keep) {
+  DAILY = daily; deco = dailySeed(daily.date) % 997;
+  enter(daily.level, keep, `${dateLabel(daily.date)} · ${daily.tier.label}`);
+}
+const replay = () => DAILY ? loadDaily(DAILY) : loadLevel(LVL);
+function enter(level, keep, label) {
+  st = keep || freshState(level);
+  if (keep) g = parseLevel(level);
   anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
   settle = null; pop = { t: 0 }; queued = null; netPop.clear(); jetFlash.clear();
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
-  $('lvNum').textContent = `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length}`;
-  $('lvName').textContent = LEVELS[i].name;
-  setTip(LEVELS[i].tip);
+  $('lvNum').textContent = label;
+  $('lvName').textContent = level.name;
+  setTip(level.tip);
   $('clearOverlay').hidden = true;
   hudLast = { moves: -1, fish: -1 };
   resize(); updateHud();
@@ -288,7 +300,7 @@ function loadLevel(i, keep) {
 function setupCoach() {
   coach = null;
   if (st.moves || st.history.length) return;
-  if (LVL === 0 && !save.coachSwipe) {
+  if (!DAILY && LVL === 0 && !save.coachSwipe) {
     const p = plan(g, st.pos, 0, new Set(), 0, true);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
@@ -307,7 +319,7 @@ function setTip(text, isHint) {
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 function updateHud() {
-  const L = LEVELS[LVL], parts = [];
+  const L = curLevel(), parts = [];
   parts.push(`<span class="chip${st.moves > L.par ? ' over' : ''}"><span class="k">이동</span><b>${st.moves}</b><span class="k">/ 기준 ${L.par}</span></span>`);
   if (g.fish.length) parts.push(`<span class="chip${st.fish.length === g.fish.length ? ' done' : ''}"><span class="k">숭어</span><b>${st.fish.length} / ${g.fish.length}</b></span>`);
   if (g.nets) parts.push(`<span class="chip net"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span>`);
@@ -328,7 +340,7 @@ function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
   const r = slide(g, st.pos, d, netSet());
-  hint = null; if ($('tip').classList.contains('hint')) setTip(LEVELS[LVL].tip);
+  hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
   if (!r.path.length) {
     bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
     sfx.bump();
@@ -384,9 +396,9 @@ function undo() {
   view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
   cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
-  setTip(LEVELS[LVL].tip); updateHud();
+  setTip(curLevel().tip); updateHud();
 }
-function restart() { if (anim) return; loadLevel(LVL); haptic('light'); }
+function restart() { if (anim) return; replay(); haptic('light'); }
 
 function tapTile(gx, gy) {
   if (anim || cleared) return;
@@ -399,7 +411,7 @@ function tapTile(gx, gy) {
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
   pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
-  hint = null; setTip(LEVELS[LVL].tip); updateHud();
+  hint = null; setTip(curLevel().tip); updateHud();
 }
 
 function showHint() {
@@ -420,31 +432,74 @@ function showHint() {
 
 function onClear() {
   cleared = true;
-  const L = LEVELS[LVL];
+  const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
   const stars = 1 + (allFish ? 1 : 0) + (inPar ? 1 : 0);
-  const prev = save.best[LVL] || 0;
-  save.best[LVL] = Math.max(prev, stars); persist();
+  if (DAILY) recordDaily(DAILY.date, stars);
+  else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   sfx.win();
   const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
   $('clearStars').innerHTML = [true, allFish, inPar].map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
-  const chap = chapterOf(LVL), chapterEnd = LVL === chap.end;
-  $('clearTitle').textContent = LVL === LEVELS.length - 1 ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
+  const chap = chapterOf(LVL), chapterEnd = !DAILY && LVL === chap.end, last = !DAILY && LVL === LEVELS.length - 1;
+  $('clearTitle').textContent = DAILY ? (stars === 3 ? '오늘의 수로 완벽!' : '오늘의 수로 완료!')
+    : last ? '드디어 넓은 바다로!' : chapterEnd ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
     row('바다로 탈출', '성공', true) +
     row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
-    row('이동 기준', `${st.moves}번 / ${L.par}번`, inPar);
-  const last = LVL === LEVELS.length - 1;
-  $('nextBtn').textContent = last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
+    row('이동 기준', `${st.moves}번 / ${L.par}번`, inPar) +
+    (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '');
+  $('nextBtn').textContent = DAILY || last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   setTimeout(() => {
     if (!cleared) return;
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
     [true, allFish, inPar].forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
   }, reduceMotion ? 50 : 650);
   renderLevelGrid();
+}
+
+/* ---------- daily canal: record, streak, title card ---------- */
+const WEEKDAY_KO = '일월화수목금토';
+function dateLabel(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  return `${m}월 ${d}일 ${WEEKDAY_KO[new Date(y, m - 1, d).getDay()]}요일`;
+}
+function recordDaily(date, stars) {
+  const done = Object.assign({}, save.daily);
+  done[date] = Math.max(done[date] || 0, stars);
+  const keys = Object.keys(done).sort();
+  keys.slice(0, Math.max(0, keys.length - 120)).forEach(k => delete done[k]);   // keep ~4 months
+  save.daily = done; persist();
+}
+// consecutive days cleared, counting back from today (or from yesterday if today is not done yet)
+function dailyStreak() {
+  const done = save.daily || {}, d = new Date();
+  if (!done[dailyDate(d)]) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (done[dailyDate(d)]) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+let todayDaily = null;   // generated once per date
+function getTodayDaily() {
+  const date = dailyDate();
+  if (!todayDaily || todayDaily.date !== date) todayDaily = makeDaily(date);
+  return todayDaily;
+}
+function renderDaily() {
+  const date = dailyDate(), stars = (save.daily || {})[date] || 0, streak = dailyStreak();
+  const [y, m, d] = date.split('-').map(Number), tier = DAILY_TIERS[new Date(y, m - 1, d).getDay()];
+  $('dailyDate').textContent = dateLabel(date);
+  $('dailyMeta').textContent = `난이도 ${'●'.repeat(tier.stars)}${'○'.repeat(5 - tier.stars)} ${tier.label}` + (streak ? ` · 연속 ${streak}일` : '');
+  $('dailyState').innerHTML = stars ? `<b>${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></b><span>완료</span>` : `<b>도전</b><span>하기</span>`;
+  $('dailyBtn').classList.toggle('done', !!stars);
+  $('dailyBtn').setAttribute('aria-label', `오늘의 수로, ${dateLabel(date)}, ${tier.label}${stars ? `, 별 ${stars}개 완료` : ''}`);
+}
+function startDaily() {
+  const daily = getTodayDaily();
+  if (!daily) return;
+  show('game'); loadDaily(daily);
 }
 
 /* ---------- rendering ---------- */
@@ -503,7 +558,7 @@ function buildStatic() {
   }
   // shade on water next to land, railings and onlookers on land next to water
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-    const px = x * T, py = y * T, seed = hash(y * 97 + x * 31 + LVL * 7);
+    const px = x * T, py = y * T, seed = hash(y * 97 + x * 31 + deco * 7);
     const inside = x >= 0 && y >= 0 && x < g.w && y < g.h;
     const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     if (!isLand(x, y)) {
@@ -531,7 +586,7 @@ function buildStatic() {
       s.stroke();
       const n = seed > 0.25 ? 2 : 1;
       for (let j = 0; j < n; j++) {
-        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + LVL), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.22;
+        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.22;
         let qx = px + T * along, qy = py + T * along;
         if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
         if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
@@ -644,8 +699,8 @@ function draw(t) {
     drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
   });
   if (hint) hint.nets.forEach(i => drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, true, t));
-  g.fish.forEach(([fx, fy], i) => { if (!eatenNow.has(i)) drawFish(ctx, fx * T + T / 2, fy * T + T / 2, T, t, hash(i * 17 + LVL)); });
-  for (const p of particles) if (p.kind === 'fish') drawFish(ctx, p.x * T + T / 2, p.y * T + T / 2, T, t * 4, hash(p.fi * 17 + LVL), Math.max(0.05, p.life));
+  g.fish.forEach(([fx, fy], i) => { if (!eatenNow.has(i)) drawFish(ctx, fx * T + T / 2, fy * T + T / 2, T, t, hash(i * 17 + deco)); });
+  for (const p of particles) if (p.kind === 'fish') drawFish(ctx, p.x * T + T / 2, p.y * T + T / 2, T, t * 4, hash(p.fi * 17 + deco), Math.max(0.05, p.life));
   // bubbles under shark
   particles.forEach(p => { if (p.kind === 'bubble') { ctx.strokeStyle = `rgba(255,255,255,${p.life * 0.5})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x * T + T / 2, p.y * T + T / 2, T * 0.05 * (1.5 - p.life), 0, 7); ctx.stroke(); } });
   // shark: stretch with speed, squash + spring on impact, fade into the sea on escape
@@ -796,19 +851,20 @@ function show(which, animate = true) {
   $('gameScreen').hidden = which !== 'game';
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
-  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(); heroW = 0; }
+  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(); renderDaily(); heroW = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; show('game'); loadLevel(i); }
 
 $('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
 $('playBtn').addEventListener('click', () => { ac(); startLevel(nextLevel()); });
+$('dailyBtn').addEventListener('click', () => { ac(); startDaily(); });
 $('backBtn').addEventListener('click', () => show('title'));
 $('undoBtn').addEventListener('click', undo);
 $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
-$('againBtn').addEventListener('click', () => loadLevel(LVL));
-$('nextBtn').addEventListener('click', () => { if (LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
+$('againBtn').addEventListener('click', replay);
+$('nextBtn').addEventListener('click', () => { if (!DAILY && LVL < LEVELS.length - 1) loadLevel(LVL + 1); else show('title'); });
 // settings sheet (sound, vibration) — opened from the gear on the title and in a level
 const settingsOpen = () => !$('settingsOverlay').hidden;
 function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
@@ -851,7 +907,7 @@ gameScreen.addEventListener('pointerup', e => {
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
-  if (!$('clearOverlay').hidden) { if (e.key === 'Escape') loadLevel(LVL); return; }
+  if (!$('clearOverlay').hidden) { if (e.key === 'Escape') replay(); return; }
   if ($('gameScreen').hidden) return;
   const map = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R', w: 'U', s: 'D', a: 'L', d: 'R', W: 'U', S: 'D', A: 'L', D: 'R' };
   if (map[e.key]) { e.preventDefault(); if (e.repeat) return; ac(); tryMove(map[e.key]); }
@@ -871,11 +927,13 @@ if (capApp) capApp.addListener('backButton', () => {
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
   renderLegend(); renderLevelGrid();
-  if (data && data.screen === 'game' && data.st && LEVELS[data.lvl]) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, data.st)); }
+  const resumeDaily = data && data.daily && makeDaily(data.daily);
+  if (data && data.screen === 'game' && data.st && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, data.st)); }
+  else if (data && data.screen === 'game' && data.st && LEVELS[data.lvl]) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, data.st)); }
   else show('title', false);
   requestAnimationFrame(frame);
 }
-window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, st: st && !anim ? st : null }));
+window.claude?.hot?.snapshot?.(() => ({ screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null, st: st && !anim ? st : null }));
 const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
 })();
