@@ -173,9 +173,10 @@ h1 .sea { color: var(--buoy-deep); }
 .tip.hint { color: var(--star); }
 .tip.flash { animation: tip-in .3s var(--ease-out); }
 @keyframes tip-in { from { transform: translateY(4px); opacity: 0; } }
-.board { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
-/* frame = visible part of the canvas; when width is the limit the outer promenade columns are cropped (see resize()) */
-.board .frame { position: relative; overflow: hidden; border-radius: 18px; box-shadow: 0 14px 34px rgba(0,0,0,.32); will-change: transform; flex-shrink: 0; }
+/* the playfield runs edge to edge between HUD and controls; the canvas fills it (camera view, see resize()) */
+.board { flex: 1; min-height: 0; position: relative; margin-inline: -12px; }
+.board .frame { position: absolute; inset: 0; overflow: hidden; will-change: transform; }
+.board .frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 12px 16px -12px rgba(0,0,0,.45), inset 0 -12px 16px -12px rgba(0,0,0,.45); }
 .board canvas { display: block; }
 .board .frame.enter { animation: board-in .42s var(--ease-out) both; }
 @keyframes board-in { from { transform: scale(.94); opacity: 0; } }
@@ -1269,37 +1270,62 @@ function onClear() {
 
 /* ---------- rendering ---------- */
 const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx = cvs.getContext('2d');
-const CROP = 0.3;   // share of each outer promenade column that may be cut off to make the tiles bigger
+// Camera view: the canvas fills the whole board area. The canal is drawn as large as fits (outer promenade columns may be
+// cut by CROP when width is the limit) and the rest of the screen continues the world: promenade all around (the engine
+// already treats everything outside the grid as '#'), and open sea running out from each exit to the screen edge.
+const CROP = 0.3;   // share of each outer promenade column that may fall outside the view to make the tiles bigger
+let OX = 0, OY = 0, CW = 0, CH = 0, seaCells = new Set();
 function resize() {
   if (!g || $('gameScreen').hidden) return;
   const r = board.getBoundingClientRect();
-  T = Math.max(18, Math.floor(Math.min(r.width / (g.w - 2 * CROP), r.height / g.h, 132)));
+  CW = Math.floor(r.width); CH = Math.floor(r.height);
+  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / g.h, 132)));
+  OX = Math.round((CW - g.w * T) / 2); OY = Math.round((CH - g.h * T) / 2);
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-  const full = g.w * T, shown = Math.min(full, Math.floor(r.width));
-  frameEl.style.width = shown + 'px'; frameEl.style.height = g.h * T + 'px';
-  cvs.style.marginLeft = Math.round((shown - full) / 2) + 'px';
-  cvs.style.width = full + 'px'; cvs.style.height = g.h * T + 'px';
-  cvs.width = Math.round(g.w * T * dpr); cvs.height = Math.round(g.h * T * dpr);
+  cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
+  cvs.width = Math.round(CW * dpr); cvs.height = Math.round(CH * dpr);
+  cvs.dataset.tile = T; cvs.dataset.ox = OX; cvs.dataset.oy = OY;   // grid placement, read by tools/shots.js
   causticPat = null;
   buildStatic();
 }
-const isLand = (x, y) => cellAt(g, x, y) === '#';
+// '~' = open sea beyond an exit, '#' = promenade everywhere else outside the grid
+function exitDir(x, y) { return y === 0 ? 'U' : y === g.h - 1 ? 'D' : x === 0 ? 'L' : 'R'; }
+function buildSea() {
+  seaCells = new Set();
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 'E') {
+    const [dx, dy] = DIRS[exitDir(x, y)];
+    for (let k = 1; k <= 40; k++) seaCells.add((x + dx * k) + ',' + (y + dy * k));
+  }
+}
+const cellType = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h) ? (seaCells.has(x + ',' + y) ? '~' : '#') : cellAt(g, x, y);
+const isLand = (x, y) => cellType(x, y) === '#';
 function buildStatic() {
+  buildSea();
   staticLayer = document.createElement('canvas');
   staticLayer.width = cvs.width; staticLayer.height = cvs.height;
-  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr);
+  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  // every cell that is at least partly on screen
+  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
   waterPath = new Path2D();
-  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
-    const px = x * T, py = y * T;
-    if (!isLand(x, y)) { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); continue; }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const px = x * T, py = y * T, c = cellType(x, y);
+    if (c === '~') {
+      // open sea: deepens with distance from the canal
+      const d = Math.max(Math.abs(Math.min(x, g.w - 1 - x, 0)), Math.abs(Math.min(y, g.h - 1 - y, 0)));
+      s.fillStyle = C.sea; s.fillRect(px, py, T, T);
+      s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
+      waterPath.rect(px, py, T, T); continue;
+    }
+    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); continue; }
     s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
     s.strokeStyle = C['concrete-2']; s.lineWidth = 1;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
-    const off = (y % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke();
+    const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke();
   }
   // shade on water next to land, railings and onlookers on land next to water
-  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const px = x * T, py = y * T, seed = hash(y * 97 + x * 31 + LVL * 7);
+    const inside = x >= 0 && y >= 0 && x < g.w && y < g.h;
     const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     if (!isLand(x, y)) {
       s.fillStyle = 'rgba(6,30,38,.28)';
@@ -1311,9 +1337,9 @@ function buildStatic() {
       });
       continue;
     }
-    const waterSides = nb.filter(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && !isLand(nx, ny); });
+    const waterSides = nb.filter(([dx, dy]) => !isLand(x + dx, y + dy));
     if (!waterSides.length) {
-      if (seed < 0.4) { s.fillStyle = C.park; s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill(); s.fillStyle = 'rgba(255,255,255,.14)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); }
+      if (seed < (inside ? 0.4 : 0.22)) { s.fillStyle = C.park; s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill(); s.fillStyle = 'rgba(255,255,255,.14)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); }
       continue;
     }
     waterSides.forEach(([dx, dy], k) => {
@@ -1387,7 +1413,7 @@ function step(dt) {
 function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(staticLayer, 0, 0);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);   // from here on: grid coordinates
   const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
   // light on the water
   ctx.save(); ctx.clip(waterPath);
@@ -1396,7 +1422,7 @@ function draw(t) {
   ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = causticPat;
   for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.09], [-ct * 5, ct * 6, sc * 1.4, 0.06]]) {
     ctx.save(); ctx.globalAlpha = al; ctx.scale(s, s); ctx.translate(ox % 128, oy % 128);
-    ctx.fillRect(-128, -128, g.w * T / s + 256, g.h * T / s + 256); ctx.restore();
+    ctx.fillRect(-OX / s - 256, -OY / s - 256, CW / s + 512, CH / s + 512); ctx.restore();
   }
   ctx.restore();
   // ripples
@@ -1604,7 +1630,7 @@ gameScreen.addEventListener('pointerup', e => {
   if (Math.hypot(dx, dy) >= SWIPE) { tryMove(swipeDir(dx, dy)); return; }
   if (!g0.onBoard) return;
   const r = cvs.getBoundingClientRect();
-  const gx = Math.floor((e.clientX - r.left) / T), gy = Math.floor((e.clientY - r.top) / T);
+  const gx = Math.floor((e.clientX - r.left - OX) / T), gy = Math.floor((e.clientY - r.top - OY) / T);
   if (gx >= 0 && gy >= 0 && gx < g.w && gy < g.h) tapTile(gx, gy);
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });

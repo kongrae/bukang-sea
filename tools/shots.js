@@ -17,7 +17,7 @@ if (!fs.existsSync(path.join(root, 'www', 'index.html'))) { console.error('Run n
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PORT = 9335;
 
-// Each scene: progress to store, then a script run on the title screen. `$`, sleep, tap(x, y, cols), swipe(dir) are available.
+// Each scene: progress to store, then a script run on the title screen. `$`, sleep, tap(x, y), swipe(dir) are available.
 const done = n => Object.fromEntries(Array.from({ length: n }, (_, i) => [i, i % 5 === 3 ? 2 : 3]));
 const scenes = [
   { name: '1-title', save: { best: done(14), last: 14 }, run: `` },
@@ -27,7 +27,7 @@ const scenes = [
     $('hintBtn').click(); await sleep(600);` },
   { name: '3-nets', save: { best: done(11), last: 11 }, run: `
     document.querySelector('.lv[data-i="11"]').click(); await sleep(400);
-    tap(5, 1, 7); tap(3, 8, 7); await sleep(200);
+    tap(5, 1); tap(3, 8); await sleep(200);
     for (const d of 'UL') { swipe(d); await sleep(1200); }` },
   { name: '4-clear', save: { best: done(4), last: 4 }, run: `
     document.querySelector('.lv[data-i="4"]').click(); await sleep(400);
@@ -71,8 +71,9 @@ async function cdp() {
         const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));
         const K = { U: 'ArrowUp', D: 'ArrowDown', L: 'ArrowLeft', R: 'ArrowRight' };
         const swipe = d => window.dispatchEvent(new KeyboardEvent('keydown', { key: K[d] }));
-        const tap = (gx, gy, cols) => {
-          const r = $('boardCanvas').getBoundingClientRect(), T = r.width / cols, o = { clientX: r.left + (gx + .5) * T, clientY: r.top + (gy + .5) * T, pointerId: 1, bubbles: true };
+        const tap = (gx, gy) => {
+          const c = $('boardCanvas'), r = c.getBoundingClientRect(), T = +c.dataset.tile;
+          const o = { clientX: r.left + +c.dataset.ox + (gx + .5) * T, clientY: r.top + +c.dataset.oy + (gy + .5) * T, pointerId: 1, bubbles: true };
           $('board').dispatchEvent(new PointerEvent('pointerdown', o)); $('board').dispatchEvent(new PointerEvent('pointerup', o));
         };
         ${s.run}
