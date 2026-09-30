@@ -11,7 +11,7 @@
     "fonts": "node tools/fonts.js",
     "serve": "node tools/serve.js www 5173",
     "verify": "node tools/verify.js",
-    "test": "node --test tools/solver.test.js",
+    "test": "node --test tools/solver.test.js tools/render.test.js",
     "gen": "node tools/gen.js",
     "difficulty": "node tools/difficulty.js",
     "cap:sync": "npm run build:web && cap sync android",

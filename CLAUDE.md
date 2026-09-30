@@ -22,7 +22,7 @@ npm run cap:sync         # build:web + Capacitor android 동기화
 npm run android:debug    # cap:sync + 디버그 APK 빌드(JDK 21: ~/.jdks/jdk-21*, 시스템 JDK 17은 그대로)
 npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-keys, 비밀번호는 android/keystore.properties, 둘 다 커밋 금지)
 npm run verify           # 모든 해법을 실제 규칙으로 재생하고 최소 이동 수 ≤ 별 기준(par)인지 검사
-npm test                 # 그물 재배치·소진 상태·전수 탐색 대조·일일 퍼즐 호환 회귀 검사
+npm test                 # 풀이기·별 판정·일일 퍼즐 호환·구조정 연출 순서·되돌리기 회귀 검사
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
 npm run difficulty       # 실제 규칙의 최소 이동·탈출 이동·역할별 이동 여유 출력 (--fixed-nets로 보조 bits)
 npm run daily -- 365     # 오늘의 수로: 앞으로 N일 치를 미리 생성해 전부 풀리는지·생성 시간 확인
@@ -43,6 +43,7 @@ tools/
   build.js     src 파일들을 이어 붙여 단일 HTML 생성
   verify.js    해법 재생·그물 필요성·역할별 별 기준 검증
   difficulty.js  실제 재배치 규칙의 이동 기준표. 고정 그물 bits는 생성기/선택 진단용
+  render.test.js  실제 이동·프레임·그리기 함수로 구조정 연출 순서, 입력 대기, 되돌리기 검사
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
   icons.js     아이콘 PNG 렌더링
   serve.js     로컬 정적 서버
@@ -101,13 +102,13 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 ## game.js 개요
 
 - 상태 `st = { pos, dir, fish[], nets[], moves, history[] }`. 되돌리기는 history 스냅샷 pop (그물 설치/회수도 포함).
-- `tryMove(d)`는 결과를 즉시 확정하고, 화면은 `anim`으로 따라간다. 위치는 속도 곡선(GLIDE: 빠른 출발 → 긴 감속, 탈출은 DASH)으로 경로를 보간. 애니메이션 중 입력은 한 개까지 `queued`에 담았다가 멈춘 직후 실행.
+- `tryMove(d)`는 결과를 즉시 확정하고, 화면은 `anim`으로 따라간다. 위치는 속도 곡선(GLIDE: 빠른 출발 → 긴 감속, 탈출은 DASH)으로 경로를 보간. 상어가 도착한 뒤 구조정이 0.16초 동안 움직이거나 방향을 바꾼다. reduced-motion이면 추가 연출 없이 상어 도착 시 구조정 상태를 표시한다. 애니메이션 중 입력은 한 개까지 `queued`에 담았다가 두 단계가 끝난 직후 실행.
 - 연출(전부 tile 좌표 파티클): 속도에 따른 몸 늘어남, 정지 시 눌림+스프링(`settle`), 벽 충돌 물보라·파문(화면 흔들림·진동은 없음, 2026-09-30 제거), V자 항적(`wake`), 숭어 빨려 들어가기+냠!+반짝임, 물줄기 통과 번쩍임(`jetFlash`), 그물 톡 튀기(`netPop`), 탈출 시 바다로 사라짐, 물 위 코스틱 빛(타일러블 패턴을 waterPath로 clip). reduced-motion이면 대부분 생략.
 - 입력: 게임 화면 어디서든 스와이프, 손가락이 `SWIPE`(18px) 움직이는 순간 발동(pointermove). 탭은 판 위에서만(그물). 키보드 동일.
 - 판(카메라 뷰): 캔버스가 HUD와 버튼 사이 영역 전체를 가장자리까지 채운다(.board margin-inline -12px). 수로는 가운데에 최대 크기로(폭이 모자라면 바깥 산책로 열을 `CROP` 30%까지 화면 밖으로), 남는 공간은 판 밖 세계로 채움: 산책로(엔진도 격자 밖을 #로 봄) + 출구 바깥으로 이어지는 바다(`seaCells`, `~`). 그리드 원점은 `OX, OY`(캔버스 data-tile/ox/oy로 노출, tools/shots.js가 탭 좌표에 사용).
 - 햅틱: Capacitor Haptics 플러그인이 있으면 사용, 없으면 navigator.vibrate. 모든 버튼 누름에 tick. 설정 창(톱니바퀴, 제목·게임 화면)에서 소리·진동을 따로 끔(`save.sound`, `save.vibe`).
 - 첫 플레이 안내(`coach`): 수로 1에서 손가락 스와이프, 첫 그물 수로에서 손가락 탭. 한 번 하면 `save.coachSwipe/coachNet`으로 다시 안 뜸.
-- 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·상어는 매 프레임.
+- 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·상어는 매 프레임. 짧은 화면은 HUD 간격을 줄이고, `ResizeObserver`로 안내 줄바꿈 등의 판 크기 변화에 캔버스와 탭 좌표를 맞춘다.
 - 힌트는 현재 상태에서 `planSearch()`로 최소 이동 해법을 찾고 회수(그물의 원·X 표시) → 설치(반짝이는 빈 그물) → 이동 화살표를 순서대로 안내한다. 그물 탭 중에는 같은 다음 이동의 배치를 유지하고 안내만 갱신한다. 첫 그물 안내는 해법상 설치가 필요한 이동까지 기다려 표시한다.
 - 진행 상황은 `localStorage['bukang-sea-v1']` = `{ best: {레벨인덱스: 별}, last, sound }`. 접근 실패해도 동작해야 하므로 try/catch 유지.
 - **오늘의 수로**: `makeDaily(YYYY-MM-DD)`가 날짜 시드(FNV-1a, `DAILY_VERSION` 포함)로 요일별 레시피(`DAILY_TIERS`: 월 쉬움 → 주말 어려움, 금·일 그물)에 맞춰 수로를 생성·검증한다. 같은 날짜면 모든 기기에서 같은 퍼즐. 레시피·마스크·place를 바꾸면 과거·미래 퍼즐이 전부 바뀌므로 DAILY_VERSION을 올리고 `npm run daily`로 확인(현재 v2: 목 모래톱, 토 구조정+소용돌이+모래톱, 일 그물+소용돌이+모래톱). 기록은 `save.daily = { 날짜: 별 }`(최근 120일), 연속 일수는 오늘(없으면 어제)부터 거꾸로 센다. 게임 안에서는 `DAILY`가 null이 아니면 오늘의 수로 모드(`curLevel()`, `replay()`, `deco` 시드 사용), 스토리 기록(save.best/last)은 건드리지 않는다.
@@ -125,6 +126,7 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 - 폰트: 제목 Jua(주아), 본문 Noto Sans KR(Android 기본 한글 글꼴 계열). 2026-09-30 Bagel Fat One/IBM Plex Sans KR에서 교체(한글이 어색하다는 피드백). dist/·아티팩트는 Google Fonts, www/(PWA·앱)는 서브셋 내장본을 "Bukang Display/Body"로 이름 바꿔 사용. 실패 시 시스템 폰트.
 - 한글 조판: body에 `word-break: keep-all`(단어 중간 줄바꿈 금지), 자간 -0.01em, `font-synthesis: none`(단일 굵기 Jua에 가짜 볼드 금지 — 제목 요소는 font-weight 400 유지).
 - 상어는 코드로 그린 탑다운 무태상어. 기존 캐릭터를 닮게 만들지 말 것. 게임 속 호칭은 이름 없이 "상어(야)".
+- 개선 3번: 물줄기는 어두운 타일 위 고정된 밝은 화살표, 상어는 밝은 윤곽, 배경 물결·구경꾼은 약하게 표시한다. 화면 측정과 실제 입력·자동 검증 범위는 `docs/READABILITY.md` 참고.
 - 네이티브 느낌 유지: 텍스트 선택·롱프레스 메뉴·확대 금지, hover 효과는 `@media (hover: hover)` 안에만, 글자 버튼 대신 아이콘+라벨, 누름은 scale 스프링.
 
 ## 주의

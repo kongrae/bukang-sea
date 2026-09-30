@@ -30,8 +30,8 @@
   --buoy-deep: #c8441b;
   --star: #ffc94a;
   --net: #ecd9a0;
-  --shark: #8b8a78;        /* copper shark back */
-  --shark-2: #6f6e5f;
+  --shark: #c1baa6;        /* warm shark back, distinct from teal water */
+  --shark-2: #938d79;
   /* "Bukang *" = bundled subset fonts (www/ build only, renamed per OFL); the Google Fonts names serve the other builds */
   --font-display: "Bukang Display", "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-body: "Bukang Body", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -307,6 +307,15 @@ h1 .sea { color: var(--buoy-deep); }
 }
 @media (max-height: 640px) {
   .tip { min-height: 0; }
+  .ctrl { min-height: 48px; }
+}
+@media (max-height: 700px) {
+  .game-screen { gap: 3px; }
+  .game-screen .topbar { min-height: 44px; }
+  .game-screen .icon-btn { width: 44px; height: 44px; }
+  .lvl-title .num { line-height: 1.3; }
+  .lvl-title .name { font-size: 23px; }
+  .chip { padding: 3px 10px; }
   .ctrl { min-height: 48px; }
 }
 </style>
@@ -1503,20 +1512,22 @@ function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin 
   ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(stretch, 1 + (1 - stretch) * 0.8);
   ctx.fillStyle = 'rgba(4,20,26,.22)';
   ctx.beginPath(); ctx.ellipse(T * 0.05, T * 0.07, L * 0.46, W * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+  // A light rim keeps every skin legible against the water without changing its pattern.
+  ctx.strokeStyle = C.rail; ctx.lineWidth = Math.max(1.2, T * 0.028); ctx.lineJoin = 'round';
   // tail
   ctx.save(); ctx.translate(-L * 0.3, 0); ctx.rotate(wag);
   ctx.fillStyle = fin;
   ctx.beginPath();
-  ctx.moveTo(0, -W * 0.24); ctx.lineTo(-L * 0.2, -W * 0.08); ctx.lineTo(-L * 0.2, W * 0.08); ctx.lineTo(0, W * 0.24); ctx.fill();
+  ctx.moveTo(0, -W * 0.24); ctx.lineTo(-L * 0.2, -W * 0.08); ctx.lineTo(-L * 0.2, W * 0.08); ctx.lineTo(0, W * 0.24); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(-L * 0.16, 0); ctx.lineTo(-L * 0.34, -W * 0.85); ctx.quadraticCurveTo(-L * 0.25, -W * 0.1, -L * 0.3, 0);
-  ctx.quadraticCurveTo(-L * 0.25, W * 0.1, -L * 0.31, W * 0.55); ctx.closePath(); ctx.fill();
+  ctx.quadraticCurveTo(-L * 0.25, W * 0.1, -L * 0.31, W * 0.55); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.restore();
   // pectoral fins
   ctx.fillStyle = fin;
   for (const s of [-1, 1]) {
     ctx.beginPath(); ctx.moveTo(L * 0.14, s * W * 0.38); ctx.lineTo(-L * 0.1, s * W * 1.3);
-    ctx.quadraticCurveTo(-L * 0.02, s * W * 0.6, -L * 0.04, s * W * 0.34); ctx.fill();
+    ctx.quadraticCurveTo(-L * 0.02, s * W * 0.6, -L * 0.04, s * W * 0.34); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   // body
   const bodyPath = () => {
@@ -1529,6 +1540,7 @@ function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin 
   };
   ctx.fillStyle = body; bodyPath(); ctx.fill();
   if (skin.pattern) { ctx.save(); bodyPath(); ctx.clip(); skin.pattern(ctx, L, W, T, t); ctx.restore(); }
+  bodyPath(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.12)';
   ctx.beginPath(); ctx.ellipse(L * 0.12, -W * 0.12, L * 0.28, W * 0.16, 0, 0, Math.PI * 2); ctx.fill();
   // dorsal fin seen from above
@@ -1583,17 +1595,28 @@ function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
   ctx.restore();
 }
 function drawJet(ctx, x, y, T, dir, t, flash = 0) {
-  ctx.fillStyle = `rgba(111,208,204,${0.22 + flash * 0.45})`; ctx.fillRect(x, y, T, T);
-  ctx.save(); ctx.beginPath(); ctx.rect(x, y, T, T); ctx.clip();
+  ctx.save();
+  const p = T * 0.08;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x + p, y + p, T - p * 2, T - p * 2, T * 0.13);
+  else ctx.rect(x + p, y + p, T - p * 2, T - p * 2);
+  ctx.fillStyle = C['harbor']; ctx.fill();
+  ctx.strokeStyle = flash ? '#fff' : C['water-hi']; ctx.lineWidth = Math.max(1.25, T * 0.035); ctx.stroke();
+  ctx.clip();
   ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
-  ctx.strokeStyle = flash ? '#ffffff' : C['water-hi']; ctx.lineWidth = Math.max(2, T * 0.07); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = C['water-hi']; ctx.lineWidth = Math.max(1.5, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const off = reduceMotion ? 0 : (t * (1.4 + flash * 3) % 1) * T * 0.5;
   for (let k = -2; k <= 1; k++) {
     const px = k * T * 0.5 + off;
-    ctx.globalAlpha = 0.9 - Math.abs(px) / T;
+    ctx.globalAlpha = 0.22;
     ctx.beginPath(); ctx.moveTo(px - T * 0.12, -T * 0.2); ctx.lineTo(px + T * 0.08, 0); ctx.lineTo(px - T * 0.12, T * 0.2); ctx.stroke();
   }
-  ctx.restore(); ctx.globalAlpha = 1;
+  // The central arrow never moves or fades: direction must remain readable at every frame.
+  ctx.globalAlpha = 1; ctx.fillStyle = C.rail; ctx.strokeStyle = C.ink; ctx.lineWidth = Math.max(1, T * 0.025);
+  ctx.beginPath(); ctx.moveTo(-T * 0.27, -T * 0.075); ctx.lineTo(T * 0.04, -T * 0.075);
+  ctx.lineTo(T * 0.04, -T * 0.23); ctx.lineTo(T * 0.3, 0); ctx.lineTo(T * 0.04, T * 0.23);
+  ctx.lineTo(T * 0.04, T * 0.075); ctx.lineTo(-T * 0.27, T * 0.075); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
 }
 function drawNet(ctx, x, y, T, ghost, t, scale = 1) {
   const p = T * 0.1, s = T - p * 2;
@@ -1804,9 +1827,11 @@ function tryMove(d) {
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  const boatsFrom = st.boats;   // boats glide one tile while the shark swims (rules: they move right after it)
+  const boatsFrom = st.boats;
   if (!r.win) st.boats = stepBoats(g, st.boats, r.end[1] * g.w + r.end[0], netSet());
-  anim = { boatsFrom, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+  // Show the same turn order as the engine: shark swims, then boats move. Input stays queued until both finish.
+  const boatDur = !reduceMotion && !r.win && boatsFrom.some((b, k) => b[0] !== st.boats[k][0] || b[1] !== st.boats[k][1]) ? 0.16 : 0;
+  anim = { boatsFrom, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
@@ -2043,6 +2068,16 @@ function resize() {
   causticPat = null;
   buildStatic();
 }
+// Hints, wrapped counters and font loading can change board space without a window resize.
+// Keep the canvas and tap coordinates fitted to the actual board after those layout changes.
+if (typeof ResizeObserver !== 'undefined') {
+  const boardResize = new ResizeObserver(() => {
+    if (!g || $('gameScreen').hidden) return;
+    const r = board.getBoundingClientRect();
+    if (Math.floor(r.width) !== CW || Math.floor(r.height) !== CH) resize();
+  });
+  boardResize.observe(board);
+}
 // '~' = open sea beyond an exit, '#' = promenade everywhere else outside the grid
 function exitDir(x, y) { return y === 0 ? 'U' : y === g.h - 1 ? 'D' : x === 0 ? 'L' : 'R'; }
 function buildSea() {
@@ -2105,14 +2140,15 @@ function buildStatic() {
       if (dx === -1) { s.moveTo(px + 2, py); s.lineTo(px + 2, py + T); }
       if (dx === 1) { s.moveTo(px + T - 2, py); s.lineTo(px + T - 2, py + T); }
       s.stroke();
-      const n = seed > 0.25 ? 2 : 1;
+      if (seed > 0.4) return; // decorations yield to the playable tiles, especially on small screens
+      const n = 1;
       for (let j = 0; j < n; j++) {
-        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.22;
+        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.3;
         let qx = px + T * along, qy = py + T * along;
         if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
         if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
         if (dy) qx = px + T * along; else qy = py + T * along;
-        drawPerson(s, qx, qy, T, sd);
+        s.save(); s.globalAlpha = 0.65; drawPerson(s, qx, qy, T, sd); s.restore();
       }
     });
   }
@@ -2154,7 +2190,7 @@ function step(dt) {
     }
     if (a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: view.ang, age: 0, sp: Math.min(1, a.speed / 14) });
     if (Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
-    if (u >= 1) finishAnim();
+    if (a.t >= a.dur + a.boatDur) finishAnim();
   }
   let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
   view.ang += da * (1 - Math.exp(-dt * 18));
@@ -2181,13 +2217,13 @@ function draw(t) {
   if (!causticPat) causticPat = ctx.createPattern(caustic, 'repeat');
   const ct = reduceMotion ? 0 : t, sc = T / 60;
   ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = causticPat;
-  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.09], [-ct * 5, ct * 6, sc * 1.4, 0.06]]) {
+  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.045], [-ct * 5, ct * 6, sc * 1.4, 0.025]]) {
     ctx.save(); ctx.globalAlpha = al; ctx.scale(s, s); ctx.translate(ox % 128, oy % 128);
     ctx.fillRect(-OX / s - 256, -OY / s - 256, CW / s + 512, CH / s + 512); ctx.restore();
   }
   ctx.restore();
   // ripples
-  ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1.5;
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = cellAt(g, x, y); if (c === '#') continue;
     const px = x * T, py = y * T;
@@ -2221,13 +2257,14 @@ function draw(t) {
     ctx.fillStyle = `rgba(255,255,255,${(a * 0.45).toFixed(3)})`;
     ctx.beginPath(); ctx.arc(cx, cy, T * (0.07 + k * 0.12), 0, 7); ctx.fill();
   }
-  // patrol boats: glide from their old tile while the shark swims; bow faces the way they are heading
+  // Patrol boats remain on their old tile during the swim and glide only after the shark arrives.
   const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
-  const bk = anim && anim.boatsFrom ? 1 - Math.pow(1 - clamp01(anim.t / anim.dur), 2) : 1;
+  const bk = anim ? (anim.t < anim.dur ? 0 : anim.boatDur ? 1 - Math.pow(1 - clamp01((anim.t - anim.dur) / anim.boatDur), 2) : 1) : 1;
   st.boats.forEach((b, k) => {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
     const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
-    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[b[1]], !anim);
+    const heading = anim && anim.t < anim.dur ? anim.boatsFrom[k][1] : b[1];
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim);
   });
   st.nets.forEach(i => {
     const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;

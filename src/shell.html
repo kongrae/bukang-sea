@@ -23,8 +23,8 @@
   --buoy-deep: #c8441b;
   --star: #ffc94a;
   --net: #ecd9a0;
-  --shark: #8b8a78;        /* copper shark back */
-  --shark-2: #6f6e5f;
+  --shark: #c1baa6;        /* warm shark back, distinct from teal water */
+  --shark-2: #938d79;
   /* "Bukang *" = bundled subset fonts (www/ build only, renamed per OFL); the Google Fonts names serve the other builds */
   --font-display: "Bukang Display", "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-body: "Bukang Body", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -300,6 +300,15 @@ h1 .sea { color: var(--buoy-deep); }
 }
 @media (max-height: 640px) {
   .tip { min-height: 0; }
+  .ctrl { min-height: 48px; }
+}
+@media (max-height: 700px) {
+  .game-screen { gap: 3px; }
+  .game-screen .topbar { min-height: 44px; }
+  .game-screen .icon-btn { width: 44px; height: 44px; }
+  .lvl-title .num { line-height: 1.3; }
+  .lvl-title .name { font-size: 23px; }
+  .chip { padding: 3px 10px; }
   .ctrl { min-height: 48px; }
 }
 </style>
