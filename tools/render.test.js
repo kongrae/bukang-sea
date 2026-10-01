@@ -8,7 +8,7 @@ const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.
 
 // Run the production movement/frame/render functions with a silent canvas and sound output.
 // Capturing drawBoat coordinates tests visible turn order; this does not test sprite pixels or device touch.
-function game({ reduced = false, index = 5, stored = null, daily = null, storageFails = false } = {}) {
+function game({ reduced = false, index = 5, level = LEVELS[index], stored = null, daily = null, storageFails = false } = {}) {
   const functionSource = name => {
     const found = source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))
       || source.match(new RegExp(`function ${name}\\([^]*?\\n}`));
@@ -16,28 +16,30 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
     return found[0];
   };
   const easing = source.slice(source.indexOf('function easeTable('), source.indexOf('/* ---------- drawing primitives'));
-  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'finishAnim', 'undo', 'tapTile', 'step', 'draw'].map(functionSource).join('\n');
+  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw'].map(functionSource).join('\n');
+  const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
   return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', `
     ${engine}
     ${easing}
     ${source.match(/^const ANG = .*$/m)[0]}
-    const noop = () => {}, sfx = new Proxy({}, {get: () => noop});
+    const noop = () => {}, sounds = [], sfx = new Proxy({}, {get: (_,name) => (...args) => sounds.push({name,args,clock})});
     const ctx = new Proxy({}, {get: (target, key) => key in target ? target[key] : noop});
     const C = {}, T = 40, dpr = 1, OX = 0, OY = 0, CW = 360, CH = 640;
     const staticLayer = {}, waterPath = {}, caustic = {}, causticPat = {};
     const $ = () => ({hidden: false, classList: {contains: () => false}});
-    const haptic = noop, ring = noop, splashAt = noop, updateHud = noop, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
-    const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawNet = noop, drawFish = noop;
+    const haptic = noop, updateHud = noop, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
+    const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawFish = noop, css = {getPropertyValue: () => 'sans-serif'};
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null;
     const localStorage = {setItem: (key, value) => {if (storageFails) throw Error('quota'); written = value;}};
-    const wake = [], particles = [], jetFlash = new Map(), netPop = new Map();
+    const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map();
     let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null;
-    let cleared = false, clock = 0, hintRequest = 0, deco = 0, boatsDrawn = [];
-    const drawShark = noop;
+    let cleared = false, clock = 0, hintRequest = 0, deco = 0, boatsDrawn = [], sharkDrawn, netsDrawn = [];
+    const drawShark = (...args) => sharkDrawn = args.slice(1), drawNet = (...args) => netsDrawn.push(args.slice(1));
     const drawBoat = (ctx, x, y) => boatsDrawn.push([x / T - 0.5, y / T - 0.5]);
     const onClear = () => {cleared = true;};
+    ${effects}
     ${functions}
     st = freshState(level);
     const packet = save.sessions[DAILY ? 'daily' : 'story'];
@@ -48,10 +50,13 @@ function game({ reduced = false, index = 5, stored = null, daily = null, storage
       move: tryMove, tick: step, undo, tap: tapTile, pause: pauseGame, checkpoint,
       stored: () => written,
       restore: (record, otherLevel = level, id = LVL) => restoreSession(record, otherLevel, id),
-      render: () => {boatsDrawn = []; draw(0); return boatsDrawn;},
+      render: () => {boatsDrawn = []; netsDrawn = []; draw(0); return boatsDrawn;},
+      sounds: () => sounds.slice(), shark: () => sharkDrawn, nets: () => netsDrawn,
+      effects: () => JSON.parse(JSON.stringify({particles, wake, contacts:[...contactPulse], retract:[...netRetract], netPop:[...netPop], settle,
+        anim:anim && {t:anim.t,dur:anim.dur,swimDur:anim.swimDur,portals:anim.portals,p:anim.p,landed:anim.landed,warpScale:anim.warpScale}})),
       state: () => JSON.parse(JSON.stringify({pos: st.pos, boats: st.boats, nets: st.nets, moves: st.moves, fish: st.fish, cleared, animating: !!anim, view: [view.x, view.y]}))
     };
-  `)(LEVELS[index], reduced, index, stored, daily && {date: daily, stage: 0, version: 1}, storageFails, dailyStageId);
+  `)(level, reduced, index, stored, daily && {date: daily, stage: 0, version: 1}, storageFails, dailyStageId);
 }
 
 function finishTurn(scene) {
@@ -238,4 +243,104 @@ test('first-encounter device rules are recorded only on confirmation and can be 
   run.show();
   assert.equal(elements.guideOverlay.hidden, false);
   assert.ok(elements.guideTabs.innerHTML.includes('소용돌이'));
+});
+
+test('arrival reacts once at contact, before the boat phase ends', () => {
+  const scene = game(); scene.move('U');
+  scene.tick(0.14);
+  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 0);
+  scene.tick(0.01);
+  assert.equal(scene.state().animating, true, 'boat phase is still active');
+  assert.ok(scene.effects().settle, 'shark settles while boats move');
+  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 1);
+  scene.render(); assert.equal(scene.shark()[5], false, 'tail is no longer in swim mode');
+  finishTurn(scene);
+  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 1, 'finish must not replay contact');
+});
+
+const portalLevel = {name:'portal motion fixture',par:4,map:[
+  '###############', '#Sfw..........#', '###############', '#......w.f.s..#', '#############E#'
+]};
+test('portals have a visible entry/return phase without swimming across intervening walls', () => {
+  const scene = game({level:portalLevel}); scene.move('R');
+  const portal = scene.effects().anim.portals[0];
+  assert.equal(portal.hold, 0.18);
+  scene.tick(portal.start + 0.045);
+  assert.deepEqual(scene.state().view, [3,1]);
+  assert.ok(Math.abs(scene.effects().anim.warpScale - 0.5) < 0.001);
+  scene.tick(0.09);
+  assert.deepEqual(scene.state().view, [7,3]);
+  assert.ok(Math.abs(scene.effects().anim.warpScale - 0.5) < 0.001);
+  finishTurn(scene);
+  assert.deepEqual(scene.state().pos, [11,3]);
+  assert.deepEqual(scene.state().fish, [0,1]);
+  assert.equal(scene.sounds().filter(s => s.name === 'warp').length, 1);
+  assert.equal(scene.sounds().filter(s => s.name === 'sand').length, 1);
+});
+test('coarse frames retain portal and pickup events once; pickups stay near their source', () => {
+  const scene = game({level:portalLevel}); scene.move('R'); scene.tick(0.05);
+  scene.tick(0.5);
+  assert.equal(scene.sounds().filter(s => s.name === 'warp').length, 1);
+  finishTurn(scene);
+  assert.deepEqual(scene.sounds().filter(s => s.name === 'eat').map(s => s.args[0]), [false,true]);
+  assert.equal(scene.sounds().filter(s => s.name === 'warp').length, 1);
+  const fine = game({level:portalLevel}); fine.move('R');
+  for(let i=0;i<14;i++) {
+    fine.tick(0.05);
+    for(const p of fine.effects().particles.filter(p=>p.kind==='fish')) {
+      const original = p.fi === 0 ? [2,1] : [9,3];
+      assert.ok(Math.abs(p.x-original[0])<=0.36 && Math.abs(p.y-original[1])<0.01,'pickup must not fly across the portal');
+    }
+  }
+  fine.undo();
+  assert.deepEqual(fine.state().fish, []);
+  assert.equal(fine.effects().particles.some(p=>['fish','text','grain'].includes(p.kind)), false);
+});
+test('net removal shrinks visually but changes the board immediately; replacing or undoing cancels stale effects', () => {
+  const scene = game({index:11}); scene.tap(3,8); scene.tick(0.1); scene.tap(3,8);
+  assert.deepEqual(scene.state().nets, []);
+  assert.equal(scene.effects().retract.length, 1);
+  scene.render(); assert.equal(scene.nets().length, 1, 'removed net is drawn briefly');
+  scene.tap(3,8); scene.render();
+  assert.equal(scene.effects().retract.length, 0);
+  assert.equal(scene.nets().length, 1, 'replacing the same cell never draws two nets');
+  scene.undo();
+  assert.deepEqual(scene.state().nets, []);
+  assert.equal(scene.effects().retract.length, 0); assert.equal(scene.effects().netPop.length, 0);
+  scene.tap(3,8); scene.tap(3,8); scene.move('U'); finishTurn(scene);
+  const {parseLevel,slide}=require('../src/engine'); const grid=parseLevel(LEVELS[11]);
+  assert.deepEqual(scene.state().pos,slide(grid,grid.start,'U',new Set(),grid.boats).end,'a retracting net cannot block a new swipe');
+  assert.equal(scene.effects().retract.length, 0);
+});
+test('net catches and buoy contacts react at the blocking tile without changing logical state', () => {
+  const scene=game({index:11}); scene.tap(3,8); scene.move('U'); finishTurn(scene);
+  assert.equal(scene.state().moves,1); assert.deepEqual(scene.state().nets,[59]);
+  assert.equal(scene.effects().contacts[0][0],59);
+  const buoy=game({level:{name:'buoy contact',par:2,map:['######','#S.oE#','######']}});
+  buoy.move('R'); finishTurn(buoy);
+  assert.deepEqual(buoy.state().pos,[2,1]); assert.equal(buoy.effects().contacts[0][0],9);
+  const before=buoy.state(); buoy.move('R');
+  assert.equal(buoy.state().moves,before.moves); assert.deepEqual(buoy.state().pos,before.pos);
+});
+test('pausing drops pending movement effects and sounds while preserving the full committed turn', () => {
+  const scene=game({level:portalLevel}); scene.move('R'); scene.move('L');
+  const before=scene.sounds().length; scene.pause();
+  assert.equal(scene.sounds().length,before,'no delayed sand/portal reaction on pause');
+  assert.deepEqual(scene.state().pos,[11,3]); assert.deepEqual(scene.state().fish,[0,1]);
+  assert.equal(scene.state().moves,1); assert.equal(scene.state().animating,false);
+  assert.deepEqual(scene.effects().particles,[]); assert.deepEqual(scene.effects().wake,[]);
+  assert.equal(scene.effects().settle,null);
+});
+test('reduced motion keeps gameplay and cues with no shrink, stretch, trail or decorative particles', () => {
+  const scene=game({level:portalLevel,reduced:true}); scene.move('R');
+  assert.equal(scene.effects().anim.portals[0].hold,0);
+  for(let i=0;i<12;i++) {
+    scene.tick(0.05); scene.render();
+    assert.equal(scene.shark()[3],40,'no portal shrink or entry pop');
+    assert.equal(scene.shark()[6],1,'no speed stretch');
+    assert.deepEqual(scene.effects().particles,[]); assert.deepEqual(scene.effects().wake,[]);
+  }
+  assert.deepEqual(scene.state().pos,[11,3]); assert.deepEqual(scene.state().fish,[0,1]);
+  const net=game({index:11,reduced:true}); net.tap(3,8); net.tap(3,8);
+  assert.deepEqual(net.effects().retract,[]); assert.deepEqual(net.effects().netPop,[]);
 });

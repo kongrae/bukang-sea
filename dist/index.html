@@ -2116,7 +2116,7 @@ const sfx = {
   move: () => noise(0.26, 0.15, 500, 1400),
   stop: (amp = 0.5) => { noise(0.2, 0.07 + amp * 0.08, 1400, 350, 0.7, 'lowpass'); tone(150, 0.1, 'sine', 0.04 + amp * 0.05, -60); },
   bump: () => tone(110, 0.14, 'triangle', 0.16, -40),
-  eat: () => { tone(660, 0.08, 'square', 0.05); tone(990, 0.1, 'square', 0.05, 0, 0.06); },
+  eat: (complete = false) => { tone(complete ? 880 : 660, 0.08, 'square', 0.05); tone(complete ? 1320 : 990, 0.1, 'square', 0.05, 0, 0.06); },
   net: () => tone(330, 0.12, 'triangle', 0.1, 120),
   jet: () => tone(480, 0.1, 'sine', 0.06, 320),
   undo: () => tone(520, 0.09, 'sine', 0.06, -200),
@@ -2366,6 +2366,7 @@ const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
+const contactPulse = new Map(), netRetract = new Map();
 let hudLast = { moves: -1, fish: -1 };
 // DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
 let DAILY = null, FREE = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
@@ -2428,12 +2429,42 @@ function checkpoint() {
 function pauseGame() {
   if ($('gameScreen').hidden || !st) return;
   queued = null; gest = null;
-  if (anim) finishAnim();
+  if (anim) finishAnim(false);
+  clearPlayEffects(); view.ang = view.target = ANG[st.dir];
   checkpoint();
 }
 
 // effects live in tile units; x, y are tile coordinates of the cell's top-left
-const ring = (x, y, size = 1, alpha = 0.55) => particles.push({ kind: 'ring', x, y, life: 1, size, alpha });
+const ring = (x, y, size = 1, alpha = 0.55) => { if (!reduceMotion) particles.push({ kind: 'ring', x, y, life: 1, size, alpha }); };
+function clearPlayEffects() {
+  particles.length = 0; wake.length = 0;
+  netPop.clear(); jetFlash.clear(); contactPulse.clear(); netRetract.clear();
+  bump = null; settle = null; pop = null;
+}
+// A portal has its own short phase, so a long/fast swim cannot skip the disappearance and return.
+// Ordinary tiles still follow the existing glide curve; jumps are not counted as swimming distance.
+function prepareSwim(a) {
+  a.swimDur = a.dur; a.travel = a.n - a.warps.size; a.portals = [];
+  const curve = a.win ? DASH : GLIDE, hold = reduceMotion ? 0 : 0.18;
+  let passed = 0;
+  for (const k of a.warps) {
+    const distance = (k - 1 - passed) / a.travel;
+    let lo = 0, hi = 1;
+    for (let j = 0; j < 18; j++) { const mid = (lo + hi) / 2; if (curve(mid) < distance) lo = mid; else hi = mid; }
+    a.portals.push({ k, start: (lo + hi) / 2 * a.swimDur + passed * hold, hold });
+    passed++;
+  }
+  a.dur += passed * hold;
+}
+function swimProgress(a) {
+  let time = a.t, passed = 0;
+  for (const portal of a.portals) {
+    if (a.t < portal.start) break;
+    if (portal.hold && a.t < portal.start + portal.hold) return portal.k - 1 + (a.t - portal.start) / portal.hold;
+    time -= portal.hold; passed++;
+  }
+  return Math.min(a.n, (a.win ? DASH : GLIDE)(time / a.swimDur) * a.travel + passed);
+}
 function splashAt(x, y, n, dir, force = 1) {
   if (reduceMotion) return;
   for (let k = 0; k < n; k++) {
@@ -2462,8 +2493,8 @@ function enter(level, keep, label) {
   hintRequest++;
   st = keep || freshState(level);
   if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
-  anim = null; bump = null; hint = null; cleared = false; particles.length = 0; wake.length = 0;
-  settle = null; pop = { t: 0 }; queued = null; netPop.clear(); jetFlash.clear();
+  anim = null; hint = null; cleared = false; clearPlayEffects();
+  pop = reduceMotion ? null : { t: 0 }; queued = null;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
   $('lvNum').textContent = label;
   $('lvName').textContent = level.name;
@@ -2549,38 +2580,53 @@ function tryMove(d) {
   const boatDur = !reduceMotion && !r.win && boatsFrom.some((b, k) => b[0] !== st.boats[k][0] || b[1] !== st.boats[k][1]) ? 0.16 : 0;
   anim = { boatsFrom, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
-  settle = null; pop = null;
+  prepareSwim(anim);
+  bump = null; settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
   sfx.move(); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
 }
 function eatFish(fi) {
-  anim.eaten.add(fi); sfx.eat(); haptic('light');
+  anim.eaten.add(fi);
   if (!st.fish.includes(fi)) st.fish.push(fi);
+  const complete = st.fish.length === g.fish.length;
+  sfx.eat(complete); haptic('light');
   const [fx, fy] = g.fish[fi];
-  particles.push({ kind: 'fish', x: fx, y: fy, fi, life: 1 });
-  particles.push({ kind: 'text', x: fx, y: fy, vx: 0, vy: -1.3, life: 1 });
+  if (!reduceMotion) {
+    // Keep a pickup near its own tile even if the shark has already entered a portal or the next move.
+    const k = anim.eats.find(e => e.fi === fi).k, [dx, dy] = DIRS[anim.dirs[k]];
+    particles.push({ kind: 'fish', x: fx, y: fy, toX: fx + dx * 0.35, toY: fy + dy * 0.35, fi, life: 1 });
+    particles.push({ kind: 'text', x: fx, y: fy, vx: 0, vy: -1.3, life: 1, text: complete ? '완료!' : '냠!' });
+  }
   ring(fx, fy, 0.9, 0.5);
   if (!reduceMotion) for (let s = 0; s < 7; s++) { const a = s / 7 * Math.PI * 2 + Math.random() * 0.4; particles.push({ kind: 'spark', x: fx, y: fy, vx: Math.cos(a) * 2.4, vy: Math.sin(a) * 2.4, life: 1, rot: Math.random() * 6 }); }
   updateHud();
 }
-function finishAnim() {
-  const a = anim; anim = null;
+function landShark(a) {
+  if (a.landed || a.win) return;
+  a.landed = true;
+  const [x, y] = a.pts[a.steps];
+  if (cellAt(g, x, y) === 's') {
+    settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
+    if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
+    return;
+  }
+  const d = a.dirs[a.steps], [dx, dy] = DIRS[d], index = (y + dy) * g.w + x + dx;
+  const soft = cellAt(g, x + dx, y + dy) !== '#' && st.nets.includes(index), amp = Math.min(1, a.steps / 5) * (soft ? 0.5 : 1);
+  settle = { t: 0, d, amp };
+  if (!reduceMotion && (soft || cellAt(g, x + dx, y + dy) === 'o')) contactPulse.set(index, { at: clock, amp });
+  ring(x + dx * 0.3, y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
+  splashAt(x + dx * 0.45, y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
+  sfx.stop(amp);
+}
+function finishAnim(present = true) {
+  const a = anim;
   const last = a.pts[a.win ? a.n : a.steps]; view.x = last[0]; view.y = last[1];
+  if (present) landShark(a);
+  anim = null;
   a.eats.forEach(e => { if (!st.fish.includes(e.fi)) st.fish.push(e.fi); });
   updateHud();
   if (a.win) { onClear(); return; }
   if (g.nets && !save.coachNet && !queued) setupCoach();
-  if (cellAt(g, view.x, view.y) === 's') {
-    settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
-    if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x: view.x, y: view.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
-    if (queued) { const q = queued; queued = null; tryMove(q); }
-    return;
-  }
-  const d = a.dirs[a.steps], amp = Math.min(1, a.steps / 5), [dx, dy] = DIRS[d];
-  settle = { t: 0, d, amp };
-  ring(view.x + dx * 0.3, view.y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
-  splashAt(view.x + dx * 0.45, view.y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
-  sfx.stop(amp);
   if (queued) { const q = queued; queued = null; tryMove(q); }
 }
 function undo() {
@@ -2588,8 +2634,8 @@ function undo() {
   hintRequest++;
   const h = st.history.pop();
   Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
-  view.x = st.pos[0]; view.y = st.pos[1]; view.target = ANG[st.dir];
-  cleared = false; hint = null; settle = null; queued = null; wake.length = 0; pop = { t: 0 };
+  view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
+  cleared = false; hint = null; queued = null; clearPlayEffects(); pop = reduceMotion ? null : { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
   setTip(curLevel().tip); updateHud(); checkpoint();
 }
@@ -2603,13 +2649,16 @@ function tapTile(gx, gy) {
   const at = st.nets.indexOf(idx);
   if (at >= 0) {
     hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
+    contactPulse.delete(idx); if (!reduceMotion) netRetract.set(idx, clock);
     sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
     if (hint) refreshHint(); else setTip(curLevel().tip);
     return;
   }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
   if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
-  hintRequest++; pushHistory(); st.nets.push(idx); netPop.set(idx, clock); sfx.net(); haptic('medium'); coachDone('tap');
+  hintRequest++; pushHistory(); st.nets.push(idx); netRetract.delete(idx);
+  if (!reduceMotion) netPop.set(idx, clock);
+  sfx.net(); haptic('medium'); coachDone('tap');
   ring(gx, gy, 0.9, 0.5); splashAt(gx, gy, 6, null, 0.5);
   updateHud(); checkpoint();
   if (hint) refreshHint(); else setTip(curLevel().tip);
@@ -3325,8 +3374,8 @@ function frame(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   if (!$('gameScreen').hidden && g && staticLayer) {
-    updateHintButton();
     if (!guideOpen()) step(dt);
+    updateHintButton();
     draw(t);
   }
   if (!$('titleScreen').hidden) drawHero(t);
@@ -3340,39 +3389,51 @@ function step(dt) {
   if (anim) {
     const a = anim;
     a.t += dt * (reduceMotion ? 2 : 1);
-    const u = Math.min(1, a.t / a.dur), prev = a.p;
-    a.p = (a.win ? DASH : GLIDE)(u) * a.n;
+    const prev = a.p;
+    a.p = swimProgress(a);
     a.speed = (a.p - prev) / Math.max(dt, 1e-3);
     const i = Math.min(Math.floor(a.p), a.n - 1), f = a.p - i, A = a.pts[i], B = a.pts[i + 1];
     if (a.warps.has(i + 1)) {
-      const out = f >= 0.5; view.x = out ? B[0] : A[0]; view.y = out ? B[1] : A[1]; a.warpScale = out ? (f - 0.5) * 2 : 1 - f * 2;
-      if (!a.warpDone.has(i + 1)) {
-        a.warpDone.add(i + 1); sfx.warp(); haptic('medium');
-        jetFlash.set(A[1] * g.w + A[0], 1); jetFlash.set(B[1] * g.w + B[0], 1); ring(A[0], A[1], 1, 0.6); ring(B[0], B[1], 1.2, 0.6);
-      }
+      const out = f >= 0.5; view.x = out ? B[0] : A[0]; view.y = out ? B[1] : A[1];
+      a.warpScale = reduceMotion ? 1 : out ? (f - 0.5) * 2 : 1 - f * 2;
     } else { a.warpScale = 1; view.x = A[0] + (B[0] - A[0]) * f; view.y = A[1] + (B[1] - A[1]) * f; }
+    // Crossing tests also cover coarse frames that skip a path segment entirely.
+    for (const k of a.warps) {
+      if (!a.warpDone.has(k) && a.p >= k - 1) {
+        a.warpDone.add(k); sfx.warp(); haptic('medium');
+        const from = a.pts[k - 1], to = a.pts[k];
+        if (!reduceMotion) { jetFlash.set(from[1] * g.w + from[0], 1); jetFlash.set(to[1] * g.w + to[0], 1); }
+        ring(from[0], from[1], 1, 0.6); ring(to[0], to[1], 1.2, 0.6);
+      }
+      if (prev < k - 0.5 && a.p >= k - 0.5) wake.length = 0;
+    }
     view.target = ANG[a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
     for (const e of a.eats) if (!a.eaten.has(e.fi) && a.p >= e.k - 0.35) eatFish(e.fi);
-    for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
+    for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; if (!reduceMotion) jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
     if (a.win && !a.exitFx && a.p >= a.steps - 0.2) {
       a.exitFx = true; const [ex, ey] = a.pts[a.steps];
       ring(ex, ey, 1.6, 0.7); ring(ex, ey, 0.9, 0.5); splashAt(ex, ey, 16, a.dirs[a.steps], 1.3);
       sfx.exit(); haptic('success');
     }
-    if (a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: view.ang, age: 0, sp: Math.min(1, a.speed / 14) });
-    if (Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
+    const swimming = a.t < a.dur && !a.warps.has(i + 1);
+    if (swimming && a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
+    if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
+    if (a.t >= a.dur) landShark(a);
     if (a.t >= a.dur + a.boatDur) finishAnim();
   }
   let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
-  view.ang += da * (1 - Math.exp(-dt * 18));
+  view.ang = reduceMotion ? view.target : view.ang + da * (1 - Math.exp(-dt * 22));
   if (bump) { bump.t += dt; if (bump.t > 0.25) bump = null; }
   if (settle) { settle.t += dt; if (settle.t > 0.6) settle = null; }
   if (pop) { pop.t += dt; if (pop.t > 0.4) pop = null; }
   for (let k = wake.length - 1; k >= 0; k--) { wake[k].age += dt; if (wake[k].age > 0.9) wake.splice(k, 1); }
   for (const [k, v] of jetFlash) { const nv = v - dt * 2.5; if (nv <= 0) jetFlash.delete(k); else jetFlash.set(k, nv); }
+  for (const [k, v] of netPop) if (clock - v >= 0.32) netPop.delete(k);
+  for (const [k, v] of netRetract) if (clock - v >= 0.18) netRetract.delete(k);
+  for (const [k, v] of contactPulse) if (clock - v.at >= 0.32) contactPulse.delete(k);
   for (let k = particles.length - 1; k >= 0; k--) {
     const p = particles[k];
-    if (p.kind === 'fish') { p.life -= dt * 4.5; p.x += (view.x - p.x) * Math.min(1, dt * 16); p.y += (view.y - p.y) * Math.min(1, dt * 16); }
+    if (p.kind === 'fish') { p.life -= dt * 4.5; p.x += (p.toX - p.x) * Math.min(1, dt * 16); p.y += (p.toY - p.y) * Math.min(1, dt * 16); }
     else if (p.kind === 'ring') p.life -= dt * 1.5;
     else { p.life -= dt * (p.kind === 'text' ? 1.1 : p.kind === 'spark' ? 2.2 : 1.6); p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92; if (p.kind === 'spark') p.rot += dt * 8; }
     if (p.life <= 0) particles.splice(k, 1);
@@ -3408,7 +3469,10 @@ function draw(t) {
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = cellAt(g, x, y), px = x * T, py = y * T;
     if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
-    else if (c === 'o') drawBuoy(ctx, px + T / 2, py + T / 2, T, t);
+    else if (c === 'o') {
+      const hit = contactPulse.get(y * g.w + x), pulse = hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.1 : 0;
+      drawBuoy(ctx, px + T / 2, py + T / 2, T * (1 + pulse), t);
+    }
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
   // surface rings and the wake behind the shark
@@ -3438,9 +3502,15 @@ function draw(t) {
     const heading = anim && anim.t < anim.dur ? anim.boatsFrom[k][1] : b[1];
     drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim);
   });
+  for (const [i, at] of netRetract) {
+    const k = clamp01((clock - at) / 0.18);
+    ctx.save(); ctx.globalAlpha = 1 - k;
+    drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, 1 - k * 0.75); ctx.restore();
+  }
   st.nets.forEach(i => {
     const t0 = netPop.get(i), k = t0 == null ? 1 : (clock - t0) / 0.32;
-    drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k)));
+    const hit = contactPulse.get(i), pulse = hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.16 : 0;
+    drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, false, t, (k >= 1 ? 1 : 0.4 + 0.6 * easeOutBack(clamp01(k))) + pulse);
   });
   if (hint) {
     if (!hint.remove.length) hint.nets.forEach(i => drawNet(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, true, t));
@@ -3460,7 +3530,7 @@ function draw(t) {
   // shark: stretch with speed, squash + spring on impact, fade into the sea on escape
   let sx = view.x, sy = view.y, stretch = 1, alpha = 1, size = 1;
   if (anim) {
-    stretch = 1 + 0.16 * Math.min(1, anim.speed / 16);
+    if (!reduceMotion) stretch = 1 + 0.16 * Math.min(1, anim.speed / 16);
     if (anim.win) alpha = clamp01(1 - (anim.p - anim.steps) / 2.4);
   } else if (cleared) alpha = 0;
   if (bump && !reduceMotion) { const [dx, dy] = DIRS[bump.d], k = Math.sin(bump.t / 0.25 * Math.PI) * 0.12; sx += dx * k; sy += dy * k; stretch = 1 - k * 0.8; }
@@ -3470,8 +3540,8 @@ function draw(t) {
   }
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
   if (anim && anim.warpScale < 1) size *= Math.max(0.05, anim.warpScale);
-  const bob = anim ? 0 : Math.sin(t * 2) * 0.02;
-  drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim, stretch, alpha);
+  const bob = anim || reduceMotion ? 0 : Math.sin(t * 2) * 0.02;
+  drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim && anim.t < anim.dur, stretch, alpha);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim && !hint.remove.length && !hint.nets.length) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
@@ -3486,7 +3556,7 @@ function draw(t) {
       const s = 1 + 0.5 * clamp01((p.life - 0.8) / 0.2);
       ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = C.star; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
       ctx.font = `400 ${Math.round(T * 0.36 * s)}px ${css.getPropertyValue('--font-display')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      ctx.strokeText('냠!', px, p.y * T + T * 0.4); ctx.fillText('냠!', px, p.y * T + T * 0.4);
+      ctx.strokeText(p.text, px, p.y * T + T * 0.4); ctx.fillText(p.text, px, p.y * T + T * 0.4);
       ctx.globalAlpha = 1;
     } else if (p.kind === 'grain') {
       ctx.fillStyle = `rgba(214,188,130,${p.life.toFixed(3)})`; ctx.beginPath(); ctx.arc(px, py, T * p.size, 0, 7); ctx.fill();
