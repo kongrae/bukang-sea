@@ -1904,8 +1904,7 @@ function drawCoach(sx, sy, t) {
 
 /* ---------- title hero ---------- */
 const hero = $('heroCanvas'), hctx = hero.getContext('2d');
-const HERO_COPY_HEIGHT = 96;
-let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true;
+let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true, heroFill = null;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
 function resetHero() {
@@ -1928,7 +1927,7 @@ function stepHero(dt) {
 function reactHero(e) {
   if (reduceMotion || document.hidden || $('titleScreen').hidden || heroPaused() || e.isPrimary === false) return;
   const r = hero.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (x < 0 || x > r.width || y < 0 || y >= r.height - HERO_COPY_HEIGHT) return;
+  if (x < 0 || x > r.width || y < 0 || y >= r.height) return;
   // Decorative only: leave scrolling, game progress, sound and the start button untouched.
   if (heroRipples.length >= 4) heroRipples.shift();
   heroRipples.push({ x, y, life: 1 }); heroWake = 0.65;
@@ -1937,20 +1936,19 @@ function sizeHero() {
   const r = hero.getBoundingClientRect(); const d = Math.min(window.devicePixelRatio || 1, 2.5);
   heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
   hctx.setTransform(d, 0, 0, d, 0, 0);
+  heroFill = hctx.createLinearGradient(0, 0, r.width, r.height);
+  heroFill.addColorStop(0, '#3896a0'); heroFill.addColorStop(1, '#1b6077');
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
   if (reduceMotion) t = 0;
-  const W = heroW, H = heroH, waterH = H - HERO_COPY_HEIGHT, T = Math.min(56, waterH * 0.52, W / 5.2);
-  hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
-  hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
-  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
-  hctx.fillStyle = C['hero-paper']; hctx.fillRect(0, waterH, W, H - waterH);
-  hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
-  hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
-  hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, waterH); hctx.clip();
-  const phase = t * 0.4, sx = W * (0.44 + Math.sin(phase) * 0.27), sy = waterH * (0.52 + Math.cos(phase) * 0.12);
-  const ang = Math.atan2(-waterH * 0.12 * Math.sin(phase), W * 0.27 * Math.cos(phase));
+  const W = heroW, H = heroH, T = Math.min(76, H * 0.62, W / 4.3);
+  hctx.fillStyle = heroFill; hctx.fillRect(0, 0, W, H);
+  hctx.strokeStyle = 'rgba(225,255,246,.13)'; hctx.lineWidth = 1.5;
+  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 12 + r * H / 4 + Math.sin(x * 0.025 + t * (0.7 + r * .15) + r) * 4; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
+  hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, H); hctx.clip();
+  const phase = t * 0.4, sx = W * (0.45 + Math.sin(phase) * 0.22), sy = H * (0.52 + Math.cos(phase) * 0.07);
+  const ang = Math.atan2(-H * 0.07 * Math.sin(phase), W * 0.22 * Math.cos(phase));
   if (!reduceMotion) {
     hctx.save(); hctx.translate(sx, sy); hctx.rotate(ang);
     hctx.strokeStyle = 'rgba(230,251,255,.15)'; hctx.lineWidth = 1.4;
@@ -1966,8 +1964,7 @@ function drawHero(t) {
     }
   }
   drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * 0.04);
-  drawFish(hctx, W * (0.72 + Math.sin(t * 0.45) * 0.08), waterH * 0.26, T * 0.9, t, 0.3);
-  drawBuoy(hctx, W * 0.86, waterH * 0.68, T * 0.8, t);
+  drawFish(hctx, W * (0.78 + Math.sin(t * 0.45) * 0.05), H * 0.26, T * 0.56, t, 0.3);
   hctx.restore();
 }
 
