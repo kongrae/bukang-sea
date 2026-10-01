@@ -101,9 +101,9 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 /* ----- Title ----- */
 .title-screen { overflow-y: auto; gap: 12px; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
 .title-screen::-webkit-scrollbar { display: none; }
-.hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--hero-paper); flex-shrink: 0; }
-.hero canvas { display: block; width: 100%; height: 184px; }
-.hero-text { position: absolute; left: 18px; bottom: 14px; right: 18px; pointer-events: none; }
+.hero { position: relative; border-radius: 26px; overflow: hidden; background: var(--hero-paper); flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); }
+.hero canvas { display: block; width: calc(100% - 24px); height: 108px; margin-inline: 12px; border-radius: 18px; background: var(--water); }
+.hero-text { position: relative; padding: 15px 68px 12px 18px; pointer-events: none; }
 .eyebrow { font-size: 13px; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
 .hero .eyebrow { font-size: 13.5px; line-height: 1.35; letter-spacing: 0; color: var(--harbor-3); }
 h1 {
@@ -306,7 +306,6 @@ h1 .sea { color: var(--title-alert); }
 .legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; font-size: 14px; color: var(--muted); }
 .legend div { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .legend canvas { width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px; }
-.note { font-size: 12px; color: var(--muted); border-top: 1px solid var(--harbor-3); padding-top: 12px; margin: 0; }
 .cta-bar { display: flex; flex-direction: column; gap: 8px; padding-bottom: 6px; flex-shrink: 0; }
 .journey-label { margin: 0; color: var(--muted); font-size: 14px; }
 .journey-label b { color: var(--text); font-weight: 500; }
@@ -333,9 +332,10 @@ h1 .sea { color: var(--title-alert); }
   display: inline-flex; align-items: center; justify-content: center; transition: background .15s, transform .2s var(--ease-spring);
 }
 .icon-btn:active { transform: scale(.9); transition-duration: .08s; }
-.hero .icon-btn { position: absolute; top: 8px; right: 12px; background: var(--harbor); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); color: #fff; z-index: 1; }
+.hero .icon-btn { position: absolute; top: 17px; right: 14px; width: 44px; height: 44px; background: #dce7df; box-shadow: inset 0 0 0 1px rgba(20, 60, 50, .1); color: #254d53; z-index: 1; }
 @media (hover: hover) {
   .lv:not([disabled]):hover, .btn:not(.primary):hover, .icon-btn:hover, .ctrl:hover { background: var(--harbor-3); }
+  .hero .icon-btn:hover { background: #c9dcd1; }
   .btn.primary:hover { filter: brightness(1.06); }
 }
 
@@ -508,12 +508,13 @@ button:disabled:active { transform: none; }
 .switch:active .track { transform: scale(.96); }
 .switch .track { transition: transform var(--motion-return) var(--ease-spring), background-color var(--motion-return); }
 /* Home: one primary action, two play modes, then collection and optional detail. */
-.home-start { gap: 8px; padding: 0 0 4px; }
+.home-start { gap: 8px; padding: 12px 14px 16px; }
 .home-start .journey-label { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; line-height: 1.4; }
-.home-start .journey-label b { color: #f7f1e5; font-weight: 700; }
-.home-start .journey-label span { color: #bbd1d3; font-size: 12px; }
-.home-start .lede { text-align: center; font-size: 13px; margin-top: 4px; color: #c4d8d8; }
-.home-start #playBtn { min-height: 64px; font: 28px var(--font-display); padding-inline: 42px; }
+.home-start .journey-label b { color: #33575c; font-weight: 700; }
+.home-start .journey-label span { color: #33575c; font-size: 12px; padding: 2px 6px; border-radius: 7px; background: #dce7df; }
+.home-start .lede { text-align: center; font-size: 12px; margin-top: 4px; color: #53696a; }
+.home-start .lede b { color: #276a76; }
+.home-start #playBtn { min-height: 60px; font: 28px var(--font-display); padding-inline: 42px; }
 .home-start #playBtn::after { content: '›'; position: absolute; right: 20px; font: 34px var(--font-body); }
 .home-modes, .home-collection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex-shrink: 0; }
 .home-mode { border: 0; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; text-align: left; cursor: pointer; color: var(--ink); }
@@ -551,7 +552,6 @@ button:disabled:active { transform: none; }
 .home-help { background: transparent; border-color: #30525e; }
 .home-help > summary { min-height: 56px; padding-block: 12px; }
 .home-help > summary b { font: 700 15px var(--font-body); }
-.home-help .note { line-height: 1.65; }
 .home-mode, .home-journal { transition: transform var(--motion-return) var(--ease-spring), filter .15s; }
 .home-mode:active, .home-journal:active { transform: scale(.98); transition-duration: var(--motion-press); }
 .home-mode:focus-visible, .home-journal:focus-visible, .home-collection .myshark:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
@@ -573,7 +573,10 @@ button:disabled:active { transform: none; }
 }
 @media (max-height: 700px) {
   .title-screen { gap: 10px; }
-  .hero canvas { height: 168px; }
+  .hero canvas { height: 92px; }
+  .hero-text { padding-top: 13px; padding-bottom: 10px; }
+  .hero h1 { font-size: 40px; }
+  .hero-subtitle { font-size: 16px; }
   .game-screen { gap: 3px; }
   .game-screen .topbar { min-height: 44px; }
   .game-screen .icon-btn { width: 44px; height: 44px; }
@@ -588,17 +591,17 @@ button:disabled:active { transform: none; }
   <section class="screen title-screen" id="titleScreen">
     <div class="hero">
       <!-- playtest-label -->
-      <canvas id="heroCanvas" aria-hidden="true"></canvas>
       <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
       <div class="hero-text">
         <h1>상어 <span class="sea">SOS</span></h1>
         <p class="hero-subtitle">바다로 보내줘!</p>
       </div>
-    </div>
-    <div class="cta-bar home-start">
-      <p class="journey-label" id="journeyLabel"></p>
-      <button class="btn primary big" id="playBtn" type="button">구출 시작!</button>
-      <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
+      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="cta-bar home-start">
+        <p class="journey-label" id="journeyLabel"></p>
+        <button class="btn primary big" id="playBtn" type="button">구출 시작!</button>
+        <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
+      </div>
     </div>
     <div class="home-modes" role="group" aria-label="더 많은 수로에 도전">
       <button class="home-mode daily" id="dailyBtn" type="button">
@@ -636,11 +639,10 @@ button:disabled:active { transform: none; }
     </details>
     <button class="btn" id="endingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
     <details class="home-details home-help">
-      <summary><b>게임 방법과 이야기</b></summary>
+      <summary><b>게임 방법</b></summary>
       <div class="home-details-body">
         <p class="lede">화면을 밀면 막힐 때까지 헤엄쳐요.<br>숭어를 모으고 바다로 나가면 성공!</p>
         <div class="legend" id="legend"></div>
-        <p class="note">2026년 9월 부산 북항 친수공원 수로에 들어온 무태상어(약 3.5m)에서 착안한 퍼즐 게임입니다. 실제 기관·캐릭터와 관련이 없습니다.</p>
       </div>
     </details>
   </section>
@@ -3822,8 +3824,7 @@ function drawCoach(sx, sy, t) {
 
 /* ---------- title hero ---------- */
 const hero = $('heroCanvas'), hctx = hero.getContext('2d');
-const HERO_COPY_HEIGHT = 96;
-let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true;
+let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true, heroFill = null;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
 function resetHero() {
@@ -3846,7 +3847,7 @@ function stepHero(dt) {
 function reactHero(e) {
   if (reduceMotion || document.hidden || $('titleScreen').hidden || heroPaused() || e.isPrimary === false) return;
   const r = hero.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (x < 0 || x > r.width || y < 0 || y >= r.height - HERO_COPY_HEIGHT) return;
+  if (x < 0 || x > r.width || y < 0 || y >= r.height) return;
   // Decorative only: leave scrolling, game progress, sound and the start button untouched.
   if (heroRipples.length >= 4) heroRipples.shift();
   heroRipples.push({ x, y, life: 1 }); heroWake = 0.65;
@@ -3855,20 +3856,19 @@ function sizeHero() {
   const r = hero.getBoundingClientRect(); const d = Math.min(window.devicePixelRatio || 1, 2.5);
   heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
   hctx.setTransform(d, 0, 0, d, 0, 0);
+  heroFill = hctx.createLinearGradient(0, 0, r.width, r.height);
+  heroFill.addColorStop(0, '#3896a0'); heroFill.addColorStop(1, '#1b6077');
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
   if (reduceMotion) t = 0;
-  const W = heroW, H = heroH, waterH = H - HERO_COPY_HEIGHT, T = Math.min(56, waterH * 0.52, W / 5.2);
-  hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
-  hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
-  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
-  hctx.fillStyle = C['hero-paper']; hctx.fillRect(0, waterH, W, H - waterH);
-  hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
-  hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
-  hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, waterH); hctx.clip();
-  const phase = t * 0.4, sx = W * (0.44 + Math.sin(phase) * 0.27), sy = waterH * (0.52 + Math.cos(phase) * 0.12);
-  const ang = Math.atan2(-waterH * 0.12 * Math.sin(phase), W * 0.27 * Math.cos(phase));
+  const W = heroW, H = heroH, T = Math.min(76, H * 0.62, W / 4.3);
+  hctx.fillStyle = heroFill; hctx.fillRect(0, 0, W, H);
+  hctx.strokeStyle = 'rgba(225,255,246,.13)'; hctx.lineWidth = 1.5;
+  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 12 + r * H / 4 + Math.sin(x * 0.025 + t * (0.7 + r * .15) + r) * 4; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
+  hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, H); hctx.clip();
+  const phase = t * 0.4, sx = W * (0.45 + Math.sin(phase) * 0.22), sy = H * (0.52 + Math.cos(phase) * 0.07);
+  const ang = Math.atan2(-H * 0.07 * Math.sin(phase), W * 0.22 * Math.cos(phase));
   if (!reduceMotion) {
     hctx.save(); hctx.translate(sx, sy); hctx.rotate(ang);
     hctx.strokeStyle = 'rgba(230,251,255,.15)'; hctx.lineWidth = 1.4;
@@ -3884,8 +3884,7 @@ function drawHero(t) {
     }
   }
   drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * 0.04);
-  drawFish(hctx, W * (0.72 + Math.sin(t * 0.45) * 0.08), waterH * 0.26, T * 0.9, t, 0.3);
-  drawBuoy(hctx, W * 0.86, waterH * 0.68, T * 0.8, t);
+  drawFish(hctx, W * (0.78 + Math.sin(t * 0.45) * 0.05), H * 0.26, T * 0.56, t, 0.3);
   hctx.restore();
 }
 
