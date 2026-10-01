@@ -1386,6 +1386,7 @@ function frame(now) {
   }
   if (!$('titleScreen').hidden) drawHero(t);
   if (endingOpen()) drawEnding(t);
+  if (guideOpen() && !document.hidden) stepDeviceGuide(dt);
   requestAnimationFrame(frame);
 }
 function step(dt) {
@@ -1674,33 +1675,118 @@ function drawLegendIcon(c) {
 }
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
+  { key: 'buoy', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o') },
   { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 치거나 회수할 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
   { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
   { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
   { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
 ];
-let guideKeys = [];
+let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1;
 const guideOpen = () => !$('guideOverlay').hidden;
 function showDeviceGuide(firstOnly = false) {
   const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
   if (firstOnly && !devices.length) return;
-  guideKeys = devices.map(d => d.key);
+  guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
+  guideIndex = 0; guideViewed = new Set(); guidePlaying = !reduceMotion;
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
-  $('guideItems').innerHTML = devices.length ? devices.map(d => `<li><canvas data-k="${d.key}" width="72" height="72" aria-hidden="true"></canvas><div><b>${d.name}</b><p>${d.text}</p></div></li>`).join('')
-    : '<li><div><b>상어를 바다로 보내요</b><p>화면을 밀면 막힐 때까지 헤엄쳐요. 방향키로도 움직일 수 있어요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.</p></div></li>';
-  $('guideItems').querySelectorAll('canvas').forEach(drawLegendIcon);
   $('app').inert = true;
-  $('guideOverlay').hidden = false; $('guideDone').focus({ preventScroll: true });
+  $('guideOverlay').hidden = false; renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
+}
+function renderGuideDevice() {
+  const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
+  if (key !== 'move') guideViewed.add(key);
+  guideDemo = createDeviceDemo(key); guideTime = guidePlaying ? 0 : guideDemo.duration; guidePaintTime = -1;
+  $('guideName').textContent = device.name;
+  $('guideCounter').textContent = `${guideIndex + 1} / ${guideKeys.length}`;
+  $('guideItems').innerHTML = `<p>${device.text}</p>`;
+  $('guideDemo').setAttribute('aria-label', `${device.name} 사용 예시`);
+  $('guideTabs').hidden = guideKeys.length < 2;
+  $('guideTabs').innerHTML = guideKeys.map((k, i) => `<button type="button" data-guide="${i}" aria-pressed="${i === guideIndex}">${DEVICE_GUIDES.find(d => d.key === k)?.name || '기본 이동'}</button>`).join('');
+  $('guideDone').textContent = guideIndex < guideKeys.length - 1 ? '다음 장치 보기' : '확인';
+  $('guideBody').scrollTop = 0;
+  updateGuidePlayback(); drawDeviceDemo();
+}
+function selectGuideDevice(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= guideKeys.length) return;
+  guideIndex = index; renderGuideDevice();
+}
+function advanceGuide() {
+  if (guideIndex < guideKeys.length - 1) selectGuideDevice(guideIndex + 1); else closeGuide();
+}
+function updateGuidePlayback() {
+  $('guideToggle').textContent = guidePlaying ? '일시정지' : '재생';
+  $('guideMode').textContent = guidePlaying ? '짧은 예시 · 자동 반복' : reduceMotion ? '동작 줄이기 · 눌러서 재생' : '일시정지';
+}
+function toggleGuidePlayback() {
+  if (!guideDemo) return;
+  guidePlaying = !guidePlaying;
+  if (guidePlaying && guideTime >= guideDemo.duration) guideTime = 0;
+  updateGuidePlayback();
+}
+function replayGuide() {
+  if (!guideDemo) return;
+  guideTime = 0; guidePlaying = true; guidePaintTime = -1; updateGuidePlayback(); drawDeviceDemo();
+}
+function stepDeviceGuide(dt) {
+  if (!guideDemo) return;
+  if (guidePlaying) guideTime = (guideTime + dt) % guideDemo.duration;
+  drawDeviceDemo();
+}
+function drawDeviceDemo() {
+  if (!guideDemo) return;
+  const canvas = $('guideDemo'), rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const d = Math.min(window.devicePixelRatio || 1, 2.5), width = Math.round(rect.width * d), height = Math.round(rect.height * d);
+  if (canvas.width === width && canvas.height === height && guidePaintTime === guideTime) return;
+  canvas.width = width; canvas.height = height; guidePaintTime = guideTime;
+  const x = canvas.getContext('2d'), grid = guideDemo.grid, size = Math.min(rect.width / grid.w, rect.height / grid.h);
+  const sample = sampleDeviceDemo(guideDemo, guideTime), phase = sample.phase;
+  x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = C.water; x.fillRect(0, 0, rect.width, rect.height);
+  x.translate((rect.width - size * grid.w) / 2, (rect.height - size * grid.h) / 2);
+  grid.cells.forEach((cell, i) => {
+    const px = i % grid.w * size, py = Math.floor(i / grid.w) * size;
+    if (cell === '#') { x.fillStyle = C.concrete; x.fillRect(px, py, size, size); }
+    else { x.strokeStyle = 'rgba(255,255,255,.09)'; x.lineWidth = 1; x.strokeRect(px, py, size, size); }
+    if (cell === 'o') drawBuoy(x, px + size / 2, py + size / 2, size, guideTime);
+    if (JET[cell]) drawJet(x, px, py, size, JET[cell], guideTime);
+    if (cell === 's') drawSand(x, px, py, size, i);
+    if (cell === 'w') drawWhirl(x, px + size / 2, py + size / 2, size, guideTime);
+  });
+  // A fixed route remains available when automatic motion is disabled.
+  if (reduceMotion && !guidePlaying) {
+    x.save(); x.strokeStyle = C.star; x.lineWidth = 2; x.setLineDash([4, 4]);
+    for (const p of guideDemo.phases.filter(p => p.kind === 'move')) {
+      x.beginPath(); x.moveTo((p.from.pos[0] + .5) * size, (p.from.pos[1] + .5) * size);
+      for (const [px, py, , warp] of p.path) { if (warp) x.moveTo((px + .5) * size, (py + .5) * size); else x.lineTo((px + .5) * size, (py + .5) * size); }
+      x.stroke();
+    }
+    x.restore();
+  }
+  for (const index of sample.nets) drawNet(x, index % grid.w * size, Math.floor(index / grid.w) * size, size, false, guideTime);
+  for (const boat of sample.boats) drawBoat(x, (boat.x + .5) * size, (boat.y + .5) * size, size, guideTime, ANG[boat.dir] + Math.PI / 2, true);
+  drawShark(x, (sample.pos[0] + .5) * size, (sample.pos[1] + .5) * size, ANG[sample.dir], size * Math.max(.05, sample.scale), guideTime, phase.kind === 'move');
+  if (phase.kind === 'cue' || phase.kind === 'tap') {
+    const tapping = phase.kind === 'tap', [dx, dy] = DIRS[phase.dir || 'R'];
+    const pos = tapping ? phase.tap : phase.from.pos, progress = sample.progress;
+    const px = (pos[0] + .5 + (tapping ? .18 : -dy * .42 + dx * progress * .8)) * size;
+    const py = (pos[1] + .5 + (tapping ? .2 : dx * .42 + dy * progress * .8)) * size;
+    x.fillStyle = '#fff'; x.strokeStyle = C.star; x.lineWidth = 2;
+    x.beginPath(); x.arc(px, py, size * (tapping ? .16 - Math.sin(progress * Math.PI) * .03 : .16), 0, Math.PI * 2); x.fill(); x.stroke();
+  }
+  if ($('guideCaption').textContent !== sample.text) $('guideCaption').textContent = sample.text;
+  $('guideStats').textContent = `예시 이동 ${sample.moves}회${grid.nets ? ` · 그물 ${grid.nets - sample.nets.length}` : ''}`;
+  $('guideProgress').value = guideTime / guideDemo.duration;
 }
 function closeGuide() {
-  save.seenDevices = [...new Set([...save.seenDevices, ...guideKeys])]; persist();
-  guideKeys = []; $('guideOverlay').hidden = true; $('app').inert = false;
+  save.seenDevices = [...new Set([...save.seenDevices, ...guideViewed])]; persist();
+  guideKeys = []; guideViewed = new Set(); guideDemo = null; guidePlaying = false;
+  $('guideOverlay').hidden = true; $('app').inert = false;
   $($('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn').focus({ preventScroll: true });
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
-  if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; cleared = false; }
+  if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
   $('gameScreen').hidden = which !== 'game';
@@ -1771,7 +1857,15 @@ $('settingsBtn').addEventListener('click', openSettings);
 $('titleSettingsBtn').addEventListener('click', openSettings);
 $('settingsDone').addEventListener('click', closeSettings);
 $('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
-$('guideDone').addEventListener('click', closeGuide);
+$('guideDone').addEventListener('click', advanceGuide);
+$('guideClose').addEventListener('click', closeGuide);
+$('guideToggle').addEventListener('click', toggleGuidePlayback);
+$('guideReplay').addEventListener('click', replayGuide);
+$('guideTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-guide]'); if (!b) return;
+  selectGuideDevice(+b.dataset.guide);
+  $('guideTabs').querySelector(`[data-guide="${guideIndex}"]`).focus({ preventScroll: true });
+});
 $('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
 $('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
 $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });

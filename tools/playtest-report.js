@@ -8,7 +8,7 @@ const ATTEMPT_HEADERS = ['participant_id','cohort','device','build','level','att
 const SURVEY_HEADERS = ['participant_id','cohort','device','build','readability','control','fun','again','resume','notes','session'];
 function buildId() {
   const body = [fs.readFileSync(path.join(root, 'src/shell.html'), 'utf8'), '<script>',
-    ...['engine.js','levels.js','daily.js','free.js','game.js'].map(f => fs.readFileSync(path.join(root, 'src', f), 'utf8')), '</script>'].join('\n');
+    ...['engine.js','levels.js','daily.js','free.js','device-demo.js','game.js'].map(f => fs.readFileSync(path.join(root, 'src', f), 'utf8')), '</script>'].join('\n');
   return crypto.createHash('sha256').update(body).digest('hex').slice(0, 12);
 }
 function parseCsv(text) {

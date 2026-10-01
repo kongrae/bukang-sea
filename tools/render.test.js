@@ -216,16 +216,19 @@ test('every story solution has restorable checkpoints, including special tiles a
 test('first-encounter device rules are recorded only on confirmation and can be reopened', () => {
   const guideSource = source.slice(source.indexOf('const DEVICE_GUIDES = ['), source.indexOf('// screen change with a native-style push'));
   const {parseLevel, JET} = require('../src/engine.js');
-  const elements = Object.fromEntries(['app', 'guideOverlay', 'guideTitle', 'guideItems', 'guideDone', 'gameScreen', 'settingsBtn'].map(id => [id, {hidden: id === 'guideOverlay', focus: () => {}, querySelectorAll: () => []}]));
-  const run = new Function('JET', 'g', '$', `
-    const save = {seenDevices: []}, persist = () => {}, drawLegendIcon = () => {};
+  const {createDeviceDemo} = require('../src/device-demo');
+  const elements = Object.fromEntries(['app', 'guideOverlay', 'guideTitle', 'guideItems', 'guideDone', 'gameScreen', 'settingsBtn', 'guideName', 'guideCounter', 'guideDemo', 'guideTabs', 'guideBody', 'guideToggle', 'guideMode'].map(id => [id, {hidden: id === 'guideOverlay', focus: () => {}, setAttribute: () => {}, getBoundingClientRect: () => ({width:0,height:0})}]));
+  const run = new Function('JET', 'g', '$', 'createDeviceDemo', `
+    const save = {seenDevices: []}, persist = () => {}, reduceMotion = false;
     ${guideSource}
-    return {show: showDeviceGuide, close: closeGuide, seen: () => save.seenDevices};
-  `)(JET, parseLevel(LEVELS[39]), id => elements[id]);
+    return {show: showDeviceGuide, close: closeGuide, next: advanceGuide, seen: () => save.seenDevices};
+  `)(JET, parseLevel(LEVELS[39]), id => elements[id], createDeviceDemo);
   run.show(true);
   assert.equal(elements.guideOverlay.hidden, false);
   assert.equal(elements.app.inert, true);
   assert.deepEqual(run.seen(), []);
+  assert.ok(elements.guideTabs.innerHTML.includes('소용돌이'));
+  while(elements.guideDone.textContent === '다음 장치 보기') run.next();
   assert.ok(elements.guideItems.innerHTML.includes('소용돌이'));
   run.close();
   assert.equal(elements.app.inert, false);
@@ -234,5 +237,5 @@ test('first-encounter device rules are recorded only on confirmation and can be 
   assert.equal(elements.guideOverlay.hidden, true);
   run.show();
   assert.equal(elements.guideOverlay.hidden, false);
-  assert.ok(elements.guideItems.innerHTML.includes('소용돌이'));
+  assert.ok(elements.guideTabs.innerHTML.includes('소용돌이'));
 });
