@@ -70,17 +70,17 @@
 
 | 파일 | 용도 | 규격 |
 |---|---|---|
-| `assets/icons/icon-512.png` | 앱 아이콘 | 512×512 PNG (필수) |
-| `feature-graphic-sos.jpg` | 새 이름을 반영한 그래픽 이미지 | 1024×500 |
-| `1-title-sos.jpg`, `6-chapters-sos.jpg` | 새 이름을 반영한 제목/챕터 화면 | 360×640 |
-| `7-daily-operation.jpg` | 오늘의 구조작전 세 수로 완료 화면 | 360×640 |
-| `8-rescue-journal.jpg` | 실제 기존 참여·완료 기록을 이관한 구조일지 | 360×640 |
-| `9-rescue-journey.jpg` | 실제 기존 12개 탈출 기록의 챕터 여정 | 360×640 |
-| `2-jets.png` … `5-chapter4.png` | 게임 화면 스크린샷 초안 | 1080×1920 |
+| `assets/icons/icon-512.png` | 앱 아이콘(3D 아트 원본 `assets/icon-concepts/shark-sos-3d-v1-original.png`에서 `npm run icons`로 생성) | 512×512 PNG (필수) |
+| `feature-graphic.png` | 그래픽 이미지(`tools/feature-graphic.html`, 리디자인 타이틀 카드 구성) | 1024×500 |
+| `1-title.png` | 메인 화면(이어서 구출, 오늘의 도전·자유 수로·내 상어·구조일지) | 1080×1920 |
+| `2-jets.png` | 물줄기 수로 + 힌트 표시 | 1080×1920 |
+| `3-nets.png` | 그물 설치 수로 | 1080×1920 |
+| `4-clear.png` | 별 3개 클리어 시트 | 1080×1920 |
+| `5-chapter4.png` | 4장 모래톱·소용돌이 수로 | 1080×1920 |
+| `6-chapters.png` | 수로 목록(3장 선택) | 1080×1920 |
 
-스크린샷 순서 추천: 1-title-sos → 2-jets(힌트) → 3-nets(그물) → 4-clear(별 3개) → 7-daily-operation → 5-chapter4 → 6-chapters-sos.
-이름 변경 후 현재 제목/챕터와 그래픽은 `*-sos.jpg`를 사용한다. 같은 용도의 기존 PNG는 이전 이름의 초안이다. 신규 제목/챕터 이미지는 기존 진행 상태의 실제 브라우저 화면이며 신규 사용자 시험 결과가 아니다.
-게임 화면이 바뀌면 `npm run build:web && node tools/shots.js`로 다시 만든다.
+스크린샷 순서 추천: 1-title → 2-jets(힌트) → 3-nets(그물) → 4-clear(별 3개) → 5-chapter4 → 6-chapters. 2026-10-02 리디자인 이전의 `*-sos.jpg`·7~9번 JPG는 삭제했다(git 이력에 남음).
+이미지는 저장된 진행 상태를 넣은 실제 브라우저 화면이며 신규 사용자 시험 결과가 아니다. 게임 화면이 바뀌면 `npm run build:web && node tools/shots.js`로 다시 만든다(이 PC에서는 `BROWSER` 환경 변수로 Chrome 경로 지정).
 
 ## 콘텐츠 등급 설문 (IARC) 답변 가이드
 

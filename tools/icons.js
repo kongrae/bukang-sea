@@ -1,8 +1,11 @@
-// Renders assets/icon.svg to every raster the web app and the native apps need, using a headless Chromium
-// (Edge or Chrome). Run only when the icon changes; the PNGs are committed.
-//   node tools/icons.js            (set BROWSER=<path to msedge/chrome> if auto-detect fails)
+// Renders the icon master to every raster the web app and the native apps need, using a headless Chromium
+// (Chrome or Edge). Run only when the icon changes; the outputs are committed.
+//   node tools/icons.js            (set BROWSER=<path to chrome/msedge> if auto-detect fails)
+// Master: assets/icon-concepts/shark-sos-3d-v1-original.png (opaque 1254x1254 3D art, the 2026-10-02 redesign
+// reference; see docs/VISUAL-REDESIGN.md). The former vector icon lives in git history (assets/icon.svg before e81f794).
 // Outputs
-//   assets/icons/icon-192.png, icon-512.png, apple-touch-icon.png   PWA manifest / iOS home screen
+//   assets/icons/icon-192.png, icon-512.png, apple-touch-icon.png   PWA manifest / iOS home screen / Play icon
+//   assets/icon.svg                                                 favicon wrapper around icon-192.png
 //   assets/icon-only.png, icon-foreground.png, icon-background.png,
 //   assets/splash.png, splash-dark.png                               sources for `npx @capacitor/assets generate`
 const fs = require('fs');
@@ -23,43 +26,36 @@ const candidates = [
 const browser = candidates.find(p => fs.existsSync(p));
 if (!browser) { console.error('No Chromium browser found. Set BROWSER=<path>.'); process.exit(1); }
 
-// icon.svg = background rect + ripple group + <defs> + <g id="bg"> gradient sea + buoy/shark/bubble art (see the file)
-const icon = fs.readFileSync(path.join(root, 'assets', 'icon.svg'), 'utf8');
-const inner = icon.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '');
-const ripples = (inner.match(/<g fill="none" stroke="#fff"[\s\S]*?<\/g>/) || [''])[0];
-const defs = (inner.match(/<defs>[\s\S]*?<\/defs>/) || [''])[0];
-const bg = (inner.match(/<g id="bg">[\s\S]*?<\/g>/) || [''])[0];
-const art = inner.replace(/<rect width="512" height="512"[^>]*\/>/, '').replace(ripples, '').replace(bg, '');   // buoy + shark only
-const svg = (size, body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}">${body}</svg>`;
-const HARBOR = '#0c3340', WATER = '#1e7482';
-// adaptive icon: the launcher masks the 108dp layer down to ~66dp, so keep the art in the middle 60%
-const foreground = svg(512, `<g transform="translate(256 256) scale(.62) translate(-256 -256)">${art}</g>`);
-const background = svg(512, `${defs}<rect width="512" height="512" fill="${WATER}"/>${bg}${ripples}`);
-// splash: the app icon as a rounded tile on the page colour
-const splash = svg(2732, `<rect width="2732" height="2732" fill="${HARBOR}"/>
-  <g transform="translate(1366 1366) scale(1.5) translate(-256 -256)">
-    <clipPath id="r"><rect width="512" height="512" rx="112"/></clipPath>
-    <g clip-path="url(#r)">${inner}</g>
-  </g>`);
+const MASTER = path.join(root, 'assets', 'icon-concepts', 'shark-sos-3d-v1-original.png');
+const PAGE_BG = '#c6f3f4';   // capacitor.config.json backgroundColor: splash page colour
+const ICON_BG = '#5cd6ef';   // the master's aqua bezel: adaptive icon background behind the scaled foreground
+const master = `data:image/png;base64,${fs.readFileSync(MASTER).toString('base64')}`;
+const img = style => `<img style="display:block;position:absolute;${style}" src="${master}">`;
+const full = img('left:0;top:0;width:100%;height:100%');
+// adaptive icon: the launcher masks the 108dp layer down to ~66dp, so keep the art in the middle 66%
+const foreground = img('left:17%;top:17%;width:66%;height:66%');
+const background = `<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, #a6eefc 0%, ${ICON_BG} 60%, #2fb5d8 100%)"></div>`;
+// splash: the app icon as a rounded tile (28% of the shorter side) on the page colour
+const splash = img('left:36%;top:36%;width:28%;height:28%;border-radius:22%');
 
 const jobs = [
-  { src: icon, out: 'assets/icons/icon-192.png', size: 192 },
-  { src: icon, out: 'assets/icons/icon-512.png', size: 512 },
-  { src: icon, out: 'assets/icons/apple-touch-icon.png', size: 180 },
-  { src: icon, out: 'assets/icon-only.png', size: 1024 },
-  { src: foreground, out: 'assets/icon-foreground.png', size: 1024, transparent: true },
-  { src: background, out: 'assets/icon-background.png', size: 1024 },
-  { src: splash, out: 'assets/splash.png', size: 2732, bg: HARBOR },
-  { src: splash, out: 'assets/splash-dark.png', size: 2732, bg: HARBOR },
+  { body: full, out: 'assets/icons/icon-192.png', size: 192 },
+  { body: full, out: 'assets/icons/icon-512.png', size: 512 },
+  { body: full, out: 'assets/icons/apple-touch-icon.png', size: 180 },
+  { body: full, out: 'assets/icon-only.png', size: 1024 },
+  { body: foreground, out: 'assets/icon-foreground.png', size: 1024, transparent: true },
+  { body: background, out: 'assets/icon-background.png', size: 1024 },
+  { body: splash, out: 'assets/splash.png', size: 2732, bg: PAGE_BG },
+  { body: splash, out: 'assets/splash-dark.png', size: 2732, bg: PAGE_BG },
 ];
 
 const page = path.join(root, 'assets', '_render.html');
 // a fresh profile dir keeps headless rendering working while the same browser is open with the user's profile
 const profile = path.join(os.tmpdir(), 'bukang-sea-icons-profile');
 for (const job of jobs) {
-  const bg = job.transparent ? 'transparent' : job.bg || WATER;
-  fs.writeFileSync(page, `<!doctype html><html style="background:${bg}"><body style="margin:0;overflow:hidden;background:${bg}">
-<img style="display:block;width:100vw;height:100vh" src="data:image/svg+xml;base64,${Buffer.from(job.src).toString('base64')}">
+  const bg = job.transparent ? 'transparent' : job.bg || ICON_BG;
+  fs.writeFileSync(page, `<!doctype html><html style="background:${bg}"><body style="margin:0;overflow:hidden;background:${bg};position:relative;width:100vw;height:100vh">
+${job.body}
 </body></html>`);
   const out = path.join(root, job.out);
   fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -80,3 +76,9 @@ for (const job of jobs) {
   console.log(`wrote ${job.out}`);
 }
 fs.unlinkSync(page);
+
+// favicon: shell.html links icons/icon.svg, so wrap the 192px raster in an SVG (build.js copies it to www/icons/)
+const png192 = fs.readFileSync(path.join(root, 'assets', 'icons', 'icon-192.png')).toString('base64');
+fs.writeFileSync(path.join(root, 'assets', 'icon.svg'),
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><image width="192" height="192" href="data:image/png;base64,${png192}"/></svg>\n`);
+console.log('wrote assets/icon.svg (favicon wrapper)');

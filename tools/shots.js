@@ -37,7 +37,9 @@ const scenes = [
     document.querySelector('.lv[data-i="42"]').click(); await sleep(400);
     for (const d of 'URD') { swipe(d); await sleep(1300); }` },
   { name: '6-chapters', save: { best: done(27), last: 27 }, run: `
-    document.querySelectorAll('.chapter-head')[1].scrollIntoView(); await sleep(300);` },
+    $('stagePicker').open = true; await sleep(300);
+    document.querySelector('.chapter-btn[data-chapter="2"]').click(); await sleep(400);
+    $('stagePicker').scrollIntoView(); await sleep(300);` },
 ];
 
 async function cdp() {
@@ -65,7 +67,9 @@ async function cdp() {
     const game = fileUrl(path.join(root, 'www', 'index.html'));
     for (const s of scenes) {
       await send('Page.navigate', { url: game }); await sleep(800);
-      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, sound: false, coachSwipe: true, coachNet: true }))}); location.reload();`).catch(() => {});
+      // guides already seen so no coach/device popup covers the scene
+      const seenDevices = ['buoy', 'boat', 'jet', 'net', 'sand', 'whirl'];
+      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, sound: false, coachSwipe: true, coachNet: true, seenDevices }))}); location.reload();`).catch(() => {});
       await sleep(1200);
       await ev(`(async () => {
         const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));

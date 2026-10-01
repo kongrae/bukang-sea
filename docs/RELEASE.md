@@ -34,7 +34,7 @@ npm run serve          # http://localhost:5173 에서 확인
 npm install
 npx cap add android        # android/ 네이티브 프로젝트 생성 (커밋됨)
 node tools/icons.js        # assets/icon-*.png, splash*.png 원본 렌더링
-npx @capacitor/assets generate --android --iconBackgroundColor "#1e7482" --iconBackgroundColorDark "#1e7482" --splashBackgroundColor "#0c3340" --splashBackgroundColorDark "#0c3340"
+npx @capacitor/assets generate --android --iconBackgroundColor "#5cd6ef" --iconBackgroundColorDark "#5cd6ef" --splashBackgroundColor "#c6f3f4" --splashBackgroundColorDark "#c6f3f4"
 npm run cap:sync           # www 빌드 + android 로 복사
 npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레이터 선택 → Run
 ```
