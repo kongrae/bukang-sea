@@ -240,9 +240,9 @@ function sparkle(ctx, x, y, r) {
 }
 const SKINS = [
   { id: 'basic', name: '무태상어', need: { stars: 0 } },
-  { id: 'sakura', name: '벚꽃 상어', need: { stars: 20 }, body: '#a8939a', fin: '#8b767d',
+  { id: 'sakura', name: '벚꽃 상어', need: { stars: 20 }, body: '#ef9dca', fin: '#c96fa2',
     deco: (ctx, L, W, T) => { for (const [x, y, s] of [[0.28, -0.14, 1], [0.0, 0.2, 0.85], [-0.2, -0.16, 0.7]]) flower(ctx, L * x, W * y, T * 0.035 * s); } },
-  { id: 'wave', name: '파도 상어', need: { stars: 45 }, body: '#5f8ea2', fin: '#476f82',
+  { id: 'wave', name: '파도 상어', need: { stars: 45 }, body: '#52cbd6', fin: '#268caa',
     pattern: (ctx, L, W, T) => {
       ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1.2, T * 0.03);
       for (const off of [-0.24, 0.24]) {
@@ -251,9 +251,9 @@ const SKINS = [
         ctx.stroke();
       }
     } },
-  { id: 'maple', name: '단풍 상어', need: { stars: 75 }, body: '#9b7b5b', fin: '#7c5f44',
+  { id: 'maple', name: '단풍 상어', need: { stars: 75 }, body: '#eba06c', fin: '#b86236',
     deco: (ctx, L, W, T) => mapleLeaf(ctx, L * 0.22, 0, T * 0.11) },
-  { id: 'snow', name: '눈꽃 상어', need: { stars: 105 }, body: '#b9c5c9', fin: '#96a4a9',
+  { id: 'snow', name: '눈꽃 상어', need: { stars: 105 }, body: '#d0eaf5', fin: '#7cb6d3',
     deco: (ctx, L, W, T) => {
       ctx.fillStyle = '#d23c3c';
       ctx.beginPath(); ctx.moveTo(L * 0.17, W * 0.42); ctx.lineTo(-L * 0.06, W * 1.0); ctx.lineTo(L * 0.02, W * 1.02); ctx.lineTo(L * 0.22, W * 0.46); ctx.fill();
@@ -262,7 +262,7 @@ const SKINS = [
       ctx.beginPath(); ctx.moveTo(L * 0.2, -W * 0.5); ctx.lineTo(L * 0.2, W * 0.5); ctx.stroke();
       ctx.fillStyle = '#fff'; for (const [x, y] of [[0.02, -0.22], [-0.18, 0.12], [0.34, 0.18]]) { ctx.beginPath(); ctx.arc(L * x, W * y, T * 0.02, 0, 7); ctx.fill(); }
     } },
-  { id: 'gold', name: '황금 상어', need: { stars: 144 }, body: '#d6aa3e', fin: '#b3862b',
+  { id: 'gold', name: '황금 상어', need: { stars: 144 }, body: '#f7c552', fin: '#c08a26',
     pattern: (ctx, L, W, T, t) => {
       const p = ((t * 0.5) % 1.6) - 0.3;   // a glint sweeping from tail to head
       ctx.fillStyle = 'rgba(255,248,214,.45)'; ctx.beginPath();
@@ -271,7 +271,7 @@ const SKINS = [
     deco: (ctx, L, W, T, t) => { ctx.globalAlpha *= 0.6 + 0.4 * Math.sin(t * 5); sparkle(ctx, L * 0.3, -W * 0.18, T * 0.07); ctx.globalAlpha = 1; } },
   { id: 'lighthouse', name: '등대 상어', need: { streak: 7 }, body: '#ece6dc', fin: '#c9c2b6',
     pattern: (ctx, L, W) => { ctx.fillStyle = '#cf3b33'; for (const x of [0.3, 0.02, -0.26]) ctx.fillRect(L * (x - 0.05), -W, L * 0.1, W * 2); } },
-  { id: 'coral', name: '산호 상어', need: { visits: 3 }, body: '#dc9b88', fin: '#ae6f66',
+  { id: 'coral', name: '산호 상어', need: { visits: 3 }, body: '#fa9a86', fin: '#cd6c67',
     pattern: (ctx, L, W, T) => {
       ctx.strokeStyle = '#ffe5c8'; ctx.lineWidth = Math.max(1.5, T * 0.025); ctx.lineCap = 'round';
       for (const x of [-0.2, 0.08, 0.3]) {
@@ -280,7 +280,7 @@ const SKINS = [
         ctx.moveTo(L * x, -W * 0.15); ctx.lineTo(L * (x + 0.07), -W * 0.3); ctx.stroke();
       }
     } },
-  { id: 'starsea', name: '별바다 상어', need: { operations: 7 }, body: '#7d83b9', fin: '#596390',
+  { id: 'starsea', name: '별바다 상어', need: { operations: 7 }, body: '#9692e8', fin: '#625dad',
     deco: (ctx, L, W, T) => { for (const [x, y] of [[0.3, -0.17], [0.02, 0.2], [-0.24, -0.1]]) sparkle(ctx, L * x, W * y, T * 0.065); } },
 ];
 const totalStars = () => Object.values(save.best).reduce((n, b) => n + b, 0);
@@ -379,6 +379,20 @@ function hash(n) { n = (n ^ 61) ^ (n >>> 16); n += n << 3; n ^= n >>> 4; n = Mat
 // stretch > 1 lengthens the body along its heading (speed), < 1 squashes it (impact); skin = colours + decoration (SKINS)
 function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin = currentSkin()) {
   if (alpha <= 0) return;
+  const sprite = typeof SHARK_ART !== 'undefined' && SHARK_ART.get('swim', skin);
+  if (sprite) {
+    const size = T * 1.06, wag = reduceMotion ? 0 : Math.sin(t * (moving ? 14 : 4)) * (moving ? .14 : .04);
+    ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(stretch, 1 + (1 - stretch) * .8);
+    ctx.fillStyle = 'rgba(9,54,85,.22)'; ctx.beginPath(); ctx.ellipse(0, T * .07, T * .4, T * .23, 0, 0, Math.PI * 2); ctx.fill();
+    // Only the tail flexes; the nose and collision cell keep their heading.
+    const sw = sprite.width, sh = sprite.height, cut = Math.round(sw * .27);
+    ctx.save(); ctx.translate(-size * .23, 0); ctx.rotate(wag);
+    ctx.drawImage(sprite, 0, 0, cut + 2, sh, -size * .27, -size / 2, size * (cut + 2) / sw, size); ctx.restore();
+    ctx.drawImage(sprite, cut, 0, sw - cut, sh, -size * .23, -size / 2, size * (sw - cut) / sw, size);
+    if (skin.pattern) { ctx.save(); ctx.beginPath(); ctx.ellipse(T * .12, 0, T * .28, T * .18, 0, 0, Math.PI * 2); ctx.clip(); skin.pattern(ctx, T * .8, T * .4, T, t); ctx.restore(); }
+    if (skin.deco) { ctx.save(); skin.deco(ctx, T * .8, T * .4, T, t); ctx.restore(); }
+    ctx.restore(); return;
+  }
   const fin = skin.fin || C['shark-2'], body = skin.body || C.shark;
   const L = T * 1.08, W = T * 0.44;
   const wag = reduceMotion ? 0 : Math.sin(t * (moving ? 18 : 5)) * (moving ? 0.28 : 0.14);
@@ -446,20 +460,28 @@ function drawFish(ctx, cx, cy, T, t, seed, scale = 1) {
   ctx.fillStyle = 'rgba(4,20,26,.2)'; ctx.beginPath(); ctx.ellipse(2, 3, l, w, 0, 0, 7); ctx.fill();
   ctx.fillStyle = '#c9d6d8';
   ctx.beginPath(); ctx.moveTo(-l * 0.8, 0); ctx.lineTo(-l * 1.4, -w * 1.1); ctx.lineTo(-l * 1.4, w * 1.1); ctx.fill();
-  ctx.fillStyle = '#e8f0ef'; ctx.beginPath(); ctx.ellipse(0, 0, l, w, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#8fa3a8'; ctx.beginPath(); ctx.ellipse(-l * 0.1, -w * 0.3, l * 0.7, w * 0.35, 0, 0, 7); ctx.fill();
+  const scales = ctx.createLinearGradient(0, -w, 0, w); scales.addColorStop(0, '#fffbe5'); scales.addColorStop(.55, '#e0e8ce'); scales.addColorStop(1, '#96b7a8');
+  ctx.fillStyle = scales; ctx.beginPath(); ctx.ellipse(0, 0, l, w, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#fcffe9'; ctx.lineWidth = Math.max(1, T * .018); ctx.stroke();
+  ctx.fillStyle = '#a4b5a0'; ctx.beginPath(); ctx.ellipse(-l * 0.1, -w * 0.3, l * 0.7, w * 0.24, 0, 0, 7); ctx.fill();
   ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(l * 0.6, -w * 0.15, T * 0.018, 0, 7); ctx.fill();
   ctx.restore();
 }
 function drawBuoy(ctx, cx, cy, T, t) {
-  const r = T * 0.26, b = Math.sin(t * 2 + cx) * T * 0.02;
-  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.beginPath(); ctx.arc(cx + 3, cy + 4 + b, r, 0, 7); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx, cy + b, r * (1.25 + (t * 0.6 % 1) * 0.4), 0, 7); ctx.stroke();
-  ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r, 0, 7); ctx.fill();
-  ctx.fillStyle = C.rail; ctx.beginPath(); ctx.ellipse(cx, cy + b, r, r * 0.32, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = C.buoy; ctx.beginPath(); ctx.arc(cx, cy + b, r * 0.22, 0, 7); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(cx - r * 0.4, cy + b - r * 0.45, r * 0.16, 0, 7); ctx.fill();
+  const r = T * .3, b = reduceMotion ? 0 : Math.sin(t * 2 + cx) * T * .015;
+  ctx.save(); ctx.translate(cx, cy + b);
+  ctx.strokeStyle = 'rgba(5,45,66,.3)'; ctx.lineWidth = r * .58;
+  ctx.beginPath(); ctx.arc(1, T * .055, r * .72, 0, Math.PI * 2); ctx.stroke();
+  const paint = ctx.createLinearGradient(-r, -r, r, r);
+  paint.addColorStop(0, '#ffcb84'); paint.addColorStop(.35, '#ff973f'); paint.addColorStop(1, '#df511b');
+  ctx.strokeStyle = paint; ctx.lineWidth = r * .56;
+  ctx.beginPath(); ctx.arc(0, 0, r * .72, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = '#fff3d8';
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + .35; ctx.beginPath(); ctx.arc(0, 0, r * .72, a - .19, a + .19); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(1, T * .02);
+  ctx.beginPath(); ctx.arc(0, 0, r * .91, Math.PI * 1.06, Math.PI * 1.86); ctx.stroke();
+  ctx.strokeStyle = '#ac481e'; ctx.lineWidth = Math.max(1, T * .025);
+  ctx.beginPath(); ctx.arc(0, 0, r * .43, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
 }
 // ang: heading (0 = bow up); arrow: show a small chevron ahead of the bow (where it goes next)
 function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
@@ -473,7 +495,8 @@ function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
   ctx.fillStyle = 'rgba(4,20,26,.28)';
   ctx.beginPath(); ctx.ellipse(3, 5, W * 1.05, L * 1.02, 0, 0, 7); ctx.fill();
   const hull = () => { ctx.beginPath(); ctx.moveTo(0, -L); ctx.bezierCurveTo(W * 1.1, -L * 0.5, W, L * 0.6, W * 0.85, L); ctx.lineTo(-W * 0.85, L); ctx.bezierCurveTo(-W, L * 0.6, -W * 1.1, -L * 0.5, 0, -L); };
-  hull(); ctx.fillStyle = C.rail; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.ink; ctx.stroke();
+  const shell = ctx.createLinearGradient(-W, -L, W, L); shell.addColorStop(0, '#ffffff'); shell.addColorStop(.55, '#f7f2df'); shell.addColorStop(1, '#b7d4d4');
+  hull(); ctx.fillStyle = shell; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#3c6f82'; ctx.stroke();
   ctx.save(); hull(); ctx.clip(); ctx.fillStyle = C.buoy; ctx.fillRect(-W * 1.2, L * 0.05, W * 2.4, L * 0.22); ctx.restore();
   ctx.fillStyle = '#28505c'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-W * 0.55, -L * 0.35, W * 1.1, L * 0.36, 3); else ctx.rect(-W * 0.55, -L * 0.35, W * 1.1, L * 0.36); ctx.fill();
   ctx.fillStyle = C['water-hi']; ctx.fillRect(-W * 0.4, -L * 0.3, W * 0.8, L * 0.08);
@@ -485,7 +508,7 @@ function drawJet(ctx, x, y, T, dir, t, flash = 0) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x + p, y + p, T - p * 2, T - p * 2, T * 0.13);
   else ctx.rect(x + p, y + p, T - p * 2, T - p * 2);
-  ctx.fillStyle = C['harbor']; ctx.fill();
+  ctx.fillStyle = '#176781'; ctx.fill();
   ctx.strokeStyle = flash ? '#fff' : C['water-hi']; ctx.lineWidth = Math.max(1.25, T * 0.035); ctx.stroke();
   ctx.clip();
   ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
@@ -508,8 +531,8 @@ function drawNet(ctx, x, y, T, ghost, t, scale = 1) {
   ctx.save();
   if (scale !== 1) { ctx.translate(x + T / 2, y + T / 2); ctx.scale(scale, scale); ctx.translate(-x - T / 2, -y - T / 2); }
   if (ghost) { ctx.globalAlpha = 0.55 + Math.sin(t * 6) * 0.25; ctx.setLineDash([4, 3]); }
-  ctx.fillStyle = 'rgba(236,217,160,.16)'; ctx.fillRect(x + p, y + p, s, s);
-  ctx.strokeStyle = ghost ? C.star : C.net; ctx.lineWidth = 1.5;
+  ctx.fillStyle = 'rgba(10,54,72,.25)'; ctx.fillRect(x + p, y + p, s, s);
+  ctx.strokeStyle = ghost ? C.star : C.net; ctx.lineWidth = Math.max(1.5, T * .032);
   ctx.beginPath();
   for (let i = 0; i <= 4; i++) {
     const k = x + p + (s * i) / 4; ctx.moveTo(k, y + p); ctx.lineTo(k, y + p + s);
@@ -567,7 +590,7 @@ function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
   grad.addColorStop(0, `rgba(4,22,30,${0.8 - flash * 0.3})`); grad.addColorStop(1, 'rgba(4,22,30,0)');
   ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(reduceMotion ? 0.6 : t * (2.4 + flash * 6));
-  ctx.strokeStyle = flash ? '#ffffff' : C['water-hi']; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, T * 0.05);
+  ctx.strokeStyle = flash ? '#ffffff' : '#d2beff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, T * 0.05);
   for (let k = 0; k < 3; k++) {
     ctx.rotate(Math.PI * 2 / 3); ctx.globalAlpha = 0.8; ctx.beginPath();
     for (let a = 0; a <= 1.001; a += 0.1) { const ang = a * 2.6, rr = r * (0.12 + a * 0.8); a ? ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
@@ -1365,6 +1388,15 @@ function drawSkinPreview(canvas, skin, progress = null) {
   x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1.5;
   for (const yy of [0.25, 0.8]) { x.beginPath(); for (let px = 0; px <= r.width; px += 6) { const py = r.height * yy + Math.sin(px * 0.12) * 2; px ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
   const glide = progress == null ? 0 : Math.sin(progress * Math.PI);
+  if (typeof SHARK_ART !== 'undefined' && SHARK_ART.draw(x, 'portrait', r.width * (.5 + glide * .04), r.height * .48, Math.min(r.width * .94, r.height * 1.46), skin)) {
+    if (skin.deco || skin.pattern) {
+      x.save(); x.translate(r.width * .48, r.height * .47);
+      x.beginPath(); x.ellipse(0, 0, r.width * .18, r.height * .16, 0, 0, Math.PI * 2); x.clip();
+      if (skin.pattern) skin.pattern(x, r.width * .45, r.height * .3, r.width * .6, 0);
+      if (skin.deco) skin.deco(x, r.width * .45, r.height * .3, r.width * .6, 0); x.restore();
+    }
+    return;
+  }
   drawShark(x, r.width * (0.52 + glide * 0.08), r.height * 0.5, -0.12, Math.min(r.width / 1.5, r.height * 1.05), progress == null ? 0.5 : 0.5 + progress * 1.2, glide > 0.01, 1, 1, skin);
 }
 function renderSkinCard() {
@@ -1549,6 +1581,8 @@ function buildStatic() {
   staticLayer = document.createElement('canvas');
   staticLayer.width = cvs.width; staticLayer.height = cvs.height;
   const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  const landPaint = s.createLinearGradient(0, -OY, CW, CH - OY);
+  landPaint.addColorStop(0, '#f8f8e8'); landPaint.addColorStop(1, '#dcebdc');
   // every cell that is at least partly on screen
   const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
   waterPath = new Path2D();
@@ -1562,8 +1596,8 @@ function buildStatic() {
       waterPath.rect(px, py, T, T); continue;
     }
     if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
-    s.fillStyle = C.concrete; s.fillRect(px, py, T, T);
-    s.strokeStyle = C['concrete-2']; s.lineWidth = 1; s.globalAlpha = 0.4;
+    s.fillStyle = landPaint; s.fillRect(px, py, T, T);
+    s.strokeStyle = C['concrete-2']; s.lineWidth = 1; s.globalAlpha = 0.23;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
     const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke(); s.globalAlpha = 1;
   }
@@ -1573,7 +1607,7 @@ function buildStatic() {
     const inside = x >= 0 && y >= 0 && x < g.w && y < g.h;
     const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     if (!isLand(x, y)) {
-      s.fillStyle = 'rgba(6,30,38,.28)';
+      s.fillStyle = 'rgba(6,51,75,.23)';
       nb.forEach(([dx, dy]) => {
         if (!isLand(x + dx, y + dy)) return;
         const w = Math.max(3, T * 0.09);
@@ -1592,7 +1626,7 @@ function buildStatic() {
       continue;
     }
     waterSides.forEach(([dx, dy], k) => {
-      s.strokeStyle = C.rail; s.lineWidth = Math.max(1.5, T * 0.045);
+      s.strokeStyle = C.rail; s.lineWidth = Math.max(2.5, T * 0.065); s.lineCap = 'round';
       s.beginPath();
       if (dy === -1) { s.moveTo(px, py + 2); s.lineTo(px + T, py + 2); }
       if (dy === 1) { s.moveTo(px, py + T - 2); s.lineTo(px + T, py + T - 2); }
@@ -1937,7 +1971,7 @@ function sizeHero() {
   heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
   hctx.setTransform(d, 0, 0, d, 0, 0);
   heroFill = hctx.createLinearGradient(0, 0, r.width, r.height);
-  heroFill.addColorStop(0, '#3896a0'); heroFill.addColorStop(1, '#1b6077');
+  heroFill.addColorStop(0, '#84eee3'); heroFill.addColorStop(.45, '#31bdd4'); heroFill.addColorStop(1, '#157aaa');
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
@@ -1963,8 +1997,12 @@ function drawHero(t) {
       hctx.beginPath(); hctx.ellipse(ripple.x, ripple.y, 5 + (1 - ripple.life) * 24, 3 + (1 - ripple.life) * 12, 0, 0, Math.PI * 2); hctx.stroke();
     }
   }
-  drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * 0.04);
-  drawFish(hctx, W * (0.78 + Math.sin(t * 0.45) * 0.05), H * 0.26, T * 0.56, t, 0.3);
+  const bob = reduceMotion ? 0 : Math.sin(t * 1.6) * 2;
+  if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, 'hero', W * .5, H * .5 + bob, H * .98)) {
+    drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * .04);
+  }
+  drawBuoy(hctx, W * .17, H * .66, Math.min(70, H * .53), t);
+  drawFish(hctx, W * .82, H * .31, T * .63, t, .1);
   hctx.restore();
 }
 
@@ -2324,5 +2362,17 @@ window.claude?.hot?.snapshot?.(() => { pauseGame(); return { screen: $('gameScre
   free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null,
   dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }; });
 const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+if (typeof SHARK_ART !== 'undefined') {
+  SHARK_ART.onReady = () => {
+    invalidateScenes(); guidePaintTime = -1;
+    drawSkinPreview($('skinPreview'), currentSkin());
+    if (skinsOpen()) $('skinGrid').querySelectorAll('.skin').forEach(b => {
+      const skin = SKINS.find(s => s.id === b.dataset.id);
+      if (skin) drawSkinPreview(b.querySelector('canvas'), skin);
+    });
+  };
+  SHARK_ART.load();
+}
+$('clearMascot').addEventListener('error', e => { e.currentTarget.hidden = true; });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
 })();

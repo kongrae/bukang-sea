@@ -14,6 +14,8 @@ npx serve dist        # 또는 python3 -m http.server -d dist
 
 ## 개발
 
+신규 3D 상어 아이콘에 맞춘 전체 아트·UI와 전후 비교, 자산·검증 기록은 [비주얼 리디자인](docs/VISUAL-REDESIGN.md)을 참고한다.
+
 ```bash
 npm run build     # src/ 수정 후 dist/index.html 다시 만들기
 npm run verify    # 해법 재생 검증 (실제 최소 이동 수와 별 기준을 따로 확인)

@@ -7,8 +7,7 @@ const LEVELS = new Function(fs.readFileSync(path.join(root, 'src/levels.js'), 'u
 const ATTEMPT_HEADERS = ['participant_id','cohort','device','build','level','attempt','outcome','duration_sec','moves','stars','hints','undos','misinputs','assisted','notes','session'];
 const SURVEY_HEADERS = ['participant_id','cohort','device','build','readability','control','fun','again','resume','notes','session'];
 function buildId() {
-  const body = [fs.readFileSync(path.join(root, 'src/shell.html'), 'utf8'), '<script>',
-    ...['engine.js','levels.js','daily.js','free.js','device-demo.js','game.js'].map(f => fs.readFileSync(path.join(root, 'src', f), 'utf8')), '</script>'].join('\n');
+  const body = require('./build-source').gameBody();
   return crypto.createHash('sha256').update(body).digest('hex').slice(0, 12);
 }
 function parseCsv(text) {

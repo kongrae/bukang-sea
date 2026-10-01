@@ -569,6 +569,7 @@ button:disabled:active { transform: none; }
 </style>
 
 <div class="app" id="app">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="rewardGold" x2="0" y2="1"><stop stop-color="#fff1a2"/><stop offset=".45" stop-color="#ffd65b"/><stop offset="1" stop-color="#f1a622"/></linearGradient></defs></svg>
   <section class="screen title-screen" id="titleScreen">
     <div class="hero">
       <!-- playtest-label -->
@@ -747,6 +748,7 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="clearOverlay" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+    <img class="clear-mascot" id="clearMascot" src="@@ART_HERO@@" alt="" width="110" height="110">
     <h3 id="clearTitle">바다로 나갔어요!</h3>
     <div class="clear-body" id="clearBody">
       <div class="stars" id="clearStars"></div>

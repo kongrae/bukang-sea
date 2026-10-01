@@ -38,6 +38,8 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 ```
 src/
   shell.html   마크업 + CSS (디자인 토큰은 :root 변수)
+  art-theme.css 신규 아이콘 기반 밝은 아쿠아 테마. 기본 스타일 뒤에서 토큰·패널·상태 적용
+  art.js       투명 상어 WebP 로딩·외형 캐시. 실패 시 game.js의 Canvas 대체 그림
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
   levels.js    LEVELS 배열 (48개 수로) + CHAPTERS (장 이름, 레벨 수) + LEVEL_ROLES (연습/일반/도전)
   daily.js     3단계 구조작전 생성기 + 이전 단일 수로 호환 + 수로 마스크(MASKS)·rng·place. 브라우저·node 겸용
@@ -58,12 +60,12 @@ assets/        icon.svg(원본) + icons/*.png, fonts/(서브셋 woff2 + OFL 라�
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
-capacitor.config.json  appId kr.hongrae.sharksos, webDir=www, SystemBars(DARK, insets→CSS 변수)
+capacitor.config.json  appId kr.hongrae.sharksos, webDir=www, SystemBars(LIGHT, insets→CSS 변수)
 android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 단순 연결이라 `engine.js → levels.js → daily.js → free.js → device-demo.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다.
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다. WebP 3개도 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -135,6 +137,8 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 - 사운드는 WebAudio로 합성(파일 없음). 첫 사용자 입력 후에만 재생.
 
 ## 디자인
+
+- **현재 기준(2026-10-02)**: 신규 3D 아이콘을 기준으로 전체 아트·UI를 밝은 아쿠아·아이보리·주황으로 교체했다. `src/art-theme.css`의 토큰이 기본 shell 스타일을 덮어쓴다. 상어는 정면/측면/위쪽 시점의 투명 WebP를 용도별로 사용하고 기존 Canvas 그림은 실패 시 대체 표시다. 메인 아트 144px(작은 화면 116px), 프레임 2–3px, 공통 밝은 팝업·금색 별. 현재 기준·원본·프롬프트·전후 비교·검증 경계는 `docs/VISUAL-REDESIGN.md`를 따른다. 아래 이전 디자인 설명에서 색·자산·크기가 다르면 새 기준이 우선한다.
 
 - 단일 테마(항구의 깊은 청록 바탕 + 콘크리트 산책로 + 구명부표 주황 강조색). 색은 모두 `shell.html`의 `:root` 토큰에서 읽어 캔버스에도 쓴다.
 - 메인 타이틀은 밝은 단색 `--hero-paper` 위에 주아 40~48px 제목과 Noto Sans KR 16~18px/700 부제를 표시한다. 제목 → 둥근 바다 그림 → 구출 버튼을 하나의 카드로 묶는다. SOS는 `--title-alert`, 설정은 44px의 밝은 버튼이다. 바다 Canvas는 108px(작은 높이 92px)이며 전체가 상어 반응 영역이다. 메인의 배경 이야기 문구는 삭제하고 게임 방법만 남긴다. `docs/MAIN-SCREEN.md`가 현재 기준이며 이전 가독성 개선은 `docs/TITLE-READABILITY.md`에 기록돼 있다.

@@ -7,19 +7,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 const root = path.join(__dirname, '..');
-const read = f => fs.readFileSync(path.join(root, 'src', f), 'utf8');
-
-const body = [
-  read('shell.html'),
-  '<script>',
-  read('engine.js'),
-  read('levels.js'),
-  read('daily.js'),
-  read('free.js'),
-  read('device-demo.js'),
-  read('game.js'),
-  '</script>',
-].join('\n');
+const { gameBody } = require('./build-source');
+const body = gameBody();
 
 // subset copies from tools/fonts.js, renamed (OFL reserved font names) — see --font-* tokens in shell.html
 const FONTS = [
@@ -28,7 +17,7 @@ const FONTS = [
   { family: 'Bukang Body', weight: 500, file: 'noto-sans-kr-500.woff2' },
   { family: 'Bukang Body', weight: 700, file: 'noto-sans-kr-700.woff2' },
 ];
-const APP = { name: '상어 SOS: 바다로 보내줘!', short: '상어 SOS', color: '#0c3340', description: '수로에 갇힌 상어에게 바다로 가는 길을 열어 주는 구출 슬라이드 퍼즐' };
+const APP = { name: '상어 SOS: 바다로 보내줘!', short: '상어 SOS', color: '#c6f3f4', description: '수로에 갇힌 상어에게 바다로 가는 길을 열어 주는 구출 슬라이드 퍼즐' };
 
 const page = (head, extra = '', content = body) => `<!doctype html>
 <html lang="ko">
@@ -60,7 +49,7 @@ if (process.argv.includes('--playtest')) {
 const testAll = new URLSearchParams(location.search).get('all') === '1';
 const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'core-') + (/^[A-Za-z0-9_-]{1,24}$/.test(tester) ? tester : 'pilot');`);
   content = replaceOnce(content, 'const unlocked = i => i === 0 || save.best[i - 1] != null;', 'const unlocked = i => testAll || i === 0 || save.best[i - 1] != null;');
-  content = replaceOnce(content, '<!-- playtest-label -->', `<small style="position:absolute;top:105px;left:22px;z-index:1;color:#fff;background:#123b46;padding:3px 6px;border-radius:6px;font-size:10px">PLAYTEST · ${fingerprint} · 기록 별도</small>`);
+  content = replaceOnce(content, '<!-- playtest-label -->', `<small style="position:fixed;bottom:2px;left:8px;z-index:20;pointer-events:none;color:#fff;background:#123b46;padding:2px 5px;border-radius:5px;font-size:9px">PLAYTEST · ${fingerprint} · 기록 별도</small>`);
   content = replaceOnce(content, "$('lvNum').textContent = label;", "$('lvNum').textContent = label + ' · TEST';");
   // Use local fonts so mobile test sessions do not depend on Google Fonts connectivity.
   content = content.replace(/<link rel="preconnect" href="https:\/\/fonts\.[^\n]*\n/g, '').replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^\n]*\n/, '');
@@ -80,7 +69,7 @@ const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'c
 <meta name="theme-color" content="${APP.color}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="${APP.short}">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
