@@ -24,6 +24,7 @@ function scene({ stored={}, reduced=false }={}) {
     const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
     const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false},window={devicePixelRatio:1},performance={now:()=>now},C={};
+    const renderSuspended=()=>document.hidden;
     const ctx=new Proxy({},{get:()=>noop}),drawShark=(...args)=>draws.push(args);
     function element(attrs={}) {
       const classes=new Set(),children=[];
@@ -61,6 +62,7 @@ function scene({ stored={}, reduced=false }={}) {
     const show=noop,loadLevel=noop;
     const advance=ms=>{const end=now+ms;while(true){const entry=[...timers].filter(([,t])=>t.due<=end).sort((a,b)=>a[1].due-b[1].due)[0];if(!entry)break;now=entry[1].due;timers.delete(entry[0]);entry[1].cb();}now=end;};
     return {save:()=>JSON.parse(written),element:$,sounds:()=>sounds.slice(),timers:()=>timers.size,advance,cancel:cancelClearPresentation,
+      interrupt:interruptClearPresentation,resume:()=>clearReveal?.(false),pendingResult:()=>!!clearReveal,
       hidden:v=>document.hidden=v,frames:()=>{while(frames.length)frames.shift()();},draws:()=>draws.slice(),
       pending:()=>({levels:[...rewardPending.levels],stars:[...rewardPending.stars],chapters:[...rewardPending.chapters],
         dates:[...rewardPending.stamps],badges:[...rewardPending.badges],skins:[...rewardPending.skins]}),
@@ -118,4 +120,18 @@ test('reduced motion retains all rewards and buttons with a single completion cu
   assert.deepEqual(game.sounds(),[['win',50]]);game.advance(2000);assert.equal(game.sounds().length,1);assert.equal(game.timers(),0);
   const hidden=scene({reduced:true});hidden.finish(0);hidden.hidden(true);hidden.advance(2000);
   assert.deepEqual(hidden.sounds(),[]);assert.equal(hidden.save().best[0],3);
+});
+
+test('backgrounding before or during rewards preserves the result and discards all delayed cues',()=>{
+  for(const delay of [100,650,950]) {
+    const game=scene();game.finish(0);game.advance(delay);const sounds=game.sounds().length;
+    game.hidden(true);game.interrupt();game.advance(5000);
+    assert.equal(game.timers(),0);assert.equal(game.sounds().length,sounds);assert.equal(game.save().best[0],3);
+    game.hidden(false);game.resume();game.advance(2000);
+    assert.equal(game.element('clearOverlay').hidden,false);assert.equal(game.pendingResult(),false);
+    assert.equal(game.element('clearOverlay').classList.contains('clear-celebrating'),false);
+    assert.equal(game.sounds().length,sounds);
+  }
+  const canceled=scene();canceled.finish(0);canceled.interrupt();canceled.cancel();canceled.resume();
+  assert.equal(canceled.element('clearOverlay').hidden,true,'leaving the level must not reopen its result');
 });

@@ -489,7 +489,7 @@ button:disabled:active { transform: none; }
 .switch:active .track { transform: scale(.96); }
 .switch .track { transition: transform var(--motion-return) var(--ease-spring), background-color var(--motion-return); }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition: none !important; }
   #playBtn::before { display: none; }
 }
 @media (max-height: 640px) {
@@ -1841,7 +1841,10 @@ const C = {};
 const SHIRTS = ['#e4572e', '#f3a712', '#29335c', '#a8c686', '#ffffff', '#669bbc', '#b56576', '#2b2d42'];
 const ANG = { R: 0, D: Math.PI / 2, L: Math.PI, U: -Math.PI / 2 };
 const DIR_KO = { U: '위로', D: '아래로', L: '왼쪽으로', R: '오른쪽으로' };
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let reduceMotion = motionPreference.matches;
+let gameNeedsPaint = true, heroNeedsPaint = true, endingNeedsPaint = true;
+function invalidateScenes() { gameNeedsPaint = heroNeedsPaint = endingNeedsPaint = true; }
 const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
 
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
@@ -1849,6 +1852,7 @@ const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverl
 const sheetExits = new Map(), sheetOrigins = new Map();
 function syncSheetInput() {
   $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
+  invalidateScenes();
 }
 function finishSheetExit(id, restore = true) {
   const exit = sheetExits.get(id); if (!exit) return;
@@ -1971,7 +1975,7 @@ function storyProgress() {
 }
 const journeyOpen = () => !$('journeyOverlay').hidden;
 const endingOpen = () => !$('endingOverlay').hidden;
-let endingReturn = 'title', endingStarted = 0;
+let endingReturn = 'title', endingElapsed = 0;
 function renderJourney() {
   const progress = storyProgress();
   $('journeyCount').textContent = `${progress.count} / ${LEVELS.length}개 수로 구출 완료`;
@@ -1996,7 +2000,7 @@ function selectJourneyChapter(ci) {
 }
 function openEnding(from = 'title') {
   if (!storyProgress().complete) return false;
-  endingReturn = from; endingStarted = performance.now() / 1000;
+  endingReturn = from; endingElapsed = 0;
   if (from === 'clear') { cancelClearPresentation(); closeSheet('clearOverlay', null, false); }
   if (from === 'journey') closeSheet('journeyOverlay', null, false);
   $('endingRecord').textContent = `${LEVELS.length}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
@@ -2004,7 +2008,7 @@ function openEnding(from = 'title') {
     : '모든 별도 모았어요! 오늘의 구조작전에서 새로운 물길을 열어 주세요.';
   openSheet('endingOverlay');
   $('endingCard').scrollTop = 0; $('endingTitle').focus({ preventScroll: true });
-  drawEnding(endingStarted); return true;
+  drawEnding(endingElapsed); return true;
 }
 function closeEnding() {
   closeSheet('endingOverlay', 'endingBtn');
@@ -2029,7 +2033,7 @@ function drawEnding(t) {
     canvas.width = Math.round(w * d); canvas.height = Math.round(h * d);
   }
   ctx.setTransform(d, 0, 0, d, 0, 0);
-  const time = reduceMotion ? 0 : Math.max(0, t - endingStarted), u = reduceMotion ? 1 : Math.min(1, time / 4);
+  const time = reduceMotion ? 0 : Math.max(0, t), u = reduceMotion ? 1 : Math.min(1, time / 4);
   const gradient = ctx.createLinearGradient(0, 0, w, h); gradient.addColorStop(0, C.water); gradient.addColorStop(1, C.sea);
   ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h);
   ctx.strokeStyle = 'rgba(210,243,231,.22)'; ctx.lineWidth = 1.5;
@@ -2587,10 +2591,12 @@ function coachDone(kind) {
   persist();
 }
 function setTip(text, isHint) {
+  gameNeedsPaint = true;
   const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 function updateHud() {
+  gameNeedsPaint = true;
   const L = curLevel(), parts = [];
   const done = g.fish.length && st.fish.length === g.fish.length;
   const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
@@ -2811,18 +2817,22 @@ async function showHint() {
 /* ---------- reward presentation: transient events, independent of saved progress ---------- */
 const REWARD_TIMING = { first: 240, gap: 220 };
 const rewardPending = { stars: new Set(), levels: new Set(), chapters: new Set(), journey: new Set(), daily: new Map(), stamps: new Set(), badges: new Set(), skins: new Set() };
-let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false;
+let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false, clearReveal = null;
 function cancelClearPresentation() {
   clearPresentation++;
+  clearReveal = null;
   clearTimers.forEach(clearTimeout); clearTimers.clear();
   $('clearOverlay').classList.toggle('clear-celebrating', false);
   stopSkinPreviews($('clearOverlay'));
+}
+function interruptClearPresentation() {
+  const reveal = clearReveal; cancelClearPresentation(); clearReveal = reveal;
 }
 function clearLater(callback, delay, token, overlay = true) {
   let timer;
   timer = setTimeout(() => {
     clearTimers.delete(timer);
-    if (token !== clearPresentation || !cleared || (overlay && ($('clearOverlay').hidden || document.hidden))) return;
+    if (token !== clearPresentation || !cleared || (overlay && ($('clearOverlay').hidden || renderSuspended()))) return;
     callback();
   }, delay);
   clearTimers.add(timer);
@@ -2953,15 +2963,20 @@ function onClear() {
   $('operationStamp').classList.toggle('reward-stamp', event.stamp === 2 && !reduceMotion);
   $('nextBtn').textContent = FREE ? '새 수로' : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
-  clearLater(() => {
-    openSheet('clearOverlay'); $('nextBtn').focus({ preventScroll: true });
+  clearReveal = (celebrate = true) => {
+    clearReveal = null;
+    openSheet('clearOverlay'); if (!renderSuspended()) $('nextBtn').focus({ preventScroll: true });
     $('clearBody').scrollTop = 0;
-    $('clearOverlay').classList.toggle('clear-celebrating', !reduceMotion);
-    if (reduceMotion) { if (!document.hidden) { sfx.win(); haptic('success'); } }
-    else earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
-    $('clearUnlocks').querySelectorAll('[data-new-skin]').forEach(canvas => animateSkinPreview(canvas, SKINS.find(s => s.id === canvas.dataset.newSkin)));
-    if (freshSkins.length && !reduceMotion) clearLater(() => haptic('success'), 960, token);
-  }, reduceMotion ? 50 : 650, token, false);
+    $('clearOverlay').classList.toggle('clear-celebrating', celebrate && !reduceMotion);
+    if (celebrate && reduceMotion) { sfx.win(); haptic('success'); }
+    else if (celebrate) earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
+    $('clearUnlocks').querySelectorAll('[data-new-skin]').forEach(canvas => {
+      const skin = SKINS.find(s => s.id === canvas.dataset.newSkin);
+      if (celebrate) animateSkinPreview(canvas, skin); else drawSkinPreview(canvas, skin);
+    });
+    if (celebrate && freshSkins.length && !reduceMotion) clearLater(() => haptic('success'), 960, token);
+  };
+  clearLater(() => { if (!renderSuspended()) clearReveal?.(); }, reduceMotion ? 50 : 650, token, false);
   renderLevelGrid();
 }
 
@@ -3325,6 +3340,8 @@ const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx
 const CROP = 0.3;   // share of each outer promenade column that may fall outside the view to make the tiles bigger
 let OX = 0, OY = 0, CW = 0, CH = 0, seaCells = new Set();
 function resize() {
+  invalidateScenes();
+  guidePaintTime = -1;
   if (!g || $('gameScreen').hidden) return;
   const r = board.getBoundingClientRect();
   CW = Math.floor(r.width); CH = Math.floor(r.height);
@@ -3427,20 +3444,67 @@ function buildStatic() {
   }
 }
 
-let lastT = performance.now();
-function frame(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  const t = now / 1000;
-  if (!$('gameScreen').hidden && g && staticLayer) {
-    if (!$('app').inert) step(dt);
-    updateHintButton();
-    draw(t);
+/* One bounded frame chain; frozen scenes repaint only when their content changes. */
+let lastT = performance.now(), frameId = null, appActive = true, pageHidden = false;
+const renderSuspended = () => document.hidden || !appActive || pageHidden;
+function startFrames() {
+  if (frameId !== null || renderSuspended()) return;
+  lastT = performance.now(); frameId = requestAnimationFrame(frame);
+}
+function suspendPresentation() {
+  if (frameId !== null) cancelAnimationFrame(frameId);
+  frameId = null;
+  flushSheetExits(); pauseGame();
+  // A winning turn may have just committed. Preserve its pending result, but discard delayed cues.
+  interruptClearPresentation();
+  skinPreviewMotion.clear();
+  invalidateScenes();
+}
+function resumePresentation() {
+  if (renderSuspended()) return;
+  if (clearReveal) clearReveal(false);
+  invalidateScenes(); startFrames();
+}
+function changeMotionPreference(e) {
+  if (reduceMotion === e.matches) return;
+  reduceMotion = e.matches;
+  if (reduceMotion) {
+    flushSheetExits(); pauseGame(); clearPlayEffects();
+    interruptClearPresentation();
+    if (clearReveal && !renderSuspended()) clearReveal(false);
+    for (const [canvas, motion] of skinPreviewMotion) if (canvas.isConnected) drawSkinPreview(canvas, motion.skin);
+    skinPreviewMotion.clear();
+    guidePlaying = false;
   }
-  if (!$('titleScreen').hidden && !document.hidden) { if (!heroPaused()) stepHero(dt); drawHero(heroTime); }
-  if (endingOpen()) drawEnding(t);
-  if (guideOpen() && !document.hidden) stepDeviceGuide(dt);
-  if (!document.hidden) stepRewardPreviews(dt);
-  requestAnimationFrame(frame);
+  heroWake = 0; heroRipples.length = 0;
+  guidePaintTime = -1; if (guideOpen()) updateGuidePlayback();
+  invalidateScenes();
+}
+function frame(now) {
+  frameId = null;
+  if (renderSuspended()) return;
+  const active = (!$('app').inert && (anim || bump || settle || pop)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
+  const interval = 1000 / (active ? 60 : 30);
+  if (now - lastT < interval - 0.5) { frameId = requestAnimationFrame(frame); return; }
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (!$('gameScreen').hidden && g && staticLayer) {
+    const moving = !$('app').inert && (!reduceMotion || !!anim);
+    if (moving) step(dt);
+    updateHintButton();
+    if (gameNeedsPaint || moving) { draw(clock); gameNeedsPaint = false; }
+  }
+  if (!$('titleScreen').hidden && heroVisible) {
+    const moving = !reduceMotion && !heroPaused();
+    if (moving) stepHero(dt);
+    if (heroNeedsPaint || !heroW || moving) { drawHero(heroTime); heroNeedsPaint = false; }
+  }
+  if (endingOpen()) {
+    if (!reduceMotion) endingElapsed += dt;
+    if (endingNeedsPaint || !reduceMotion) { drawEnding(endingElapsed); endingNeedsPaint = false; }
+  }
+  if (guideOpen() && (guidePlaying || guidePaintTime !== guideTime)) stepDeviceGuide(dt);
+  stepRewardPreviews(dt);
+  frameId = requestAnimationFrame(frame);
 }
 function step(dt) {
   clock += dt;
@@ -3498,6 +3562,7 @@ function step(dt) {
   }
 }
 function draw(t) {
+  if (reduceMotion) t = 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(staticLayer, 0, 0);
   ctx.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);   // from here on: grid coordinates
@@ -3640,6 +3705,12 @@ function drawFinger(x, y, press, alpha) {
   ctx.restore();
 }
 function drawCoach(sx, sy, t) {
+  if (reduceMotion) {
+    const [dx, dy] = DIRS[coach.dir || 'U'];
+    const x = coach.kind === 'swipe' ? sx + 0.5 + dx * 0.7 : coach.x + 0.68;
+    const y = coach.kind === 'swipe' ? sy + 0.5 + dy * 0.7 : coach.y + 0.72;
+    drawFinger(x * T, y * T, 0, 1); return;
+  }
   if (coach.kind === 'swipe') {
     // finger lands beside the shark, drags one and a half tiles in the move direction, lifts, repeats
     const [dx, dy] = DIRS[coach.dir], cyc = (t % 1.6) / 1.6;
@@ -3664,11 +3735,16 @@ function drawCoach(sx, sy, t) {
 
 /* ---------- title hero ---------- */
 const hero = $('heroCanvas'), hctx = hero.getContext('2d');
-let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0;
+let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
 function resetHero() {
-  heroW = 0; heroTime = 0; heroWake = 0; heroRipples.length = 0;
+  heroW = 0; heroTime = 0; heroWake = 0; heroRipples.length = 0; heroVisible = true;
+}
+function updateHeroVisibility() {
+  const r = hero.getBoundingClientRect();
+  heroVisible = r.bottom > 0 && r.top < window.innerHeight;
+  if (heroVisible) heroNeedsPaint = true;
 }
 function stepHero(dt) {
   if (reduceMotion) return;
@@ -3834,6 +3910,7 @@ function updateGuidePlayback() {
 function toggleGuidePlayback() {
   if (!guideDemo) return;
   guidePlaying = !guidePlaying;
+  guidePaintTime = -1;
   if (guidePlaying && guideTime >= guideDemo.duration) guideTime = 0;
   updateGuidePlayback();
 }
@@ -3852,7 +3929,8 @@ function drawDeviceDemo() {
   if (!rect.width || !rect.height) return;
   const d = Math.min(window.devicePixelRatio || 1, 2.5), width = Math.round(rect.width * d), height = Math.round(rect.height * d);
   if (canvas.width === width && canvas.height === height && guidePaintTime === guideTime) return;
-  canvas.width = width; canvas.height = height; guidePaintTime = guideTime;
+  if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+  guidePaintTime = guideTime;
   const x = canvas.getContext('2d'), grid = guideDemo.grid, size = Math.min(rect.width / grid.w, rect.height / grid.h);
   const sample = sampleDeviceDemo(guideDemo, guideTime), phase = sample.phase;
   x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = C.water; x.fillRect(0, 0, rect.width, rect.height);
@@ -4035,8 +4113,11 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'Escape') show('title');
 });
 window.addEventListener('resize', () => { resize(); heroW = 0; });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { flushSheetExits(); pauseGame(); } });
-window.addEventListener('pagehide', () => { flushSheetExits(); pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) suspendPresentation(); else resumePresentation(); });
+window.addEventListener('pagehide', () => { pageHidden = true; suspendPresentation(); });
+window.addEventListener('pageshow', () => { pageHidden = false; resumePresentation(); });
+motionPreference.addEventListener('change', changeMotionPreference);
+$('titleScreen').addEventListener('scroll', updateHeroVisibility, { passive: true });
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
@@ -4051,7 +4132,9 @@ if (capApp) capApp.addListener('backButton', () => {
   else if (skinsOpen()) closeSkins();
   else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
 });
-if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) { flushSheetExits(); pauseGame(); } });
+if (capApp) capApp.addListener('appStateChange', ({ isActive }) => {
+  appActive = isActive; if (isActive) resumePresentation(); else suspendPresentation();
+});
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
@@ -4069,7 +4152,7 @@ function start(data) {
   }
   else if (data && !data.daily && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
   else show('title', false);
-  requestAnimationFrame(frame);
+  startFrames();
 }
 window.claude?.hot?.snapshot?.(() => { pauseGame(); return { screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
   free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null,

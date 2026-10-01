@@ -8,6 +8,7 @@ const sheets = source.slice(source.indexOf('const SHEET_IDS'), source.indexOf('/
 function scene(reduced = false) {
   return new Function('reduceMotion', `
     let now=0,sequence=0,gest={drag:true},queued='R';
+    const invalidateScenes=()=>{};
     const timers=new Map(),elements=new Map(),document={hidden:false,activeElement:null};
     const setTimeout=(cb,ms)=>{const id=++sequence;timers.set(id,{cb,due:now+ms});return id;};
     const clearTimeout=id=>timers.delete(id);

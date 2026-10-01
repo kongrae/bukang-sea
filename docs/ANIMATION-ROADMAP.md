@@ -1,6 +1,6 @@
 # 애니메이션 개선 순서
 
-콘텐츠 개선 번호와 별개인 연출 작업 목록이다. 사용자 요청에 따라 1–7번을 구현했다. 다음 번호는 시작 요청을 기다린다.
+콘텐츠 개선 번호와 별개인 연출 작업 목록이다. 사용자 요청에 따라 1–8번의 코드 작업과 자동/브라우저 검증을 완료했다. 실물 Android 검증은 남아 있다.
 
 | 번호 | 내용 | 추천 모델 | 추론 강도 | 상태 |
 |---|---|---|---|---|
@@ -11,6 +11,6 @@
 | 5 | 수로 안 이동·정지·숭어·장치 반응의 연결감 점검과 개선 | GPT-6 Astra | xhigh | 구현·자동/브라우저 검증 완료 |
 | 6 | 메인 상어·바다·출발 버튼의 가벼운 반응 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
 | 7 | 메뉴·시트·설정·버튼 전환과 입력 반응 통일 | GPT-6.1 Sol | high | 구현·자동/브라우저 검증 완료 |
-| 8 | 전체 연출의 모바일 성능·동작 줄이기·중단 처리 최종 점검 | GPT-6 Astra | xhigh | 대기 |
+| 8 | 전체 연출의 모바일 성능·동작 줄이기·중단 처리 최종 점검 | GPT-6 Astra | xhigh | 코드·자동/브라우저 완료, 실기기 대기 |
 
-1–4번 구현과 검증 범위는 [REWARD-ANIMATIONS.md](REWARD-ANIMATIONS.md), 5번은 [PLAY-MOTION.md](PLAY-MOTION.md), 6번은 [HERO-MOTION.md](HERO-MOTION.md), 7번은 [SHEET-MOTION.md](SHEET-MOTION.md)에 기록한다. 8번은 제안된 후속 범위이며 실제 작업 전에 기존 연출을 기준으로 세부 범위를 확인한다. 각 작업 완료 후 다음 번호와 추천 모델·추론 강도를 안내한다. 다음은 8번이며 GPT-6 Astra / xhigh를 권장한다.
+1–4번 구현과 검증 범위는 [REWARD-ANIMATIONS.md](REWARD-ANIMATIONS.md), 5번은 [PLAY-MOTION.md](PLAY-MOTION.md), 6번은 [HERO-MOTION.md](HERO-MOTION.md), 7번은 [SHEET-MOTION.md](SHEET-MOTION.md), 8번은 [MOTION-AUDIT.md](MOTION-AUDIT.md)에 기록한다. 다음 권장은 해당 문서의 실물 Android 시험과 `PLAYTEST.md`의 실제 이용자 시험이다. 새 번호의 작업은 별도 시작 요청을 기다린다.

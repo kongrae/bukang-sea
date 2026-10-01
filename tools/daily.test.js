@@ -47,6 +47,7 @@ function operation(stored = null) {
     const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
     const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false};
+    const renderSuspended=()=>document.hidden;
     ${rewardSource}
     ${functions}
     ${daily}

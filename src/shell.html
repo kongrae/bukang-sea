@@ -489,7 +489,7 @@ button:disabled:active { transform: none; }
 .switch:active .track { transform: scale(.96); }
 .switch .track { transition: transform var(--motion-return) var(--ease-spring), background-color var(--motion-return); }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition: none !important; }
   #playBtn::before { display: none; }
 }
 @media (max-height: 640px) {
