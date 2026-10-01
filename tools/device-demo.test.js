@@ -60,6 +60,9 @@ const guideSource=source.slice(source.indexOf('const DEVICE_GUIDES = ['),source.
 function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={}) {
   return new Function('E','D','reduceMotion','seen','level','title',`
     const {JET}=E,{createDeviceDemo,sampleDeviceDemo}=D,g=E.parseLevel(level);
+    // Business harnesses omit visual exits; actual sheet lifecycle is covered by sheet-motion.test.js.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const save={seenDevices:seen.slice(),best:{0:3},sessions:{story:{moves:4}},hintUsage:{'story:0':{count:2}}};
     let persisted=null;const persist=()=>{persisted=JSON.stringify(save);},elements=new Map();
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:id==='guideOverlay'||id==='gameScreen'&&title,textContent:'',innerHTML:'',focus(){},setAttribute(){},getBoundingClientRect:()=>({width:0,height:0})});return elements.get(id);};

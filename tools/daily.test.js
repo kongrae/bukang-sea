@@ -43,6 +43,9 @@ function operation(stored = null) {
     const curLevel = () => DAILY.level;
     const show = which => {$('gameScreen').hidden=which!=='game'; if(which==='title') cleared=false;};
     const enter = (level,keep,label) => {st=keep||freshState(level);g=parseLevel(level);cleared=false;$('lvNum').textContent=label;checkpoint();};
+    // Business harnesses omit visual exits; actual sheet lifecycle is covered by sheet-motion.test.js.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false};
     ${rewardSource}
     ${functions}

@@ -33,6 +33,9 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     const chapterOf=()=>({end:11,ci:0}),LEVELS=Array(48),curLevel=()=>FREE.level;
     const show=which=>{$('gameScreen').hidden=which!=='game';if(which==='title'){cleared=false;$('clearOverlay').hidden=true;}};
     const enter=(level,keep,label)=>{g=parseLevel(level);st=keep||freshState(level);cleared=false;$('lvNum').textContent=label;checkpoint();};
+    // Business harnesses omit visual exits; actual sheet lifecycle is covered by sheet-motion.test.js.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false};
     ${rewardSource}
     ${functions}

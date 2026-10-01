@@ -33,6 +33,8 @@
   --ease-out: cubic-bezier(.2, .85, .25, 1);
   --ease-sheet: cubic-bezier(.16, 1, .3, 1);
   --ease-spring: cubic-bezier(.3, 1.5, .5, 1);
+  --motion-press: 80ms;
+  --motion-return: 180ms;
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
@@ -72,10 +74,10 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
   overflow: hidden;
 }
 .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
-.screen.enter-fwd { animation: push-in .34s var(--ease-out) both; }
-.screen.enter-back { animation: pop-in .34s var(--ease-out) both; }
-@keyframes push-in { from { transform: translateX(30%); opacity: 0; } }
-@keyframes pop-in { from { transform: translateX(-16%); opacity: 0; } }
+.screen.enter-fwd { animation: push-in .26s var(--ease-out); }
+.screen.enter-back { animation: pop-in .22s var(--ease-out); }
+@keyframes push-in { from { transform: translateX(12%); opacity: 0; } }
+@keyframes pop-in { from { transform: translateX(-8%); opacity: 0; } }
 
 /* ----- Title ----- */
 .title-screen { overflow-y: auto; gap: 12px; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
@@ -270,7 +272,7 @@ h1 .sea { color: var(--title-alert); }
   background: var(--harbor-2); border: 2px solid transparent; border-radius: 18px;
   min-height: 80px; padding: 8px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   min-width: 0; transition: background .15s, transform .18s var(--ease-spring);
-  animation: tile-in .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 14ms);
+  animation: tile-in .28s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 12ms);
 }
 @keyframes tile-in { from { transform: translateY(10px) scale(.96); opacity: 0; } }
 .lv:active { transform: scale(.93); transition-duration: .08s; }
@@ -375,21 +377,27 @@ h1 .sea { color: var(--title-alert); }
 /* ----- Clear sheet ----- */
 .overlay {
   position: fixed; inset: 0; background: rgba(4, 18, 24, .62); display: flex; align-items: flex-end; justify-content: center;
-  z-index: 10; animation: fade .3s ease-out;
+  z-index: 10; animation: fade .22s ease-out;
 }
 .card {
   background: var(--concrete); color: var(--ink); width: 100%; max-width: 520px;
   border-radius: 28px 28px 0 0; padding: 10px 22px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
-  display: flex; flex-direction: column; gap: 14px; text-align: center; animation: sheet-up .5s var(--ease-sheet) both;
+  display: flex; flex-direction: column; gap: 14px; text-align: center; animation: sheet-up .28s var(--ease-sheet);
   box-shadow: 0 -10px 40px rgba(0,0,0,.3);
 }
 .card::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: #b9ad95; margin: 0 auto 4px; }
-@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes sheet-up { from { transform: translateY(24px); opacity: .5; } }
+.overlay.sheet-leaving[hidden] { display: flex !important; pointer-events: none; animation: sheet-fade-out .16s ease-in both; }
+.sheet-leaving .card { animation: sheet-down .16s ease-in both; }
+@keyframes sheet-fade-out { to { opacity: 0; } }
+@keyframes sheet-down { to { transform: translateY(16px); opacity: .5; } }
 @media (min-width: 640px) and (min-height: 640px) {
   .overlay { align-items: center; }
   .card { border-radius: 28px; padding-bottom: 22px; animation-name: pop; }
   .card::before { display: none; }
+  .sheet-leaving .card { animation-name: card-out; }
 }
+@keyframes card-out { to { transform: scale(.97); opacity: .5; } }
 .card h3 { font-family: var(--font-display); font-weight: 400; font-size: 38px; letter-spacing: 0; margin: 4px 0 0; line-height: 1.1; }
 .card h3.operation-title { font-size: clamp(28px, 8.4vw, 34px); }
 .card .sub { margin: 0; font-size: 14px; color: #3d4d4f; }
@@ -468,7 +476,18 @@ h1 .sea { color: var(--title-alert); }
 .guide-items p { margin: 0; font-size: 14px; line-height: 1.6; color: #3d4d4f; }
 
 @keyframes fade { from { opacity: 0 } }
-@keyframes pop { from { transform: scale(.6); opacity: 0 } }
+@keyframes pop { from { transform: scale(.96); opacity: 0 } }
+/* One press/release rhythm; entrance animations must not retain a transform after finishing. */
+.btn, .icon-btn, .ctrl, .daily, .myshark, .lv, .chapter-btn, .daily-stage, .journal-link, .journey-link, .skin, .guide-tabs button {
+  transition: transform var(--motion-return) var(--ease-spring), background-color .15s, filter .15s;
+}
+:is(.btn, .ctrl, .daily, .myshark, .lv, .chapter-btn, .daily-stage, .journal-link, .journey-link, .skin, .guide-tabs button):not(:disabled):active { transform: scale(.98); transition-duration: var(--motion-press); }
+.icon-btn:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press); }
+.btn.primary:not(:disabled):active { transform: translateY(4px) scale(.98); box-shadow: 0 2px 0 var(--buoy-deep); }
+button:disabled:active { transform: none; }
+.card :is(button, input):focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 2px; }
+.switch:active .track { transform: scale(.96); }
+.switch .track { transition: transform var(--motion-return) var(--ease-spring), background-color var(--motion-return); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
   #playBtn::before { display: none; }
@@ -640,7 +659,7 @@ h1 .sea { color: var(--title-alert); }
 </div>
 
 <div class="overlay" id="skinsOverlay" hidden>
-  <div class="card skins" role="dialog" aria-labelledby="skinsTitle">
+  <div class="card skins" role="dialog" aria-modal="true" aria-labelledby="skinsTitle">
     <h3 id="skinsTitle">내 상어</h3>
     <p class="sub" id="skinsSub">별을 모으면 새 상어가 열려요.</p>
     <div class="skin-grid" id="skinGrid"></div>
@@ -649,7 +668,7 @@ h1 .sea { color: var(--title-alert); }
 </div>
 
 <div class="overlay" id="settingsOverlay" hidden>
-  <div class="card settings" role="dialog" aria-labelledby="settingsTitle">
+  <div class="card settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <h3 id="settingsTitle">설정</h3>
     <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
@@ -659,7 +678,7 @@ h1 .sea { color: var(--title-alert); }
 </div>
 
 <div class="overlay" id="clearOverlay" hidden>
-  <div class="card" role="dialog" aria-labelledby="clearTitle">
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
     <h3 id="clearTitle">바다로 나갔어요!</h3>
     <div class="clear-body" id="clearBody">
       <div class="stars" id="clearStars"></div>

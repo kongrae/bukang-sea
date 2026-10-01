@@ -11,6 +11,50 @@ const DIR_KO = { U: '위로', D: '아래로', L: '왼쪽으로', R: '오른쪽�
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
 
+/* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
+const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
+const sheetExits = new Map(), sheetOrigins = new Map();
+function syncSheetInput() {
+  $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
+}
+function finishSheetExit(id, restore = true) {
+  const exit = sheetExits.get(id); if (!exit) return;
+  clearTimeout(exit.timer); sheetExits.delete(id);
+  const el = $(id); el.classList.remove('sheet-leaving'); el.inert = false; el.removeAttribute('aria-hidden');
+  syncSheetInput();
+  if (restore && !document.hidden && !$('app').inert && exit.target?.isConnected && !exit.target.closest('[hidden]')) exit.target.focus({ preventScroll: true });
+}
+function flushSheetExits() { for (const id of [...sheetExits.keys()]) finishSheetExit(id, false); }
+function openSheet(id) {
+  flushSheetExits();
+  const el = $(id);
+  if (el.hidden) sheetOrigins.set(id, document.activeElement);
+  el.hidden = false; el.inert = false; el.removeAttribute('aria-hidden');
+  gest = null; queued = null; syncSheetInput();
+}
+function closeSheet(id, returnId = null, animate = true) {
+  const el = $(id); if (el.hidden) return;
+  const target = returnId ? $(returnId) : sheetOrigins.get(id);
+  el.hidden = true;
+  const exit = { target, timer: null }; sheetExits.set(id, exit);
+  if (!animate || reduceMotion || document.hidden) { finishSheetExit(id, animate); return; }
+  el.classList.add('sheet-leaving'); el.inert = true; el.setAttribute('aria-hidden', 'true');
+  syncSheetInput(); exit.timer = setTimeout(() => finishSheetExit(id), 180);
+}
+function sheetKeydown(e) {
+  if (sheetExits.size) { e.preventDefault(); return true; }
+  if (e.key !== 'Tab') return false;
+  const id = [...SHEET_IDS].reverse().find(id => !$(id).hidden); if (!id) return false;
+  const items = [...$(id).querySelectorAll('button:not([disabled]), input:not([disabled]), [tabindex="0"]')]
+    .filter(el => !el.closest('[hidden]') && el.getClientRects().length);
+  if (!items.length) { e.preventDefault(); return true; }
+  const at = items.indexOf(document.activeElement);
+  if (at < 0 || (!e.shiftKey && at === items.length - 1) || (e.shiftKey && at === 0)) {
+    e.preventDefault(); items[e.shiftKey ? items.length - 1 : 0].focus({ preventScroll: true });
+  }
+  return true;
+}
+
 /* ---------- storage (per-viewer convenience only) ---------- */
 const STORE_KEY = 'bukang-sea-v1';
 // vibe: haptics on/off, coachSwipe/coachNet: first-play finger hints already shown
@@ -105,35 +149,34 @@ function renderJourney() {
   $('journeyEndingBtn').hidden = !progress.complete;
 }
 function openJourney() {
-  renderJourney(); $('app').inert = true; $('journeyOverlay').hidden = false;
+  renderJourney(); openSheet('journeyOverlay');
   consumeRewardMarks(rewardPending.journey, $('journeyChapters'), 'data-journey', 'reward-route', true);
   $('journeyCard').scrollTop = 0; $('journeyTitle').focus({ preventScroll: true });
 }
 function closeJourney() {
-  $('journeyOverlay').hidden = true; $('app').inert = false; $('journeyBtn').focus({ preventScroll: true });
+  closeSheet('journeyOverlay', 'journeyBtn');
 }
 function selectJourneyChapter(ci) {
   if (!CHAPTERS[ci]) return;
-  closeJourney(); selectedChapter = ci; renderLevelGrid();
+  closeSheet('journeyOverlay', null, false); selectedChapter = ci; renderLevelGrid();
   $('chapterPicker').querySelector(`[data-chapter="${ci}"]`).focus();
 }
 function openEnding(from = 'title') {
   if (!storyProgress().complete) return false;
   endingReturn = from; endingStarted = performance.now() / 1000;
-  if (from === 'clear') { cancelClearPresentation(); $('clearOverlay').hidden = true; }
-  if (from === 'journey') $('journeyOverlay').hidden = true;
+  if (from === 'clear') { cancelClearPresentation(); closeSheet('clearOverlay', null, false); }
+  if (from === 'journey') closeSheet('journeyOverlay', null, false);
   $('endingRecord').textContent = `${LEVELS.length}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
   $('endingAfter').textContent = totalStars() < LEVELS.length * 3 ? '남은 별을 모으거나 오늘의 구조작전에서 새로운 물길을 열어 주세요.'
     : '모든 별도 모았어요! 오늘의 구조작전에서 새로운 물길을 열어 주세요.';
-  $('app').inert = true; $('endingOverlay').hidden = false;
+  openSheet('endingOverlay');
   $('endingCard').scrollTop = 0; $('endingTitle').focus({ preventScroll: true });
   drawEnding(endingStarted); return true;
 }
 function closeEnding() {
-  $('endingOverlay').hidden = true; $('app').inert = false;
-  if (endingReturn === 'clear' && cleared) { $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true }); }
+  closeSheet('endingOverlay', 'endingBtn');
+  if (endingReturn === 'clear' && cleared) { openSheet('clearOverlay'); $('nextBtn').focus({ preventScroll: true }); }
   else if (endingReturn === 'journey') openJourney();
-  else $('endingBtn').focus({ preventScroll: true });
 }
 function endingToTitle() { endingReturn = 'title'; closeEnding(); show('title'); }
 function endingToDaily() { endingReturn = 'title'; closeEnding(); openDaily(); }
@@ -684,7 +727,7 @@ function enter(level, keep, label) {
   $('lvNum').textContent = label;
   $('lvName').textContent = level.name;
   setTip(level.tip);
-  $('clearOverlay').hidden = true;
+  closeSheet('clearOverlay', null, false);
   hudLast = { moves: -1, fish: -1 };
   resize(); updateHud(); updateHintButton();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
@@ -1078,7 +1121,7 @@ function onClear() {
   $('nextBtn').textContent = FREE ? '새 수로' : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   clearLater(() => {
-    $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
+    openSheet('clearOverlay'); $('nextBtn').focus({ preventScroll: true });
     $('clearBody').scrollTop = 0;
     $('clearOverlay').classList.toggle('clear-celebrating', !reduceMotion);
     if (reduceMotion) { if (!document.hidden) { sfx.win(); haptic('success'); } }
@@ -1177,14 +1220,13 @@ function openDaily() {
   if (!$('gameScreen').hidden) show('title');
   dailyRequest++;
   renderDaily(); renderOperation();
-  $('app').inert = true; $('dailyOverlay').hidden = false;
+  openSheet('dailyOverlay');
   applyOperationRewards();
   $('dailyDone').focus({ preventScroll: true });
 }
 function closeDaily() {
   dailyRequest++;
-  $('dailyOverlay').hidden = true; $('app').inert = false;
-  $('dailyBtn').focus({ preventScroll: true });
+  closeSheet('dailyOverlay', 'dailyBtn');
 }
 async function startDaily(stage) {
   const date = dailyDate(), progress = dailyProgress(date);
@@ -1284,14 +1326,13 @@ function openJournal(from = 'title') {
   journalReturn = from;
   if (from === 'daily') closeDaily();
   journalMonth = dailyDate().slice(0, 7); renderJournal();
-  $('app').inert = true; $('journalOverlay').hidden = false;
+  openSheet('journalOverlay');
   applyJournalRewards();
   $('journalCard').scrollTop = 0; $('journalTitle').focus({ preventScroll: true });
 }
 function closeJournal() {
-  $('journalOverlay').hidden = true; $('app').inert = false;
+  closeSheet('journalOverlay', 'journalBtn');
   if (journalReturn === 'daily') { openDaily(); $('dailyJournalBtn').focus({ preventScroll: true }); }
-  else $('journalBtn').focus({ preventScroll: true });
 }
 function journalToSkins() {
   journalReturn = 'title'; closeJournal(); openSkins();
@@ -1342,8 +1383,8 @@ function renderSkinGrid(equipped = null) {
   });
 }
 const skinsOpen = () => !$('skinsOverlay').hidden;
-function openSkins() { $('skinsOverlay').hidden = false; renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
-function closeSkins() { stopSkinPreviews($('skinsOverlay')); $('skinsOverlay').hidden = true; renderSkinCard(); }
+function openSkins() { openSheet('skinsOverlay'); renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
+function closeSkins() { stopSkinPreviews($('skinsOverlay')); closeSheet('skinsOverlay', 'skinBtn'); renderSkinCard(); }
 function selectSkin(id) {
   if (!(save.owned || ['basic']).includes(id) || !SKINS.some(s => s.id === id) || save.skin === id) return;
   save.skin = id; persist(); haptic('medium'); sfx.equip(); renderSkinGrid(id); heroW = 0;
@@ -1388,12 +1429,11 @@ function renderFree() {
 function openFree() {
   if (!$('gameScreen').hidden) show('title');
   freeRequest++; renderFreeCard(); renderFree();
-  $('app').inert = true; $('freeOverlay').hidden = false;
+  openSheet('freeOverlay');
   $('freeDone').focus({ preventScroll: true });
 }
 function closeFree() {
-  freeRequest++; $('freeOverlay').hidden = true; $('app').inert = false;
-  $('freeBtn').focus({ preventScroll: true });
+  freeRequest++; closeSheet('freeOverlay', 'freeBtn');
 }
 function newFreeSeed() {
   return globalThis.crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Math.floor(Math.random() * 0x100000000);
@@ -1559,7 +1599,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   const t = now / 1000;
   if (!$('gameScreen').hidden && g && staticLayer) {
-    if (!guideOpen()) step(dt);
+    if (!$('app').inert) step(dt);
     updateHintButton();
     draw(t);
   }
@@ -1931,8 +1971,7 @@ function showDeviceGuide(firstOnly = false) {
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
   guideIndex = 0; guideViewed = new Set(); guidePlaying = !reduceMotion;
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
-  $('app').inert = true;
-  $('guideOverlay').hidden = false; renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
+  openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
 }
 function renderGuideDevice() {
   const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
@@ -2022,20 +2061,20 @@ function drawDeviceDemo() {
 function closeGuide() {
   save.seenDevices = [...new Set([...save.seenDevices, ...guideViewed])]; persist();
   guideKeys = []; guideViewed = new Set(); guideDemo = null; guidePlaying = false;
-  $('guideOverlay').hidden = true; $('app').inert = false;
-  $($('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn').focus({ preventScroll: true });
+  closeSheet('guideOverlay', $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn');
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
+  flushSheetExits();
   if (which === 'title') cancelClearPresentation();
-  if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
+  if (which === 'title') { pauseGame(); closeSheet('guideOverlay', null, false); guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
   $('gameScreen').hidden = which !== 'game';
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
   resetHero();
-  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
+  if (which === 'title') { closeSheet('clearOverlay', null, false); renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
@@ -2095,8 +2134,8 @@ $('againBtn').addEventListener('click', replay);
 $('nextBtn').addEventListener('click', continueStory);
 // settings sheet (sound, vibration) — opened from the gear on the title and in a level
 const settingsOpen = () => !$('settingsOverlay').hidden;
-function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; $('settingsOverlay').hidden = false; $('settingsDone').focus({ preventScroll: true }); }
-function closeSettings() { $('settingsOverlay').hidden = true; }
+function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; openSheet('settingsOverlay'); $('settingsDone').focus({ preventScroll: true }); }
+function closeSettings() { closeSheet('settingsOverlay', $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn'); }
 $('settingsBtn').addEventListener('click', openSettings);
 $('titleSettingsBtn').addEventListener('click', openSettings);
 $('settingsDone').addEventListener('click', closeSettings);
@@ -2144,6 +2183,7 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if (sheetKeydown(e)) return;
   if (endingOpen()) { if (e.key === 'Escape') closeEnding(); return; }
   if (journeyOpen()) { if (e.key === 'Escape') closeJourney(); return; }
   if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
@@ -2162,11 +2202,12 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'Escape') show('title');
 });
 window.addEventListener('resize', () => { resize(); heroW = 0; });
-document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
-window.addEventListener('pagehide', pauseGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { flushSheetExits(); pauseGame(); } });
+window.addEventListener('pagehide', () => { flushSheetExits(); pauseGame(); });
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
+  if (sheetExits.size) return;
   if (endingOpen()) closeEnding();
   else if (journeyOpen()) closeJourney();
   else if (journalOpen()) closeJournal();
@@ -2177,7 +2218,7 @@ if (capApp) capApp.addListener('backButton', () => {
   else if (skinsOpen()) closeSkins();
   else if ($('gameScreen').hidden) capApp.exitApp(); else show('title');
 });
-if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) pauseGame(); });
+if (capApp) capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) { flushSheetExits(); pauseGame(); } });
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {

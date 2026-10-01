@@ -37,6 +37,9 @@ function scene(stored = {}, reduced = false) {
     const dailyProgress=()=>({count:1,stars:[0,0,0]}),dailyStreak=()=>1,journalTotals=()=>({visits:1,operations:0}),recordDailyStage=noop,dailySessionKey=()=> 'daily';
     const dailyDate=()=> '2026-10-01',openDaily=()=>{dailyOpened++;$('app').inert=true;},continueDaily=()=>dailyContinued++;
     const loadLevel=i=>{loaded=i;},show=which=>{if(which==='title'){cleared=false;$('clearOverlay').hidden=true;renderLevelGrid(true);}};
+    // Business harnesses omit visual exits; actual sheet lifecycle is covered by sheet-motion.test.js.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false};
     ${rewardSource}
     ${functions}
@@ -74,7 +77,7 @@ test('final clear opens the ending at 48 one-star escapes; closing restores resu
   assert.equal(game.progress().complete,true);assert.equal(game.element('nextBtn').textContent,'구출 엔딩 보기');
   game.next();assert.equal(game.element('endingOverlay').hidden,false);assert.equal(game.element('clearOverlay').hidden,true);
   assert.equal(game.element('app').inert,true);assert.match(game.element('endingRecord').textContent,/48개 수로 구출 완료 · ★ 48 \/ 144/);
-  game.close();assert.equal(game.element('clearOverlay').hidden,false);assert.equal(game.element('app').inert,false);
+  game.close();assert.equal(game.element('clearOverlay').hidden,false);assert.equal(game.element('app').inert,true);
   game.next();game.daily();assert.equal(game.stats().dailyOpened,1);assert.equal(game.element('endingOverlay').hidden,true);
   game.ending();game.home();assert.equal(game.element('endingOverlay').hidden,true);assert.equal(game.element('endingBtn').hidden,false);
 });

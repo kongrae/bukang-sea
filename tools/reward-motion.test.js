@@ -20,6 +20,9 @@ function scene({ stored={}, reduced=false }={}) {
     const timers=new Map(),frames=[],sounds=[],vibrations=[],draws=[],noop=()=>{};
     const setTimeout=(cb,ms)=>{const id=++sequence;timers.set(id,{cb,due:now+ms});return id;};
     const clearTimeout=id=>timers.delete(id),requestAnimationFrame=cb=>frames.push(cb);
+    // Business harnesses omit visual exits; actual sheet lifecycle is covered by sheet-motion.test.js.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const document={hidden:false},window={devicePixelRatio:1},performance={now:()=>now},C={};
     const ctx=new Proxy({},{get:()=>noop}),drawShark=(...args)=>draws.push(args);
     function element(attrs={}) {

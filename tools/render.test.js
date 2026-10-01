@@ -224,6 +224,9 @@ test('first-encounter device rules are recorded only on confirmation and can be 
   const {createDeviceDemo} = require('../src/device-demo');
   const elements = Object.fromEntries(['app', 'guideOverlay', 'guideTitle', 'guideItems', 'guideDone', 'gameScreen', 'settingsBtn', 'guideName', 'guideCounter', 'guideDemo', 'guideTabs', 'guideBody', 'guideToggle', 'guideMode'].map(id => [id, {hidden: id === 'guideOverlay', focus: () => {}, setAttribute: () => {}, getBoundingClientRect: () => ({width:0,height:0})}]));
   const run = new Function('JET', 'g', '$', 'createDeviceDemo', `
+    // Device-record checks omit presentation timing; sheet-motion.test.js covers actual exits.
+    const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
+    const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const save = {seenDevices: []}, persist = () => {}, reduceMotion = false;
     ${guideSource}
     return {show: showDeviceGuide, close: closeGuide, next: advanceGuide, seen: () => save.seenDevices};
