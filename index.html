@@ -102,8 +102,8 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .title-screen { overflow-y: auto; gap: 12px; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
 .title-screen::-webkit-scrollbar { display: none; }
 .hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--hero-paper); flex-shrink: 0; }
-.hero canvas { display: block; width: 100%; height: 224px; }
-.hero-text { position: absolute; left: 18px; bottom: 16px; right: 18px; pointer-events: none; }
+.hero canvas { display: block; width: 100%; height: 184px; }
+.hero-text { position: absolute; left: 18px; bottom: 14px; right: 18px; pointer-events: none; }
 .eyebrow { font-size: 13px; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
 .hero .eyebrow { font-size: 13.5px; line-height: 1.35; letter-spacing: 0; color: var(--harbor-3); }
 h1 {
@@ -111,13 +111,13 @@ h1 {
   font-weight: 400;
   font-size: clamp(40px, 12vw, 48px);
   line-height: 1.08;
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--ink);
   white-space: nowrap;
   letter-spacing: .01em;
 }
 h1 .sea { color: var(--title-alert); }
-.hero-subtitle { font-family: var(--font-body); font-size: 20px; font-weight: 700; line-height: 1.3; margin: 6px 0 0; color: var(--ink); }
+.hero-subtitle { font-family: var(--font-body); font-size: 18px; font-weight: 700; line-height: 1.3; margin: 5px 0 0; color: var(--ink); }
 .lede { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; text-wrap: pretty; }
 .lede b { color: var(--star); font-weight: 700; }
 /* daily canal card: the one bright block on the title, sea-to-canal gradient with a lifebuoy badge */
@@ -507,6 +507,62 @@ button:disabled:active { transform: none; }
 .card :is(button, input):focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 2px; }
 .switch:active .track { transform: scale(.96); }
 .switch .track { transition: transform var(--motion-return) var(--ease-spring), background-color var(--motion-return); }
+/* Home: one primary action, two play modes, then collection and optional detail. */
+.home-start { gap: 8px; padding: 0 0 4px; }
+.home-start .journey-label { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; line-height: 1.4; }
+.home-start .journey-label b { color: #f7f1e5; font-weight: 700; }
+.home-start .journey-label span { color: #bbd1d3; font-size: 12px; }
+.home-start .lede { text-align: center; font-size: 13px; margin-top: 4px; color: #c4d8d8; }
+.home-start #playBtn { min-height: 64px; font: 28px var(--font-display); padding-inline: 42px; }
+.home-start #playBtn::after { content: '›'; position: absolute; right: 20px; font: 34px var(--font-body); }
+.home-modes, .home-collection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex-shrink: 0; }
+.home-mode { border: 0; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; text-align: left; cursor: pointer; color: var(--ink); }
+.home-mode.daily { background: #ffe39a; }
+.home-mode.daily::after { display: none; }
+.home-mode.free-mode { background: #bdeae4; }
+.mode-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 26px; }
+.mode-top svg { width: 25px; height: 25px; }
+.mode-tag { border-radius: 8px; padding: 3px 6px; background: rgba(255,255,255,.5); color: #294b50; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mode-name { font: 24px/1.2 var(--font-display); margin-top: 2px; }
+.mode-desc { font-size: 13px; line-height: 1.45; color: #35565b; }
+.mode-footer { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 24px; margin-top: auto; padding-top: 3px; font-size: 13px; font-weight: 700; }
+.mode-footer b { font-weight: 700; }
+.mode-footer span:last-child { white-space: nowrap; flex-shrink: 0; }
+.mode-footer span:last-child::after { content: ' ›'; }
+.home-collection .myshark, .home-journal { position: relative; border: 0; border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; text-align: left; cursor: pointer; color: var(--ink); }
+.home-collection .myshark { background: #f5dfe4; }
+.home-journal { background: #f3ede1; }
+.collection-top { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 38px; }
+.collection-top b { font: 21px/1.2 var(--font-display); }
+.home-collection .myshark canvas { width: 57px; height: 38px; margin-left: auto; border-radius: 10px; }
+.home-journal .collection-top svg { color: #46776c; margin-left: auto; width: 29px; height: 29px; }
+.home-collection .myshark-name { font: 700 13px/1.4 var(--font-body); }
+.home-collection small { color: #476066; font-size: 12px; line-height: 1.5; }
+.home-details { border: 1px solid #42666d; border-radius: 18px; flex-shrink: 0; background: #143c48; }
+.home-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 15px; min-height: 64px; }
+.home-details > summary::-webkit-details-marker { display: none; }
+.home-details > summary::after { content: '+'; margin-left: auto; font: 24px var(--font-body); color: #d7eceb; }
+.home-details[open] > summary::after { content: '−'; }
+.home-details > summary b { display: block; font: 21px/1.3 var(--font-display); }
+.home-details > summary small { display: block; font-size: 12px; color: #b8d2d4; margin-top: 4px; }
+.home-details > summary #starTotal { color: #ffe39a; margin-left: 8px; }
+.home-details-body { display: grid; gap: 12px; padding: 0 12px 14px; }
+.home-details-body .journey-link { min-height: 44px; background: var(--harbor); color: #c4ebe6; font-size: 14px; }
+.home-help { background: transparent; border-color: #30525e; }
+.home-help > summary { min-height: 56px; padding-block: 12px; }
+.home-help > summary b { font: 700 15px var(--font-body); }
+.home-help .note { line-height: 1.65; }
+.home-mode, .home-journal { transition: transform var(--motion-return) var(--ease-spring), filter .15s; }
+.home-mode:active, .home-journal:active { transform: scale(.98); transition-duration: var(--motion-press); }
+.home-mode:focus-visible, .home-journal:focus-visible, .home-collection .myshark:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.home-details > summary:focus-visible { outline: 3px solid var(--star); outline-offset: -4px; border-radius: 18px; }
+@media (hover: hover) { .home-mode:hover, .home-journal:hover, .home-collection .myshark:hover { filter: brightness(1.04); } }
+@media (max-width: 350px) {
+  .home-mode, .home-collection .myshark, .home-journal { padding: 12px; }
+  .mode-name { font-size: 22px; }
+  .collection-top b { font-size: 19px; }
+  .home-collection .myshark canvas { width: 44px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition: none !important; }
   #playBtn::before { display: none; }
@@ -517,7 +573,7 @@ button:disabled:active { transform: none; }
 }
 @media (max-height: 700px) {
   .title-screen { gap: 10px; }
-  .hero canvas { height: 204px; }
+  .hero canvas { height: 168px; }
   .game-screen { gap: 3px; }
   .game-screen .topbar { min-height: 44px; }
   .game-screen .icon-btn { width: 44px; height: 44px; }
@@ -531,52 +587,62 @@ button:disabled:active { transform: none; }
 <div class="app" id="app">
   <section class="screen title-screen" id="titleScreen">
     <div class="hero">
+      <!-- playtest-label -->
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
       <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
       <div class="hero-text">
-        <div class="eyebrow">부산 북항 친수공원 · 수로 탈출 퍼즐</div>
         <h1>상어 <span class="sea">SOS</span></h1>
         <p class="hero-subtitle">바다로 보내줘!</p>
       </div>
     </div>
-    <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
-    <div class="cta-bar">
+    <div class="cta-bar home-start">
       <p class="journey-label" id="journeyLabel"></p>
-      <button class="btn primary big" id="playBtn" type="button">시작하기</button>
-      <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
+      <button class="btn primary big" id="playBtn" type="button">구출 시작!</button>
+      <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
     </div>
-    <button class="daily" id="dailyBtn" type="button">
-      <span class="daily-text">
-        <span class="daily-k">오늘의 구조작전</span>
-        <span class="daily-date" id="dailyDate">오늘</span>
-        <span class="daily-meta" id="dailyMeta">매일 새로 열리는 세 수로</span>
-      </span>
-      <span class="daily-state" id="dailyState"><b>도전</b><span>하기</span></span>
-    </button>
-    <button class="journal-link free-link" id="freeBtn" type="button">
-      <span><b>자유 수로</b><small id="freeSummary">쉬움 · 보통 · 도전 · 원하는 만큼</small></span><span aria-hidden="true">고르기 ›</span>
-    </button>
-    <div class="section-label"><h2 id="levelCount">수로</h2><span id="starTotal">★ 0</span></div>
-    <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
-    <div class="chapters" id="levelGrid"></div>
-    <div class="extra-options">
-      <button class="btn" id="endingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
-      <button class="journal-link" id="journalBtn" type="button">
-        <span><b>구조일지</b><small id="journalSummary">참여 0일 · 작전 완료 0일</small></span><span aria-hidden="true">보기 ›</span>
+    <div class="home-modes" role="group" aria-label="더 많은 수로에 도전">
+      <button class="home-mode daily" id="dailyBtn" type="button">
+        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1c5-5 9 5 14 0v10c-5 5-9-5-14 0"/></svg><span class="mode-tag" id="dailyDate">오늘</span></span>
+        <span class="mode-name">오늘의 도전</span>
+        <span class="mode-desc" id="dailyMeta">매일 새로운 수로 3개</span>
+        <span class="mode-footer" id="dailyState"><b>0 / 3</b><span>도전</span></span>
       </button>
+      <button class="home-mode free-mode" id="freeBtn" type="button">
+        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6c3-4 7 4 10 0s7 4 10 0M2 12c3-4 7 4 10 0s7 4 10 0M2 18c3-4 7 4 10 0s7 4 10 0"/></svg><span class="mode-tag">원하는 만큼</span></span>
+        <span class="mode-name">자유 수로</span>
+        <span class="mode-desc">난이도 골라서 놀아요</span>
+        <span class="mode-footer"><b id="freeSummary">계속 도전!</b><span>시작</span></span>
+      </button>
+    </div>
+    <div class="home-collection" role="group" aria-label="나의 상어와 기록">
       <button class="myshark" id="skinBtn" type="button">
-        <canvas id="skinPreview" aria-hidden="true"></canvas>
-        <span class="daily-text">
-          <span class="daily-k">내 상어</span>
-          <span class="myshark-name" id="skinName">무태상어</span>
-          <span class="daily-meta" id="skinCount">별을 모으면 새 상어가 열려요</span>
-        </span>
-        <span class="myshark-go">바꾸기</span>
+        <span class="collection-top"><b>내 상어</b><canvas id="skinPreview" aria-hidden="true"></canvas></span>
+        <span class="myshark-name" id="skinName">무태상어</span>
+        <small id="skinCount">1 / 9 모았어요</small>
+      </button>
+      <button class="home-journal" id="journalBtn" type="button">
+        <span class="collection-top"><b>구조일지</b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM9 8h6M9 13l2 2 4-4"/></svg></span>
+        <small>도장 모으고 상어 받기</small>
+        <small id="journalSummary">참여 0일 · 완료 0일</small>
       </button>
     </div>
-    <div class="section-label"><h2>수로에 있는 것들</h2></div>
-    <div class="legend" id="legend"></div>
-    <p class="note">2026년 9월 부산 북항 친수공원 수로에 들어온 무태상어(약 3.5m)에서 착안한 퍼즐 게임입니다. 실제 기관·캐릭터와 관련이 없습니다.</p>
+    <details class="home-details" id="stagePicker">
+      <summary><span><b>수로 골라 하기</b><small><span id="levelCount">수로 48곳</span><span id="starTotal">★ 0</span></small></span></summary>
+      <div class="home-details-body">
+        <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
+        <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
+        <div class="chapters" id="levelGrid"></div>
+      </div>
+    </details>
+    <button class="btn" id="endingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
+    <details class="home-details home-help">
+      <summary><b>게임 방법과 이야기</b></summary>
+      <div class="home-details-body">
+        <p class="lede">화면을 밀면 막힐 때까지 헤엄쳐요.<br>숭어를 모으고 바다로 나가면 성공!</p>
+        <div class="legend" id="legend"></div>
+        <p class="note">2026년 9월 부산 북항 친수공원 수로에 들어온 무태상어(약 3.5m)에서 착안한 퍼즐 게임입니다. 실제 기관·캐릭터와 관련이 없습니다.</p>
+      </div>
+    </details>
   </section>
 
   <section class="screen game-screen" id="gameScreen" hidden>
@@ -2014,7 +2080,7 @@ function closeJourney() {
 }
 function selectJourneyChapter(ci) {
   if (!CHAPTERS[ci]) return;
-  closeSheet('journeyOverlay', null, false); selectedChapter = ci; renderLevelGrid();
+  closeSheet('journeyOverlay', null, false); selectedChapter = ci; $('stagePicker').open = true; renderLevelGrid();
   $('chapterPicker').querySelector(`[data-chapter="${ci}"]`).focus();
 }
 function openEnding(from = 'title') {
@@ -2890,9 +2956,11 @@ function pulseRewardMark(el, className) {
 }
 function applyStoryRewards() {
   if ($('titleScreen').hidden) return;
-  consumeRewardMarks(rewardPending.stars, $('levelGrid'), 'data-i', 'reward-updated', true);
-  consumeRewardMarks(rewardPending.levels, $('levelGrid'), 'data-i', 'reward-unlock', true);
-  consumeRewardMarks(rewardPending.chapters, $('chapterPicker'), 'data-chapter', 'reward-unlock', true);
+  if ($('stagePicker').open) {
+    consumeRewardMarks(rewardPending.stars, $('levelGrid'), 'data-i', 'reward-updated', true);
+    consumeRewardMarks(rewardPending.levels, $('levelGrid'), 'data-i', 'reward-unlock', true);
+    consumeRewardMarks(rewardPending.chapters, $('chapterPicker'), 'data-chapter', 'reward-unlock', true);
+  }
   if (pendingStoryCount) { pulseRewardMark($('starTotal'), 'reward-count'); pendingStoryCount = false; }
 }
 function applyOperationRewards() {
@@ -3054,13 +3122,13 @@ function renderDaily() {
   for (const [key, record] of Object.entries(save.sessions.dailyStages)) {
     if (!record || String(record.id).slice(0, 10) !== date) { delete save.sessions.dailyStages[key]; persist(); }
   }
-  $('dailyDate').textContent = dateLabel(date);
-  $('dailyMeta').textContent = '쉬움 → 보통 → 도전' + (streak ? ` · 연속 ${streak}일` : '');
+  $('dailyDate').textContent = `${+date.slice(5, 7)}/${+date.slice(8)} ${WEEKDAY_KO[new Date(date + 'T12:00:00').getDay()]}`;
+  $('dailyMeta').textContent = streak ? `${streak}일째 도전 중!` : '매일 새로운 수로 3개';
   $('dailyState').innerHTML = `<b>${progress.count} / 3</b><span>${progress.count === 3 ? '완료' : savedDailyStage(date) >= 0 || progress.count ? '이어서' : '도전'}</span>`;
   $('dailyBtn').classList.toggle('done', progress.count === 3);
-  $('dailyBtn').setAttribute('aria-label', `오늘의 구조작전, ${dateLabel(date)}, ${progress.count} / 3 수로 완료`);
+  $('dailyBtn').setAttribute('aria-label', `오늘의 도전, 오늘의 구조작전, ${dateLabel(date)}, ${progress.count} / 3 수로 완료`);
   const totals = journalTotals();
-  $('journalSummary').textContent = `참여 ${totals.visits}일 · 작전 완료 ${totals.operations}일`;
+  $('journalSummary').textContent = `참여 ${totals.visits}일 · 완료 ${totals.operations}일`;
 }
 function renderOperation() {
   const date = dailyDate(), progress = dailyProgress(date);
@@ -3220,7 +3288,7 @@ function drawSkinPreview(canvas, skin, progress = null) {
 function renderSkinCard() {
   const skin = currentSkin(), owned = (save.owned || ['basic']).length;
   $('skinName').textContent = skin.name;
-  $('skinCount').textContent = `${owned} / ${SKINS.length} 모음 · 별 ${totalStars()}개`;
+  $('skinCount').textContent = `${owned} / ${SKINS.length} 모았어요`;
   requestAnimationFrame(() => drawSkinPreview($('skinPreview'), skin));
 }
 function skinNeedText(skin) {
@@ -3279,7 +3347,7 @@ function recordFreeClear(run, stars) {
 }
 function renderFreeCard() {
   const count = save.free.completed.reduce((a, b) => a + b, 0);
-  $('freeSummary').textContent = `쉬움 · 보통 · 도전${count ? ` · ${count}개 완료` : ' · 원하는 만큼'}`;
+  $('freeSummary').textContent = count ? `${count}개 구출!` : '계속 도전!';
 }
 function renderFree() {
   $('freeTiers').innerHTML = FREE_TIERS.map((tier, difficulty) => {
@@ -3754,6 +3822,7 @@ function drawCoach(sx, sy, t) {
 
 /* ---------- title hero ---------- */
 const hero = $('heroCanvas'), hctx = hero.getContext('2d');
+const HERO_COPY_HEIGHT = 96;
 let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
@@ -3777,7 +3846,7 @@ function stepHero(dt) {
 function reactHero(e) {
   if (reduceMotion || document.hidden || $('titleScreen').hidden || heroPaused() || e.isPrimary === false) return;
   const r = hero.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (x < 0 || x > r.width || y < 0 || y >= r.height - 124) return;
+  if (x < 0 || x > r.width || y < 0 || y >= r.height - HERO_COPY_HEIGHT) return;
   // Decorative only: leave scrolling, game progress, sound and the start button untouched.
   if (heroRipples.length >= 4) heroRipples.shift();
   heroRipples.push({ x, y, life: 1 }); heroWake = 0.65;
@@ -3790,7 +3859,7 @@ function sizeHero() {
 function drawHero(t) {
   if (!heroW) sizeHero();
   if (reduceMotion) t = 0;
-  const W = heroW, H = heroH, waterH = H - 124, T = Math.min(56, waterH * 0.52, W / 5.2);   // room for the full turn above the readable title block
+  const W = heroW, H = heroH, waterH = H - HERO_COPY_HEIGHT, T = Math.min(56, waterH * 0.52, W / 5.2);
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
@@ -3846,14 +3915,12 @@ function renderLevelGrid(followProgress = false) {
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
-  const chap = chapterOf(target);
-  $('journeyLabel').innerHTML = `${chap.ci + 1}장 ${chap.name} · <b>${LEVELS[target].name}</b>`;
-  $('playBtn').textContent = resume ? `이어서 하기 · 수로 ${save.sessions.story.id + 1} · ${resume.moves}회 진행`
-    : Object.keys(save.best).length ? `이어서 하기 · 수로 ${nextLevel() + 1}` : '시작하기';
+  $('journeyLabel').innerHTML = `<b>수로 ${target + 1} · ${LEVELS[target].name}</b>${resume ? `<span>${resume.moves}회 진행</span>` : ''}`;
+  $('playBtn').textContent = resume || Object.keys(save.best).length ? '이어서 구출!' : '구출 시작!';
   const progress = storyProgress();
   $('journeyBtn').textContent = `구출 여정 · ${progress.count} / ${LEVELS.length} 수로${progress.complete ? ' · 구출 성공' : ''} ›`;
   $('endingBtn').hidden = !progress.complete;
-  if (progress.complete && !resume) $('playBtn').textContent = `별 더 모으기 · 수로 ${target + 1}`;
+  if (progress.complete && !resume) $('playBtn').textContent = '별 더 모으기';
   applyStoryRewards();
 }
 function nextLevel() {
@@ -4004,12 +4071,13 @@ function show(which, animate = true) {
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
   resetHero();
-  if (which === 'title') { closeSheet('clearOverlay', null, false); renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
+  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
 
 $('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
+$('stagePicker').addEventListener('toggle', () => { if ($('stagePicker').open) applyStoryRewards(); });
 $('chapterPicker').addEventListener('click', e => {
   const b = e.target.closest('.chapter-btn'); if (!b) return;
   selectedChapter = +b.dataset.chapter; renderLevelGrid();
