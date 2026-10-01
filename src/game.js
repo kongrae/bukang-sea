@@ -1563,7 +1563,7 @@ function frame(now) {
     updateHintButton();
     draw(t);
   }
-  if (!$('titleScreen').hidden) drawHero(t);
+  if (!$('titleScreen').hidden && !document.hidden) { if (!heroPaused()) stepHero(dt); drawHero(heroTime); }
   if (endingOpen()) drawEnding(t);
   if (guideOpen() && !document.hidden) stepDeviceGuide(dt);
   if (!document.hidden) stepRewardPreviews(dt);
@@ -1791,7 +1791,29 @@ function drawCoach(sx, sy, t) {
 
 /* ---------- title hero ---------- */
 const hero = $('heroCanvas'), hctx = hero.getContext('2d');
-let heroW = 0, heroH = 0;
+let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0;
+const heroRipples = [];
+const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
+function resetHero() {
+  heroW = 0; heroTime = 0; heroWake = 0; heroRipples.length = 0;
+}
+function stepHero(dt) {
+  if (reduceMotion) return;
+  heroTime += dt * (heroWake > 0 ? 1.8 : 1);
+  heroWake = Math.max(0, heroWake - dt);
+  for (let i = heroRipples.length - 1; i >= 0; i--) {
+    heroRipples[i].life -= dt / 0.65;
+    if (heroRipples[i].life <= 0) heroRipples.splice(i, 1);
+  }
+}
+function reactHero(e) {
+  if (reduceMotion || document.hidden || $('titleScreen').hidden || heroPaused() || e.isPrimary === false) return;
+  const r = hero.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (x < 0 || x > r.width || y < 0 || y >= r.height - 124) return;
+  // Decorative only: leave scrolling, game progress, sound and the start button untouched.
+  if (heroRipples.length >= 4) heroRipples.shift();
+  heroRipples.push({ x, y, life: 1 }); heroWake = 0.65;
+}
 function sizeHero() {
   const r = hero.getBoundingClientRect(); const d = Math.min(window.devicePixelRatio || 1, 2.5);
   heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
@@ -1799,18 +1821,35 @@ function sizeHero() {
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
-  const W = heroW, H = heroH, waterH = H - 124, T = Math.min(64, waterH * 1.2, W / 5.2);   // keep the moving water above the larger, spaced title block
+  if (reduceMotion) t = 0;
+  const W = heroW, H = heroH, waterH = H - 124, T = Math.min(56, waterH * 0.52, W / 5.2);   // room for the full turn above the readable title block
   hctx.fillStyle = C.water; hctx.fillRect(0, 0, W, waterH);
   hctx.strokeStyle = 'rgba(255,255,255,.06)'; hctx.lineWidth = 1.5;
   for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 16 + r * waterH / 4 + Math.sin(x * 0.03 + t * (1 + r * .2) + r) * 3; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
   hctx.fillStyle = C['hero-paper']; hctx.fillRect(0, waterH, W, H - waterH);
   hctx.fillStyle = 'rgba(6,30,38,.3)'; hctx.fillRect(0, waterH - 5, W, 5);
   hctx.strokeStyle = C.rail; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(0, waterH + 3); hctx.lineTo(W, waterH + 3); hctx.stroke();
-  const span = W + T * 2, sx = ((t * 60) % span) - T, sy = waterH * 0.52 + Math.sin(t * 1.5) * waterH * 0.12;
-  const ang = Math.atan2(Math.cos(t * 1.5) * waterH * 0.12 * 1.5, 60);
-  drawShark(hctx, sx, sy, ang, T, t, true, 1.05);
-  drawFish(hctx, ((W * 0.8 + t * 20) % (W + 40)) - 20, waterH * 0.26, T * 0.9, t, 0.3);
+  hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, waterH); hctx.clip();
+  const phase = t * 0.4, sx = W * (0.44 + Math.sin(phase) * 0.27), sy = waterH * (0.52 + Math.cos(phase) * 0.12);
+  const ang = Math.atan2(-waterH * 0.12 * Math.sin(phase), W * 0.27 * Math.cos(phase));
+  if (!reduceMotion) {
+    hctx.save(); hctx.translate(sx, sy); hctx.rotate(ang);
+    hctx.strokeStyle = 'rgba(230,251,255,.15)'; hctx.lineWidth = 1.4;
+    for (let i = 0; i < 3; i++) {
+      const off = (t * 12 + i * 8) % 24;
+      hctx.globalAlpha = (1 - off / 24) * 0.6;
+      hctx.beginPath(); hctx.ellipse(-T * 0.48 - off, 0, 3, 4 + off * 0.18, 0, -1.1, 1.1); hctx.stroke();
+    }
+    hctx.restore();
+    for (const ripple of heroRipples) {
+      hctx.strokeStyle = `rgba(230,251,255,${ripple.life * 0.45})`; hctx.lineWidth = 1.5;
+      hctx.beginPath(); hctx.ellipse(ripple.x, ripple.y, 5 + (1 - ripple.life) * 24, 3 + (1 - ripple.life) * 12, 0, 0, Math.PI * 2); hctx.stroke();
+    }
+  }
+  drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * 0.04);
+  drawFish(hctx, W * (0.72 + Math.sin(t * 0.45) * 0.08), waterH * 0.26, T * 0.9, t, 0.3);
   drawBuoy(hctx, W * 0.86, waterH * 0.68, T * 0.8, t);
+  hctx.restore();
 }
 
 /* ---------- UI wiring ---------- */
@@ -1995,7 +2034,8 @@ function show(which, animate = true) {
   $('gameScreen').hidden = which !== 'game';
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
-  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; heroW = 0; }
+  resetHero();
+  if (which === 'title') { $('clearOverlay').hidden = true; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
@@ -2007,6 +2047,7 @@ $('chapterPicker').addEventListener('click', e => {
   $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
 });
 $('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
+hero.addEventListener('pointerdown', reactHero, { passive: true });
 $('journeyBtn').addEventListener('click', openJourney);
 $('journeyDone').addEventListener('click', closeJourney);
 $('journeyOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeJourney(); });

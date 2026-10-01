@@ -57,6 +57,8 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 - Play Console 첫 업로드 때 **Play App Signing 사용**(기본값)을 그대로 둔다: Google이 앱 서명 키를 보관하고, 우리는 업로드 키로만 서명한다.
 
 ### Google Play 등록 흐름
+개인 계정의 신원 승인·Android 기기·전화번호 인증과 첫 내부 테스트부터 프로덕션까지의 현재 순서는 [PLAY-CONSOLE-SETUP.md](PLAY-CONSOLE-SETUP.md)를 따른다(2026-10-01 공식 안내 확인).
+
 1. Play Console에서 앱 만들기 → 스토어 등록정보(설명, 스크린샷, 아이콘 512px, 그래픽 이미지 1024×500)
 2. 콘텐츠 등급 설문(IARC) → 국내 게임 등급분류도 이걸로 처리됨
 3. 개인정보처리방침 URL (광고를 넣으면 필수, 없어도 요구될 수 있음)

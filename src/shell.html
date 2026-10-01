@@ -81,7 +81,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .title-screen { overflow-y: auto; gap: 12px; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
 .title-screen::-webkit-scrollbar { display: none; }
 .hero { position: relative; border-radius: 24px; overflow: hidden; background: var(--hero-paper); flex-shrink: 0; }
-.hero canvas { display: block; width: 100%; height: 180px; }
+.hero canvas { display: block; width: 100%; height: 224px; }
 .hero-text { position: absolute; left: 18px; bottom: 16px; right: 18px; pointer-events: none; }
 .eyebrow { font-size: 13px; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
 .hero .eyebrow { font-size: 13.5px; line-height: 1.35; letter-spacing: 0; color: var(--harbor-3); }
@@ -301,6 +301,11 @@ h1 .sea { color: var(--title-alert); }
 .btn.primary { background: var(--buoy); color: var(--ink); box-shadow: 0 6px 0 var(--buoy-deep); }
 .btn.primary:active { transform: translateY(4px) scale(.98); box-shadow: 0 2px 0 var(--buoy-deep); }
 .btn.big { width: 100%; min-height: 58px; font-size: 17.5px; border-radius: 18px; }
+#playBtn { position: relative; overflow: hidden; }
+#playBtn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%); transform: translateX(-110%); pointer-events: none; }
+#titleScreen:not([hidden]) #playBtn::before { animation: start-glint .7s .12s ease-out both; }
+#playBtn:active::before { animation: none; transform: none; background: rgba(255,255,255,.12); }
+@keyframes start-glint { to { transform: translateX(110%); } }
 .btn[disabled] { opacity: .4; cursor: default; }
 .icon-btn {
   border: 0; background: var(--harbor-2); border-radius: 14px; width: 46px; height: 46px; padding: 0; cursor: pointer;
@@ -466,6 +471,7 @@ h1 .sea { color: var(--title-alert); }
 @keyframes pop { from { transform: scale(.6); opacity: 0 } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+  #playBtn::before { display: none; }
 }
 @media (max-height: 640px) {
   .tip { min-height: 0; }
@@ -473,7 +479,7 @@ h1 .sea { color: var(--title-alert); }
 }
 @media (max-height: 700px) {
   .title-screen { gap: 10px; }
-  .hero canvas { height: 164px; }
+  .hero canvas { height: 204px; }
   .game-screen { gap: 3px; }
   .game-screen .topbar { min-height: 44px; }
   .game-screen .icon-btn { width: 44px; height: 44px; }
