@@ -60,7 +60,7 @@ if (process.argv.includes('--playtest')) {
 const testAll = new URLSearchParams(location.search).get('all') === '1';
 const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'core-') + (/^[A-Za-z0-9_-]{1,24}$/.test(tester) ? tester : 'pilot');`);
   content = replaceOnce(content, 'const unlocked = i => i === 0 || save.best[i - 1] != null;', 'const unlocked = i => testAll || i === 0 || save.best[i - 1] != null;');
-  content = replaceOnce(content, '부산 북항 친수공원 · 수로 탈출 퍼즐', `PLAYTEST · ${fingerprint} · 기록 별도`);
+  content = replaceOnce(content, '<!-- playtest-label -->', `<small style="position:absolute;top:6px;left:10px;z-index:1;color:#fff;background:#123b46;padding:3px 6px;border-radius:6px;font-size:10px">PLAYTEST · ${fingerprint} · 기록 별도</small>`);
   content = replaceOnce(content, "$('lvNum').textContent = label;", "$('lvNum').textContent = label + ' · TEST';");
   // Use local fonts so mobile test sessions do not depend on Google Fonts connectivity.
   content = content.replace(/<link rel="preconnect" href="https:\/\/fonts\.[^\n]*\n/g, '').replace(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^\n]*\n/, '');

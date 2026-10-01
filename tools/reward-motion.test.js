@@ -95,6 +95,19 @@ test('only new or improved story records queue stars, next level and chapter; re
   game.finish(11,3);assert.deepEqual(game.pending().stars,[11]);assert.deepEqual(game.pending().chapters,[]);
   game.finish(23,1);assert.deepEqual(game.pending().levels,[24]);assert.deepEqual(game.pending().chapters,[2]);
 });
+
+test('collapsed stage picker retains unlock and star cues until the player opens it',()=>{
+  const game=scene();game.finish(0,3);
+  game.element('titleScreen').hidden=false;
+  game.element('levelGrid').innerHTML='<button data-i="0"></button><button data-i="1"></button>';
+  game.element('stagePicker').open=false;game.apply();
+  assert.deepEqual(game.pending().stars,[0]);assert.deepEqual(game.pending().levels,[1]);
+  game.element('stagePicker').open=true;game.apply();
+  assert.deepEqual(game.pending().stars,[]);assert.deepEqual(game.pending().levels,[]);
+  const [cleared,unlocked]=game.element('levelGrid').children;
+  assert.equal(cleared.classList.contains('reward-updated'),true);
+  assert.equal(unlocked.classList.contains('reward-unlock'),true);
+});
 test('operation stages and journal stamps only celebrate an actual new stamp or badge, not replay',()=>{
   const game=scene({stored:{dailyOps:{'2026-10-01':{version:1,stars:[3,3,0]}}}});
   game.finish(0,3,{stage:2});assert.equal(game.save().journal.days['2026-10-01'],2);

@@ -103,6 +103,7 @@ test('missing earlier escape cannot unlock ending through last-level clear or da
 test('journey can preview a locked chapter without opening its levels; reduced-motion ending immediately shows selected shark in sea', () => {
   const game=scene({skin:'starsea'},true);game.journey();assert.match(game.element('journeyChapters').innerHTML,/4장 둘러보기/);
   game.select(3);assert.match(game.element('levelGrid').innerHTML,/외항 물길/);
+  assert.equal(game.element('stagePicker').open,true,'journey selection reveals its chapter before focus moves');
   assert.match(game.element('levelGrid').innerHTML,/disabled/);assert.equal(game.stats().loaded,null);
   const ending=scene({best:bestThrough(48),skin:'starsea',owned:['basic','starsea']},true);
   ending.ending();const args=ending.stats().sharkDraws[0];
