@@ -16,6 +16,7 @@ const functionSource = name => {
 function scene(stored = null, seeds = [42, 97, 123, 256]) {
   const storage = source.slice(source.indexOf('const STORE_KEY'), source.indexOf('const unlocked'));
   const free = source.slice(source.indexOf('/* ---------- free canals:'), source.indexOf('/* ---------- rendering ---------- */'));
+  const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
   const functions = ['levelSignature','copyTurn','restoreSession','checkpoint','freshState','loadFree','onClear'].map(functionSource).join('\n');
   return new Function('stored','seeds', `
     ${read('engine')}
@@ -32,6 +33,8 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     const chapterOf=()=>({end:11,ci:0}),LEVELS=Array(48),curLevel=()=>FREE.level;
     const show=which=>{$('gameScreen').hidden=which!=='game';if(which==='title'){cleared=false;$('clearOverlay').hidden=true;}};
     const enter=(level,keep,label)=>{g=parseLevel(level);st=keep||freshState(level);cleared=false;$('lvNum').textContent=label;checkpoint();};
+    const document={hidden:false};
+    ${rewardSource}
     ${functions}
     ${free}
     return {open:openFree,close:closeFree,start:startFree,record:recordFreeClear,element:$,

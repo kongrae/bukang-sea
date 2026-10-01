@@ -100,12 +100,13 @@ function renderJourney() {
   $('journeyCount').textContent = `${progress.count} / ${LEVELS.length}개 수로 구출 완료`;
   $('journeyChapters').innerHTML = progress.chapters.map(ch => {
     const available = unlocked(ch.start), text = ch.complete ? '통과' : available ? '구출 중' : '앞 장을 통과하면 열려요';
-    return `<li class="journey-stop${ch.complete ? ' complete' : ''}"><span class="journey-number" aria-hidden="true">${ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
+    return `<li data-journey="${ch.ci}" class="journey-stop${ch.complete ? ' complete' : ''}"><span class="journey-number" aria-hidden="true">${ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
   }).join('');
   $('journeyEndingBtn').hidden = !progress.complete;
 }
 function openJourney() {
   renderJourney(); $('app').inert = true; $('journeyOverlay').hidden = false;
+  consumeRewardMarks(rewardPending.journey, $('journeyChapters'), 'data-journey', 'reward-route', true);
   $('journeyCard').scrollTop = 0; $('journeyTitle').focus({ preventScroll: true });
 }
 function closeJourney() {
@@ -119,7 +120,7 @@ function selectJourneyChapter(ci) {
 function openEnding(from = 'title') {
   if (!storyProgress().complete) return false;
   endingReturn = from; endingStarted = performance.now() / 1000;
-  if (from === 'clear') $('clearOverlay').hidden = true;
+  if (from === 'clear') { cancelClearPresentation(); $('clearOverlay').hidden = true; }
   if (from === 'journey') $('journeyOverlay').hidden = true;
   $('endingRecord').textContent = `${LEVELS.length}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
   $('endingAfter').textContent = totalStars() < LEVELS.length * 3 ? '남은 별을 모으거나 오늘의 구조작전에서 새로운 물길을 열어 주세요.'
@@ -137,6 +138,7 @@ function closeEnding() {
 function endingToTitle() { endingReturn = 'title'; closeEnding(); show('title'); }
 function endingToDaily() { endingReturn = 'title'; closeEnding(); openDaily(); }
 function continueStory() {
+  cancelClearPresentation();
   if (FREE) { const difficulty = FREE.difficulty; openFree(); startFree(difficulty, true); }
   else if (DAILY) continueDaily();
   else if (LVL === LEVELS.length - 1 && storyProgress().complete) openEnding('clear');
@@ -307,6 +309,8 @@ const sfx = {
   warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
   sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
+  star: k => tone([523, 659, 784][k], 0.2, 'triangle', 0.09),
+  equip: () => { tone(660, 0.12, 'sine', 0.07); tone(880, 0.16, 'sine', 0.07, 0, 0.08); },
 };
 
 /* ---------- easing ---------- */
@@ -639,6 +643,7 @@ function loadFree(run, keep) {
 }
 const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : loadLevel(LVL);
 function enter(level, keep, label) {
+  cancelClearPresentation();
   hintRequest++;
   st = keep || freshState(level);
   if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
@@ -878,7 +883,104 @@ async function showHint() {
   }
 }
 
+/* ---------- reward presentation: transient events, independent of saved progress ---------- */
+const REWARD_TIMING = { first: 240, gap: 220 };
+const rewardPending = { stars: new Set(), levels: new Set(), chapters: new Set(), journey: new Set(), daily: new Map(), stamps: new Set(), badges: new Set(), skins: new Set() };
+let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false;
+function cancelClearPresentation() {
+  clearPresentation++;
+  clearTimers.forEach(clearTimeout); clearTimers.clear();
+  $('clearOverlay').classList.toggle('clear-celebrating', false);
+  stopSkinPreviews($('clearOverlay'));
+}
+function clearLater(callback, delay, token, overlay = true) {
+  let timer;
+  timer = setTimeout(() => {
+    clearTimers.delete(timer);
+    if (token !== clearPresentation || !cleared || (overlay && ($('clearOverlay').hidden || document.hidden))) return;
+    callback();
+  }, delay);
+  clearTimers.add(timer);
+}
+function rewardSnapshot() {
+  const story = !DAILY && !FREE;
+  return { best: story ? save.best[LVL] || 0 : 0,
+    stage: DAILY && Number.isInteger(DAILY.stage) ? dailyProgress(DAILY.date).stars[DAILY.stage] : 0,
+    stamp: DAILY ? save.journal.days[DAILY.date] || 0 : 0 };
+}
+function collectRewardEvents(before, stars, skins, badges) {
+  const story = !DAILY && !FREE, stamp = DAILY ? save.journal.days[DAILY.date] || 0 : 0;
+  if (story && stars > before.best) { rewardPending.stars.add(LVL); pendingStoryCount = true; }
+  if (story && !before.best && LVL + 1 < LEVELS.length) {
+    rewardPending.levels.add(LVL + 1);
+    if (LVL === chapterOf(LVL).end) { rewardPending.chapters.add(chapterOf(LVL + 1).ci); rewardPending.journey.add(chapterOf(LVL + 1).ci); }
+  }
+  if (DAILY && Number.isInteger(DAILY.stage) && !before.stage) {
+    if (!rewardPending.daily.has(DAILY.date)) rewardPending.daily.set(DAILY.date, new Set());
+    rewardPending.daily.get(DAILY.date).add(DAILY.stage);
+  }
+  if (DAILY && stamp > before.stamp) rewardPending.stamps.add(DAILY.date);
+  skins.forEach(s => rewardPending.skins.add(s.id)); badges.forEach(b => rewardPending.badges.add(b.id));
+  return { stamp: stamp > before.stamp ? stamp : 0 };
+}
+function consumeRewardMarks(pending, root, attribute, className, numeric = false) {
+  root.querySelectorAll(`[${attribute}]`).forEach(el => {
+    const key = numeric ? +el.getAttribute(attribute) : el.getAttribute(attribute);
+    if (!pending.has(key)) return;
+    pending.delete(key); pulseRewardMark(el, className);
+  });
+}
+function pulseRewardMark(el, className) {
+  el.classList.toggle(className, false);
+  if (!reduceMotion) { void el.offsetWidth; el.classList.toggle(className, true); }
+}
+function applyStoryRewards() {
+  if ($('titleScreen').hidden) return;
+  consumeRewardMarks(rewardPending.stars, $('levelGrid'), 'data-i', 'reward-updated', true);
+  consumeRewardMarks(rewardPending.levels, $('levelGrid'), 'data-i', 'reward-unlock', true);
+  consumeRewardMarks(rewardPending.chapters, $('chapterPicker'), 'data-chapter', 'reward-unlock', true);
+  if (pendingStoryCount) { pulseRewardMark($('starTotal'), 'reward-count'); pendingStoryCount = false; }
+}
+function applyOperationRewards() {
+  if ($('dailyOverlay').hidden) return;
+  const pending = rewardPending.daily.get(shownDailyDate);
+  if (!pending) return;
+  const next = dailyProgress(shownDailyDate).next;
+  $('dailyStages').querySelectorAll('[data-stage]').forEach(el => {
+    const stage = +el.dataset.stage;
+    el.classList.toggle('reward-next', !reduceMotion && stage === next);
+  });
+  consumeRewardMarks(pending, $('dailyStages'), 'data-stage', 'reward-stage', true);
+  if (!pending.size) rewardPending.daily.delete(shownDailyDate);
+}
+function applyJournalRewards() {
+  if ($('journalOverlay').hidden) return;
+  consumeRewardMarks(rewardPending.stamps, $('journalCalendar'), 'data-date', 'reward-stamp');
+  consumeRewardMarks(rewardPending.badges, $('journalRewards'), 'data-reward', 'reward-badge');
+}
+function stopSkinPreviews(root) {
+  for (const canvas of skinPreviewMotion.keys()) if (root.contains(canvas)) skinPreviewMotion.delete(canvas);
+}
+function animateSkinPreview(canvas, skin) {
+  drawSkinPreview(canvas, skin);
+  if (!reduceMotion) skinPreviewMotion.set(canvas, { skin, time: 0 });
+}
+function stepRewardPreviews(dt) {
+  for (const [canvas, motion] of skinPreviewMotion) {
+    if (!canvas.isConnected || canvas.closest('.overlay')?.hidden) { skinPreviewMotion.delete(canvas); continue; }
+    motion.time = Math.min(1.2, motion.time + dt);
+    drawSkinPreview(canvas, motion.skin, motion.time / 1.2);
+    if (motion.time === 1.2) skinPreviewMotion.delete(canvas);
+  }
+}
+function showClearSkinRewards(skins) {
+  const root = $('clearUnlocks'); root.hidden = !skins.length;
+  root.innerHTML = skins.map(s => `<div class="skin-reveal"><b>새 상어를 만났어요!</b><canvas data-new-skin="${s.id}" role="img" aria-label="새로 얻은 ${s.name}"></canvas><strong>${s.name}</strong><small>내 상어에서 골라 보세요</small></div>`).join('');
+}
+
 function onClear() {
+  cancelClearPresentation();
+  const token = clearPresentation, before = rewardSnapshot();
   const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
   delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : 'story'];
@@ -892,10 +994,14 @@ function onClear() {
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
-  sfx.win();
-  const starSvg = on => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
+  const event = collectRewardEvents(before, stars, freshSkins, freshBadges);
+  const starSvg = (on, k) => `<span class="star-slot" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms"><svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>${on ? '<span class="star-sparks" aria-hidden="true">✦</span>' : ''}</span>`;
   $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
+  $('clearStars').classList.toggle('three-stars', stars === 3);
+  showClearSkinRewards(freshSkins);
+  $('clearJournalStamp').hidden = !event.stamp;
+  $('clearJournalStamp').textContent = event.stamp === 2 ? '✓ 오늘의 작전 완료 도장을 찍었어요!' : '● 오늘의 참여 도장을 찍었어요!';
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
   const chap = chapterOf(LVL), chapterEnd = !DAILY && !FREE && LVL === chap.end, last = !DAILY && !FREE && LVL === LEVELS.length - 1;
   const journey = !DAILY && !FREE && storyProgress(), rescueComplete = last && journey.complete;
@@ -907,26 +1013,30 @@ function onClear() {
   $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
   $('clearTitle').textContent = FREE ? '자유 수로 구출 성공!' : DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
     : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
-  const row = (label, val, ok) => `<li><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
+  const row = (label, val, ok, k = -1) => `<li${k >= 0 && earned[k] ? ` class="reward-check" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms"` : ''}><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
-    row('바다로 탈출', '성공', true) +
-    row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish) +
-    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3) +
+    row('바다로 탈출', '성공', true, 0) +
+    row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish, 1) +
+    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3, 2) +
     (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
     (FREE ? row(`${FREE_TIERS[FREE.difficulty].label} 수로`, `누적 ${save.free.completed[FREE.difficulty]}개 완료`, true) : '') +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (DAILY ? row('누적 기록', `참여 ${journalTotals().visits}일 · 작전 완료 ${journalTotals().operations}일`, true) : '') +
-    (freshBadges.length ? row('새 기념 배지', freshBadges.map(r => r.name).join(', '), true) : '') +
+    (freshBadges.length ? `<li class="reward-badge"><span>새 기념 배지</span><span class="ok">${freshBadges.map(r => r.name).join(', ')}</span></li>` : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('operationStamp').hidden = !operation || progress.count !== 3;
+  $('operationStamp').classList.toggle('reward-stamp', event.stamp === 2 && !reduceMotion);
   $('nextBtn').textContent = FREE ? '새 수로' : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
-  setTimeout(() => {
-    if (!cleared) return;
+  clearLater(() => {
     $('clearOverlay').hidden = false; $('nextBtn').focus({ preventScroll: true });
-    earned.forEach((on, k) => { if (on) setTimeout(() => haptic('light'), 180 + k * 120); });
-    if (freshSkins.length) setTimeout(() => haptic('success'), 600);
-  }, reduceMotion ? 50 : 650);
+    $('clearBody').scrollTop = 0;
+    $('clearOverlay').classList.toggle('clear-celebrating', !reduceMotion);
+    if (reduceMotion) { if (!document.hidden) { sfx.win(); haptic('success'); } }
+    else earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
+    $('clearUnlocks').querySelectorAll('[data-new-skin]').forEach(canvas => animateSkinPreview(canvas, SKINS.find(s => s.id === canvas.dataset.newSkin)));
+    if (freshSkins.length && !reduceMotion) clearLater(() => haptic('success'), 960, token);
+  }, reduceMotion ? 50 : 650, token, false);
   renderLevelGrid();
 }
 
@@ -1006,18 +1116,20 @@ function renderOperation() {
     const resume = packet?.id === dailyStageId(id), moves = packet?.state?.moves;
     const state = resume && Number.isSafeInteger(moves) ? `${moves}회 진행 · 이어하기` : stars ? `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} · 다시 도전`
       : locked ? '앞 수로를 완료하면 열려요' : '시작하기';
-    return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" ${locked ? 'disabled' : ''}>
-      <span class="stage-number">${stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
+    return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" aria-label="${stage + 1}번째 ${tier.name} ${tier.label}, ${state}" ${locked ? 'disabled' : ''}>
+      <span class="stage-number" aria-hidden="true">${stars ? '✓' : stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
   }).join('');
   $('dailyLegacyBtn').hidden = !save.sessions.dailyLegacy;
   $('dailyLegacyBtn').disabled = false;
   $('operationStatus').textContent = '';
+  applyOperationRewards();
 }
 function openDaily() {
   if (!$('gameScreen').hidden) show('title');
   dailyRequest++;
   renderDaily(); renderOperation();
   $('app').inert = true; $('dailyOverlay').hidden = false;
+  applyOperationRewards();
   $('dailyDone').focus({ preventScroll: true });
 }
 function closeDaily() {
@@ -1110,19 +1222,21 @@ function renderJournal() {
     + Array.from({ length: count }, (_, i) => {
       const date = `${journalMonth}-${String(i + 1).padStart(2, '0')}`, stamp = save.journal.days[date] || 0;
       const state = stamp === 2 ? '세 수로 완료' : stamp ? '참여' : date > today ? '예정' : '기록 없음';
-      return `<span class="journal-day${stamp ? ' stamped' : ''}${stamp === 2 ? ' complete' : ''}${date === today ? ' today' : ''}" role="img" aria-label="${m}월 ${i + 1}일, ${state}${date === today ? ', 오늘' : ''}"><b>${i + 1}</b><small aria-hidden="true">${stamp === 2 ? '✓' : stamp ? '●' : '·'}</small></span>`;
+      return `<span data-date="${date}" class="journal-day${stamp ? ' stamped' : ''}${stamp === 2 ? ' complete' : ''}${date === today ? ' today' : ''}" role="img" aria-label="${m}월 ${i + 1}일, ${state}${date === today ? ', 오늘' : ''}"><b>${i + 1}</b><small aria-hidden="true">${stamp === 2 ? '✓' : stamp ? '●' : '·'}</small></span>`;
     }).join('');
   $('journalRewards').innerHTML = JOURNAL_REWARDS.map(r => {
     const value = totals[r.metric], earned = value >= r.goal || !!(r.skin && save.owned?.includes(r.skin));
     const condition = `${r.metric === 'visits' ? '누적 참여' : '세 수로 완료'} ${r.goal}일`;
-    return `<li class="journal-reward${earned ? ' earned' : ''}"><span class="journal-mark" aria-hidden="true">${r.mark}</span><div><b>${r.name}</b><small>${r.skin ? '상어 외형' : '기념 배지'} · ${condition}</small><progress max="${r.goal}" value="${Math.min(value, r.goal)}" aria-label="${r.name}, ${condition}, ${earned ? '획득 완료' : `${value}일 달성`}"></progress></div><span class="journal-earned">${earned ? '획득' : `${value} / ${r.goal}`}</span></li>`;
+    return `<li data-reward="${r.id}" class="journal-reward${earned ? ' earned' : ''}"><span class="journal-mark" aria-hidden="true">${r.mark}</span><div><b>${r.name}</b><small>${r.skin ? '상어 외형' : '기념 배지'} · ${condition}</small><progress max="${r.goal}" value="${Math.min(value, r.goal)}" aria-label="${r.name}, ${condition}, ${earned ? '획득 완료' : `${value}일 달성`}"></progress></div><span class="journal-earned">${earned ? '획득' : `${value} / ${r.goal}`}</span></li>`;
   }).join('');
+  applyJournalRewards();
 }
 function openJournal(from = 'title') {
   journalReturn = from;
   if (from === 'daily') closeDaily();
   journalMonth = dailyDate().slice(0, 7); renderJournal();
   $('app').inert = true; $('journalOverlay').hidden = false;
+  applyJournalRewards();
   $('journalCard').scrollTop = 0; $('journalTitle').focus({ preventScroll: true });
 }
 function closeJournal() {
@@ -1134,15 +1248,17 @@ function journalToSkins() {
   journalReturn = 'title'; closeJournal(); openSkins();
 }
 /* ---------- my shark: title card and skin picker ---------- */
-function drawSkinPreview(canvas, skin) {
+function drawSkinPreview(canvas, skin, progress = null) {
   const r = canvas.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2.5);
   if (!r.width) return;
-  canvas.width = Math.round(r.width * d); canvas.height = Math.round(r.height * d);
+  const w = Math.round(r.width * d), h = Math.round(r.height * d);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   const x = canvas.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
   x.fillStyle = C.water; x.fillRect(0, 0, r.width, r.height);
   x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1.5;
   for (const yy of [0.25, 0.8]) { x.beginPath(); for (let px = 0; px <= r.width; px += 6) { const py = r.height * yy + Math.sin(px * 0.12) * 2; px ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
-  drawShark(x, r.width * 0.52, r.height * 0.5, -0.12, Math.min(r.width / 1.5, r.height * 1.05), 0.5, false, 1, 1, skin);
+  const glide = progress == null ? 0 : Math.sin(progress * Math.PI);
+  drawShark(x, r.width * (0.52 + glide * 0.08), r.height * 0.5, -0.12, Math.min(r.width / 1.5, r.height * 1.05), progress == null ? 0.5 : 0.5 + progress * 1.2, glide > 0.01, 1, 1, skin);
 }
 function renderSkinCard() {
   const skin = currentSkin(), owned = (save.owned || ['basic']).length;
@@ -1156,7 +1272,8 @@ function skinNeedText(skin) {
   if (skin.need.streak) return `오늘의 수로 ${skin.need.streak}일 연속 (최고 ${bestStreak()}일)`;
   return `별 ${skin.need.stars}개 (지금 ${Math.min(totalStars(), skin.need.stars)}개)`;
 }
-function renderSkinGrid() {
+function renderSkinGrid(equipped = null) {
+  stopSkinPreviews($('skinsOverlay'));
   const owned = new Set(save.owned || ['basic']), cur = currentSkin().id;
   $('skinGrid').innerHTML = SKINS.map(skin => {
     const has = owned.has(skin.id), sel = skin.id === cur;
@@ -1165,11 +1282,24 @@ function renderSkinGrid() {
       <span class="skin-need">${has ? (sel ? '사용 중' : '고르기') : skinNeedText(skin)}</span></button>`;
   }).join('');
   $('skinsSub').textContent = `${owned.size} / ${SKINS.length} 모음 · 별과 구조일지 기록으로 새 상어가 열려요.`;
-  requestAnimationFrame(() => $('skinGrid').querySelectorAll('.skin').forEach(b => drawSkinPreview(b.querySelector('canvas'), SKINS.find(k => k.id === b.dataset.id))));
+  requestAnimationFrame(() => {
+    if ($('skinsOverlay').hidden) return;
+    $('skinGrid').querySelectorAll('.skin').forEach(b => {
+      const skin = SKINS.find(k => k.id === b.dataset.id), fresh = rewardPending.skins.delete(skin.id);
+      b.classList.toggle('reward-skin', !reduceMotion && (fresh || equipped === skin.id));
+      if (fresh || equipped === skin.id) animateSkinPreview(b.querySelector('canvas'), skin);
+      else drawSkinPreview(b.querySelector('canvas'), skin);
+    });
+  });
 }
 const skinsOpen = () => !$('skinsOverlay').hidden;
 function openSkins() { $('skinsOverlay').hidden = false; renderSkinGrid(); $('skinsDone').focus({ preventScroll: true }); }
-function closeSkins() { $('skinsOverlay').hidden = true; renderSkinCard(); }
+function closeSkins() { stopSkinPreviews($('skinsOverlay')); $('skinsOverlay').hidden = true; renderSkinCard(); }
+function selectSkin(id) {
+  if (!(save.owned || ['basic']).includes(id) || !SKINS.some(s => s.id === id) || save.skin === id) return;
+  save.skin = id; persist(); haptic('medium'); sfx.equip(); renderSkinGrid(id); heroW = 0;
+  $('skinGrid').querySelector(`[data-id="${id}"]`).focus({ preventScroll: true });
+}
 
 /* ---------- free canals: one resumable puzzle per difficulty ---------- */
 let freeRequest = 0;
@@ -1387,6 +1517,7 @@ function frame(now) {
   if (!$('titleScreen').hidden) drawHero(t);
   if (endingOpen()) drawEnding(t);
   if (guideOpen() && !document.hidden) stepDeviceGuide(dt);
+  if (!document.hidden) stepRewardPreviews(dt);
   requestAnimationFrame(frame);
 }
 function step(dt) {
@@ -1646,6 +1777,7 @@ function renderLevelGrid(followProgress = false) {
   $('journeyBtn').textContent = `구출 여정 · ${progress.count} / ${LEVELS.length} 수로${progress.complete ? ' · 구출 성공' : ''} ›`;
   $('endingBtn').hidden = !progress.complete;
   if (progress.complete && !resume) $('playBtn').textContent = `별 더 모으기 · 수로 ${target + 1}`;
+  applyStoryRewards();
 }
 function nextLevel() {
   for (let i = 0; i < LEVELS.length; i++) if (save.best[i] == null) return i;
@@ -1786,6 +1918,7 @@ function closeGuide() {
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
+  if (which === 'title') cancelClearPresentation();
   if (which === 'title') { pauseGame(); $('guideOverlay').hidden = true; $('app').inert = false; guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
@@ -1841,7 +1974,7 @@ $('skinsDone').addEventListener('click', closeSkins);
 $('skinsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSkins(); });
 $('skinGrid').addEventListener('click', e => {
   const b = e.target.closest('.skin'); if (!b || b.disabled) return;
-  save.skin = b.dataset.id; persist(); haptic('medium'); renderSkinGrid(); heroW = 0;
+  selectSkin(b.dataset.id);
 });
 $('backBtn').addEventListener('click', () => show('title'));
 $('undoBtn').addEventListener('click', undo);

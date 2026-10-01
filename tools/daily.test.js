@@ -20,6 +20,7 @@ function operation(stored = null) {
   const storage = source.slice(source.indexOf('const STORE_KEY'), source.indexOf('const unlocked'));
   const daily = source.slice(source.indexOf('/* ---------- daily canal: record'), source.indexOf('/* ---------- my shark:'));
   const skins = source.slice(source.indexOf('function flower('), source.indexOf('/* ---------- haptics:'));
+  const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
   const functions = ['levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'dailySessionRecord', 'dailySession', 'checkpoint', 'freshState', 'loadDaily', 'onClear', 'skinNeedText'].map(functionSource).join('\n');
   return new Function('stored', 'NativeDate', `
     ${engineSource}
@@ -42,6 +43,8 @@ function operation(stored = null) {
     const curLevel = () => DAILY.level;
     const show = which => {$('gameScreen').hidden=which!=='game'; if(which==='title') cleared=false;};
     const enter = (level,keep,label) => {st=keep||freshState(level);g=parseLevel(level);cleared=false;$('lvNum').textContent=label;checkpoint();};
+    const document={hidden:false};
+    ${rewardSource}
     ${functions}
     ${daily}
     refreshSkins();

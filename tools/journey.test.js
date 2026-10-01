@@ -13,11 +13,12 @@ function functionSource(name) {
 // Actual completion, journey, ending and main-screen handlers. Canvas pixels and device touch remain browser checks.
 function scene(stored = {}, reduced = false) {
   const story = source.slice(source.indexOf('/* ---------- story journey:'), source.indexOf('/* ---------- shark skins:'));
+  const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
   const functions = ['chapterOf','persist','onClear','renderLevelGrid','nextLevel'].map(functionSource).join('\n');
   return new Function('stored','reduceMotion', `
     ${engine}
     ${levels}
-    const save = Object.assign({best:{},last:0,sessions:{dailyStages:{}},daily:{},owned:['basic'],skin:'basic'},JSON.parse(JSON.stringify(stored)));
+    const save = Object.assign({best:{},last:0,sessions:{dailyStages:{}},daily:{},owned:['basic'],skin:'basic',journal:{days:{}}},JSON.parse(JSON.stringify(stored)));
     let written=null,DAILY=null,FREE=null,LVL=0,g,st,cleared=false,selectedChapter=null,loaded=null,dailyOpened=0,dailyContinued=0,sharkDraws=[];
     const noop=()=>{},performance={now:()=>1000},window={devicePixelRatio:1},C={water:'#164b60',sea:'#367e85',concrete:'#ddd5c2'};
     const currentSkin=()=>({id:save.skin}),drawShark=(...args)=>sharkDraws.push(args);
@@ -31,11 +32,13 @@ function scene(stored = {}, reduced = false) {
     };
     const STORE_KEY='bukang-sea-v1',localStorage={setItem:(key,value)=>written=value};
     const unlocked=i=>i===0||save.best[i-1]!=null,totalStars=()=>Object.values(save.best).reduce((sum,n)=>sum+n,0);
-    const earnedJournalRewards=()=>[],refreshSkins=()=>[],sfx={win:noop},haptic=noop,setTimeout=cb=>cb();
+    const earnedJournalRewards=()=>[],refreshSkins=()=>[],sfx={win:noop,star:noop},haptic=noop,setTimeout=cb=>cb();
     const storySession=()=>null,curLevel=()=>LEVELS[LVL];
-    const dailyProgress=()=>({count:1}),dailyStreak=()=>1,journalTotals=()=>({visits:1,operations:0}),recordDailyStage=noop,dailySessionKey=()=> 'daily';
+    const dailyProgress=()=>({count:1,stars:[0,0,0]}),dailyStreak=()=>1,journalTotals=()=>({visits:1,operations:0}),recordDailyStage=noop,dailySessionKey=()=> 'daily';
     const dailyDate=()=> '2026-10-01',openDaily=()=>{dailyOpened++;$('app').inert=true;},continueDaily=()=>dailyContinued++;
     const loadLevel=i=>{loaded=i;},show=which=>{if(which==='title'){cleared=false;$('clearOverlay').hidden=true;renderLevelGrid(true);}};
+    const document={hidden:false};
+    ${rewardSource}
     ${functions}
     ${story}
     return { progress:storyProgress,journey:openJourney,select:selectJourneyChapter,ending:openEnding,close:closeEnding,
