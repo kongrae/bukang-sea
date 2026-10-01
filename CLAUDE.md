@@ -1,6 +1,6 @@
 # 상어 SOS: 바다로 보내줘! — 프로젝트 가이드
 
-2026년 9월 부산 북항 친수공원 인공 수로에 들어온 무태상어에서 착안한 모바일 구출 퍼즐 게임 **상어 SOS: 바다로 보내줘!**(웹 + PWA + Capacitor 앱)다. 수로에 갇힌 상어를 구조해 바다로 보내는 목표를 담는다. 메인 제목과 홈 화면 이름은 **상어 SOS**, 부제는 **바다로 보내줘!**다. 저장소·저장 키·내부 이름의 `bukang`과 앱 ID `kr.hongrae.lostshark`는 진행 기록과 설치 호환을 위해 유지한다.
+2026년 9월 부산 북항 친수공원 인공 수로에 들어온 무태상어에서 착안한 모바일 구출 퍼즐 게임 **상어 SOS: 바다로 보내줘!**(웹 + PWA + Capacitor 앱)다. 수로에 갇힌 상어를 구조해 바다로 보내는 목표를 담는다. 메인 제목과 홈 화면 이름은 **상어 SOS**, 부제는 **바다로 보내줘!**다. 저장소·저장 키·내부 이름의 `bukang`은 진행 기록 호환을 위해 유지한다. 앱 ID는 첫 Play 업로드 전인 2026-10-01에 `kr.hongrae.lostshark`에서 `kr.hongrae.sharksos`로 바꿨다(업로드 후 변경 불가). `src/daily.js`의 시드 문자열 `lostshark-daily-`는 날짜별 퍼즐 호환을 위해 그대로 둔다.
 장르는 하이퍼캐주얼 슬라이드 퍼즐이고, 목표는 앱스토어 출시용 모바일 게임으로 발전시키는 것이다.
 
 ## 작업 규칙
@@ -58,7 +58,7 @@ assets/        icon.svg(원본) + icons/*.png, fonts/(서브셋 woff2 + OFL 라�
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
-capacitor.config.json  appId kr.hongrae.lostshark, webDir=www, SystemBars(DARK, insets→CSS 변수)
+capacitor.config.json  appId kr.hongrae.sharksos, webDir=www, SystemBars(DARK, insets→CSS 변수)
 android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정
 www/           build:web 결과 (gitignore)
 ```

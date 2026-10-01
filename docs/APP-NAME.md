@@ -8,7 +8,7 @@
 
 웹 문서 제목, PWA manifest 이름과 short_name, Apple 홈 화면 메타데이터, Capacitor appName과 Android 표시 이름, 개인정보처리방침, 스토어 등록 문구와 홍보 그래픽에 반영했다. 메인 배너의 산책로와 전체 높이를 각각 16px 늘려 제목/부제를 배치하고, 물 영역과 상어 크기는 유지했다.
 
-저장 키 `bukang-sea-v1`, 앱 ID `kr.hongrae.lostshark`, 저장소 이름과 Pages 주소는 유지한다. 이름 변경으로 기존 별·스킨·이어하기·힌트 사용 기록을 초기화하지 않는다.
+저장 키 `bukang-sea-v1`, 저장소 이름과 Pages 주소는 유지한다. 앱 ID는 첫 Play 업로드 전인 2026-10-01에 `kr.hongrae.lostshark`에서 `kr.hongrae.sharksos`로 바꿨다. 이름 변경으로 기존 별·스킨·이어하기·힌트 사용 기록을 초기화하지 않는다.
 
 ## 확인
 

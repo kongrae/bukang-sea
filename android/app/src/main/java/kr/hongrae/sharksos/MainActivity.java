@@ -1,4 +1,4 @@
-package kr.hongrae.lostshark;
+package kr.hongrae.sharksos;
 
 import com.getcapacitor.BridgeActivity;
 

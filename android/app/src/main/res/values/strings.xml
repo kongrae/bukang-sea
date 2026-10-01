@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">상어 SOS</string>
     <string name="title_activity_main">상어 SOS</string>
-    <string name="package_name">kr.hongrae.lostshark</string>
-    <string name="custom_url_scheme">kr.hongrae.lostshark</string>
+    <string name="package_name">kr.hongrae.sharksos</string>
+    <string name="custom_url_scheme">kr.hongrae.sharksos</string>
 </resources>
