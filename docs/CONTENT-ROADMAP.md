@@ -12,3 +12,7 @@
 1번 상세: [DAILY-OPERATION.md](DAILY-OPERATION.md). 2번 상세: [RESCUE-JOURNAL.md](RESCUE-JOURNAL.md). 3번 상세: [JOURNEY-AND-ENDING.md](JOURNEY-AND-ENDING.md). 4번 상세: [FREE-CANALS.md](FREE-CANALS.md). 기존 스토리 48개와 스킨 7개의 조건을 유지하고 누적 보상 스킨 2개·챕터 여정·구출 엔딩·세 난이도의 자유 수로를 추가했다.
 
 1–4번 구현은 완료했다. 다음 번호의 개발 작업은 정하지 않았다. 다음 권장 단계는 `PLAYTEST.md`의 실제 기기·이용자 시험이며, 결과 분석과 개선 우선순위 정리에는 GPT-6.1 Sol / high를 권장한다. 실제 이용자 기록과 재방문 효과는 자동 검사로 대신하지 않으며 사용자의 다음 요청을 기다린다.
+
+## 향후 업데이트 후보
+
+2026-10-01에 논의한 새 장치·내 바다 꾸미기·조건별 미션·탐험·수로 공유·계절 작전은 [FUTURE-UPDATES.md](FUTURE-UPDATES.md)에 저장했다. 추천 우선순위, 첫 업데이트 범위, 메인 화면 연결 원칙을 포함한다. 기획 후보이며 아직 개발에 착수하지 않았다. 기존 작업 번호와는 별개로 관리한다.
