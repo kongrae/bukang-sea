@@ -1,0 +1,2 @@
+﻿All deliverables: 1024x1024 PNG. Foreground alpha >=16: max radius 308.15px; safe radius 312.89px; outside safe circle 0; opaque edge pixels 0. Background and complete icon are opaque.
+

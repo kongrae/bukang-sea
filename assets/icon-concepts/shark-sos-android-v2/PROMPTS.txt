@@ -1,0 +1,35 @@
+Built-in ImageGen. 2026-10-02. Reference: ../shark-sos-3d-v1-original.png
+
+1. COMPLETE CONCEPT
+
+Use case: stylized-concept / precise-object-edit.
+Asset type: finished Android mobile puzzle game icon artwork, one opaque square PNG, ideally 1024×1024.
+Input image 1 is the existing Shark SOS icon and character identity reference. Redesign this same icon for Android circular and rounded-square launcher masks.
+Preserve the recognizable SAME cute baby shark: huge expressive blue eyes, rounded snout, ivory muzzle and belly, sky-blue upper body, happy open smile with a few small rounded teeth, short plump body and natural single forked tail. Preserve its premium polished 3D animated-film look, soft glossy materials and joyful energetic personality. Preserve the orange rescue swim ring with wide ivory bands; shark emerges through its central hole, not squeezed around its neck.
+REMOVE the existing aqua rounded-square frame and beveled border COMPLETELY. Do not substitute a circular border. Absolutely no tile/card inside the icon and no icon-shaped rim. The outer shape will be applied by Android.
+Composition: face large and slightly above center, orange ring curves around the lower body, single tail curves upward behind the head. Recompose into a balanced central circular silhouette: both eyes, smile, recognizable shark face and the essential orange ring must all survive a centered circular crop. Keep tips of tail and fins within the main circular composition with comfortable breathing room. Few broad clear splashes and a handful of bubbles, no visual clutter.
+Background: seamless full-bleed aqua/turquoise ocean gradient to deeper teal-blue at edges, softly luminous behind the face, subtle watery depth. It must fill ALL corners and run naturally to every image edge, no visible internal boundary, no white margin, no frame, no transparent corners. Foreground feels part of the same ocean scene, not a sticker.
+Lighting: soft studio key light, cool aqua rim light, warm ivory face, rich orange ring, smooth volume, clear eye catchlights, polished production-ready 3D game art. The face and smile must read strongly at 48px.
+Deliver exactly ONE finished square icon artwork. No contact sheet, no mockup, no labels or guides.
+Exclude text, logos, watermarks, numbers, frames, borders, bezels, buttons, tiles, extra characters, boats/buildings, scary sharp teeth, multiple tails or duplicate fins, photoreal shark skin, flat vector style.
+This is the full finished icon, not the padded 108dp adaptive layer; compose for a full-size final launcher preview. Separate adaptive layers will be prepared next.
+
+2. FOREGROUND EXTRACTION
+
+Use case: background-extraction.
+Asset type: Android adaptive icon FOREGROUND layer, one 1024x1024 square RGBA PNG with genuine transparent alpha background.
+Image 1 is the exact new Shark SOS icon to extract. Keep this SAME shark character, happy facial expression, blue eyes, sky-blue/ivory colors, pose, orange rescue ring with ivory stripes, and premium 3D rendering. Do not redesign the character.
+Remove the entire underwater blue backdrop and background bubbles. Keep only the shark, orange rescue ring and a FEW immediately attached clear water splashes. Everything else is genuinely transparent, not painted checkerboard or white.
+CRITICAL adaptive layer layout: the entire output is a 108x108dp coordinate space. Place the character group centrally, reduced uniformly so the recognizable face, both eyes, mouth, orange ring, tail and fins fit in the central circular safe zone of diameter 66dp (61.1% of canvas width). Aim for the essential face/ring inside this circle with a little breathing room. Small water splash tips may extend to 72dp diameter, but the whole outer 16% of canvas on every side is completely transparent. The visible character group should occupy about the central 60% of canvas, NOT fill the square. Correct this deliberately even though the reference fills its frame.
+The finished foreground must be a real isolated character group, with clean soft anti-aliased contours and natural transparency in holes such as behind the tail and inside open spaces around the tube. Preserve soft 3D volumes and reflections.
+No ocean rectangle, no background color, no disk, no frame, no circular ring border, no white halo, no drop-shadow tile, no text, no guides, no contact sheet.
+Output one aligned adaptive foreground PNG only.
+
+3. BACKGROUND
+
+Use case: precise-object-edit.
+Asset type: Android adaptive icon BACKGROUND layer, square PNG, 1024×1024 preferred, fully opaque.
+Input image is the new Shark SOS icon. Create its matching EMPTY underwater backdrop. Remove the shark, rescue ring, foreground splashes, and all individual bubbles completely; fill the former subject area naturally.
+Preserve the same bright aqua and turquoise underwater color family, soft light rays coming from upper center, subtle underwater depth, central luminous cyan area behind where the shark face would be, gently deeper teal-blue at the outer edges. Soften and simplify the background so it supports a small icon without competing with the face.
+Full-bleed ocean from corner to corner, every pixel opaque. No blank margins, no card, no rectangular panel, no circular disk, no ring, no frame, no bevel, no text, no characters or objects. It must blend behind the matching transparent foreground and feel like one seamless scene through circular or rounded-square Android masks.
+Deliver ONE square background layer only, no comparison sheet or guides.
