@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <title>Open sluice gate</title>
+  <defs>
+    <linearGradient id="open-pier" x1="16" y1="27" x2="34" y2="102" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFEF4"/><stop offset="1" stop-color="#BCDCD9"/></linearGradient>
+    <linearGradient id="open-shutter" x1="64" y1="43" x2="64" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC77D"/><stop offset=".45" stop-color="#FF974C"/><stop offset="1" stop-color="#D76330"/></linearGradient>
+  </defs>
+  <rect x="9" y="34" width="32" height="72" rx="14" fill="#093F57" opacity=".17"/>
+  <rect x="87" y="34" width="32" height="72" rx="14" fill="#093F57" opacity=".17"/>
+  <rect x="12" y="26" width="25" height="73" rx="11" fill="url(#open-pier)" stroke="#235C6D" stroke-width="4"/>
+  <rect x="91" y="26" width="25" height="73" rx="11" fill="url(#open-pier)" stroke="#235C6D" stroke-width="4"/>
+  <path d="M19 41V37a4 4 0 0 1 4-4h5M98 41V37a4 4 0 0 1 4-4h5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <rect x="27" y="44" width="10" height="41" rx="4" fill="#A64C29" stroke="#235C6D" stroke-width="3"/>
+  <rect x="91" y="44" width="10" height="41" rx="4" fill="#A64C29" stroke="#235C6D" stroke-width="3"/>
+  <rect x="27" y="40" width="10" height="40" rx="4" fill="url(#open-shutter)" stroke="#235C6D" stroke-width="3"/>
+  <rect x="91" y="40" width="10" height="40" rx="4" fill="url(#open-shutter)" stroke="#235C6D" stroke-width="3"/>
+  <path d="M31 48H34M31 58H34M31 69H34M95 48H98M95 58H98M95 69H98" stroke="#FFF0CA" stroke-width="2" stroke-linecap="round"/>
+  <path d="m24 80 6 7-6 7-6-7Z" fill="#2D7184"/>
+  <path d="m104 80 6 7-6 7-6-7Z" fill="#2D7184"/>
+</svg>

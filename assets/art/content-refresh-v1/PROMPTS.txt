@@ -1,0 +1,37 @@
+상어 SOS 콘텐츠 확장 아트 제작 기록
+제작일: 2026-10-02
+생성 방식: built-in ImageGen
+생성물은 지역 소개용 일러스트이며 게임 규칙 또는 실제 보드 레이아웃이 아니다.
+기존 참조 아트를 사용했으며 기존 상어 캐릭터 파일은 수정하지 않았다.
+
+=== north-harbor.png ===
+참조: assets/icon-concepts/shark-sos-3d-v1-1024.png
+원본 생성 파일: C:/Users/hongrae/.codex/generated_images/01a0f121-58e7-7a50-a174-d30c95a2c46a/exec-784714ea-d98e-421f-8610-ea93d9fb98d7.png
+transparent_background: false
+
+Use case: stylized-concept.
+Asset type: finished region introduction illustration for the mobile casual sliding puzzle game Shark SOS. Generate ONE premium 3D environment illustration, landscape 1536 by 1024, full bleed opaque, no text.
+Reference input 1 is the game's existing app icon. Use it ONLY as a color, lighting and toy-material style reference: luminous aqua water, warm ivory molded surfaces, orange lifebuoys, soft bevels, polished animation-film rendering. Do NOT copy its shark, square icon frame, portrait composition, or face.
+Scene: North Harbor Canal. An inviting miniature coastal promenade with a distinctly winding S-shaped turquoise canal that opens into a deeper blue sea at the upper right. Rounded ivory quay walls with pale mint insets, restrained chunky white railings, two orange lifebuoys with four ivory bands, a few small sculpted sea-green shrubs, one short wooden docking finger. A tiny simple rescue launch is moored motionless well to the side, not blocking the focal route. No people, shark, other animals, text, letters, logos, signs or watermarks.
+Art direction: beautiful carefully art-directed 3D game environment, broad simple readable shapes, subtly glossy rubber lifebuoys, satin ceramic quays, translucent gently rippled water, no grit or photorealism. A luminous optimistic morning. Use aqua #77DDE0, teal water #218EAC, ivory #FFFDF5, muted mint #A4D7BF, coral orange #FF873F, deep ocean #126D9E. Soft upper-left key light, cool aqua bounce and short gentle ambient shadows.
+Composition: elevated three-quarter orthographic-like view of a continuous environment, NOT an isolated island on a pedestal. Water and promenade fill the image to every edge. The broad curving canal is the hero, one big readable silhouette, eye travels toward open sea. Center 70% contains all important shapes; no essential object in the outer 10%. Uppermost 15% is simple clean sea for optional UI overlay, but DO NOT draw UI or text. Should remain clear in a 320px-wide chapter card and also be attractive as a transition illustration. This is a decorative regional vista, not an actual playable board: no grid, no puzzle tile markers, no arrows, no HUD, no app-icon frame, no strong vignette, no excessive small scenery. Deliver a fully finished single illustration.
+
+=== sluice-works.png ===
+참조 1: assets/icon-concepts/shark-sos-3d-v1-1024.png
+참조 2: assets/art/content-refresh-v1/north-harbor.png
+원본 생성 파일: C:/Users/hongrae/.codex/generated_images/01a0f121-58e7-7a50-a174-d30c95a2c46a/exec-2db86abb-7f78-41b1-b729-d3d3a18fc7dc.png
+transparent_background: false
+
+Use case: stylized-concept.
+Asset type: finished second-region introduction illustration for Shark SOS, the same mobile casual puzzle game as the references. ONE landscape 1536 by 1024 premium 3D illustration, opaque full bleed, no text.
+Input image 1: original app icon, STYLE reference only for rounded polished toy materials, warm ivory, aqua light and orange. Do not copy shark or icon border.
+Input image 2: accepted North Harbor region illustration. Match its rendering quality, soft beveled 3D materials, bright inviting daylight, moderately elevated three-quarter camera, scale of water and architectural detail. This new scene must be visibly a different location, not a recolor or duplicate canal.
+Scene: a friendly small coastal sluice facility called Sluice Works. Two water basins at the SAME water level connected by a straight broad canal; a large central mechanical sluice divides them. In the foreground calm rich blue-teal water leads toward the gate. On the canal's sides, chunky rounded ivory support piers and powder-blue housings. The gate is the unmistakable hero: one broad horizontal orange shutter with three large rounded ribs, held between two ivory piers with blue trim, simple center ivory plate with a short dark horizontal bar. The shutter is CLOSED across the water near the middle depth of the composition, not a bridge walkway. Make it resemble an oversized premium molded toy, no rust or menacing machinery. Each pier has a small navy diamond motif that matches a floor switch nearby.
+On the near bank, one large round ORANGE raised floor pressure button on an ivory square base, visibly associated with the gate but placed safely on the promenade. Its center has a simple cream DIAMOND shape, not a letter or power logo. One orange lifebuoy with four ivory bands hangs further to the side to connect with the existing game identity. Beyond the gate, a second basin and pale-blue service conduits curve toward a glimpse of bright open sea. Ivory walkways and minimal white railings. No houses, no city skyline, no lighthouse, no rescue launch, no people or sharks, no animals.
+Palette: powder-blue architecture #93C7D7 / #DCECF4, ivory #FFFDF5, calmer blue-teal water #287B9E, deep outline #235C6D, saturated orange shutter #FF974C, aqua reflected light. Distinguish this region clearly from the mint promenade of image 2, while preserving one coherent art style.
+Composition: large central gate and open foreground water read instantly in a 320px card. Use clean layered geometry and restrained decoration, broad areas of calm water, sunny optimism and soft upper-left keylight. All critical gate and button shapes inside central 80% with air around them. Full environment to all edges. No pedestal, no icon frame, no fake user interface, no letterforms/numbers/watermarks, no grid, no puzzle arrows, no checkerboard. Decorative region vista for cards and transitions, NOT a playable board. Deliver a single fully finished high-quality 3D scene.
+
+=== SVG 4종 ===
+직접 작성한 벡터 자산. ImageGen 생성물이 아님.
+128×128 투명 viewBox, 기준점 (64,64). 고정 기둥 및 중앙 통로로 수문 상태 구분.
+버튼 높이·색·가로선/체크로 스위치 상태 구분. 둥근 베벨, 아이보리·주황·아쿠아 팔레트.

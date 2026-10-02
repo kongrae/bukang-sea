@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "shared": {
+    "ink": "#153F53", "panel": "#FFFDF5", "shark": "#69B5EC",
+    "buoy": "#FF873F", "deviceOutline": "#235C6D", "gateFace": "#FF974C",
+    "switchActive": "#4AC8B8", "channelDiamond": "#2D7184",
+    "lightDirection": "upper-left", "deviceView": "orthographic-top-down"
+  },
+  "regions": {
+    "north-harbor": {
+      "label": "북항 수로", "background": "#DCF5F4", "water": "#218EAC",
+      "waterHi": "#9EF5EB", "sea": "#126D9E", "land": "#EDF3E7",
+      "landEdge": "#C5D8CA", "rail": "#F5FFF8", "park": "#80BEA8",
+      "frame": "#85DADD", "materials": ["ivory-quay", "mint-inset", "orange-rubber"]
+    },
+    "sluice-works": {
+      "label": "수문 시설", "background": "#DCECF4", "water": "#287B9E",
+      "waterHi": "#A8EAF0", "sea": "#17577B", "land": "#E9F0F1",
+      "landEdge": "#ACCBD5", "rail": "#F8FFFF", "park": "#82B7AC",
+      "frame": "#93C7D7", "materials": ["ivory-pier", "powder-blue-channel", "orange-shutter"]
+    }
+  },
+  "integration": {
+    "scope": "art-only; not connected to game runtime",
+    "stableMechanicColors": true,
+    "regionDependentDecorationOnly": true,
+    "note": "Keep exits, jets, nets and collectibles semantically consistent across regions. Regions change decorative surfaces, never collision cells."
+  }
+}

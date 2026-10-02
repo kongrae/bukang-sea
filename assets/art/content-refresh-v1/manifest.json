@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "createdAt": "2026-10-02",
+  "title": "상어 SOS 지역과 수문 아트",
+  "status": "art-only",
+  "styleReferences": [
+    "assets/icon-concepts/shark-sos-3d-v1-1024.png",
+    "assets/art/shark-hero.webp"
+  ],
+  "palette": "palettes.json",
+  "preview": "preview.html",
+  "instructions": "README.md",
+  "prompts": "PROMPTS.txt",
+  "assets": [
+    {
+      "id": "north-harbor",
+      "file": "north-harbor.png",
+      "kind": "region-illustration",
+      "use": "북항 소개 카드, 구간 전환, 다음 지역 예고",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 2322324,
+      "sha256": "1b24f3ac33b042d6689d3f9ee31f2997e1cb14836c179496bbfa73cba81e0d6d",
+      "background": "opaque",
+      "generator": "built-in ImageGen",
+      "displayAspectRatio": "3:2",
+      "useAsBoard": false,
+      "integratedIntoGame": false
+    },
+    {
+      "id": "sluice-works",
+      "file": "sluice-works.png",
+      "kind": "region-illustration",
+      "use": "수문 시설 소개 카드, 구간 전환, 다음 지역 예고",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 2142816,
+      "sha256": "93a139c3a8f70c5028511234a27b34150095c031a78b58c8f1566a60aa2a56a2",
+      "background": "opaque",
+      "generator": "built-in ImageGen",
+      "displayAspectRatio": "3:2",
+      "useAsBoard": false,
+      "integratedIntoGame": false
+    },
+    {
+      "id": "gate-closed",
+      "file": "gate-closed.svg",
+      "kind": "device-state",
+      "use": "닫힌 수문 표시",
+      "width": 128,
+      "height": 128,
+      "bytes": 1684,
+      "sha256": "8a4d45adda391bfe702c8a51567216cdfd65b01d7b8a44c202c2fa0ffb04ab60",
+      "background": "transparent",
+      "generator": "authored SVG",
+      "viewBox": [
+        0,
+        0,
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 64
+      },
+      "externalResources": false,
+      "integratedIntoGame": false
+    },
+    {
+      "id": "gate-open",
+      "file": "gate-open.svg",
+      "kind": "device-state",
+      "use": "열린 수문 표시",
+      "width": 128,
+      "height": 128,
+      "bytes": 1743,
+      "sha256": "3be7a60424f2b5377b4115e0e56c5d9fef0f8557ad314bdde7e682ab8f12c244",
+      "background": "transparent",
+      "generator": "authored SVG",
+      "viewBox": [
+        0,
+        0,
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 64
+      },
+      "externalResources": false,
+      "integratedIntoGame": false
+    },
+    {
+      "id": "switch-off",
+      "file": "switch-off.svg",
+      "kind": "device-state",
+      "use": "비활성 스위치 표시",
+      "width": 128,
+      "height": 128,
+      "bytes": 1345,
+      "sha256": "65bb84b015e9f6f4aa2521a10f426c25b78b282a9a37d24b38b5efa67af2949e",
+      "background": "transparent",
+      "generator": "authored SVG",
+      "viewBox": [
+        0,
+        0,
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 64
+      },
+      "externalResources": false,
+      "integratedIntoGame": false
+    },
+    {
+      "id": "switch-on",
+      "file": "switch-on.svg",
+      "kind": "device-state",
+      "use": "활성 스위치 표시",
+      "width": 128,
+      "height": 128,
+      "bytes": 1334,
+      "sha256": "d9ba18097a2840b3a24e71b73696e562ac2b83785f8db434f789ab9b2bc22a05",
+      "background": "transparent",
+      "generator": "authored SVG",
+      "viewBox": [
+        0,
+        0,
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 64
+      },
+      "externalResources": false,
+      "integratedIntoGame": false
+    }
+  ]
+}

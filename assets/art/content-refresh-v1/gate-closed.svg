@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <title>Closed sluice gate</title>
+  <defs>
+    <linearGradient id="closed-pier" x1="16" y1="27" x2="34" y2="102" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFEF4"/><stop offset="1" stop-color="#BCDCD9"/></linearGradient>
+    <linearGradient id="closed-shutter" x1="64" y1="43" x2="64" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC77D"/><stop offset=".45" stop-color="#FF974C"/><stop offset="1" stop-color="#D76330"/></linearGradient>
+  </defs>
+  <rect x="9" y="34" width="110" height="72" rx="17" fill="#093F57" opacity=".17"/>
+  <rect x="12" y="26" width="25" height="73" rx="11" fill="url(#closed-pier)" stroke="#235C6D" stroke-width="4"/>
+  <rect x="91" y="26" width="25" height="73" rx="11" fill="url(#closed-pier)" stroke="#235C6D" stroke-width="4"/>
+  <path d="M19 41V37a4 4 0 0 1 4-4h5M98 41V37a4 4 0 0 1 4-4h5" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <rect x="27" y="44" width="74" height="41" rx="8" fill="#A64C29" stroke="#235C6D" stroke-width="4"/>
+  <rect x="27" y="40" width="74" height="40" rx="8" fill="url(#closed-shutter)" stroke="#235C6D" stroke-width="4"/>
+  <path d="M35 46H93" stroke="#FFE9BC" stroke-width="4" stroke-linecap="round"/>
+  <path d="M34 58H94M34 69H94" stroke="#A94925" stroke-width="4" stroke-linecap="round"/>
+  <rect x="53" y="49" width="22" height="22" rx="6" fill="#FFF7DE" stroke="#A94925" stroke-width="3"/>
+  <path d="M59 60H69" stroke="#A94925" stroke-width="4" stroke-linecap="round"/>
+  <path d="m24 80 6 7-6 7-6-7Z" fill="#2D7184"/>
+  <path d="m104 80 6 7-6 7-6-7Z" fill="#2D7184"/>
+</svg>

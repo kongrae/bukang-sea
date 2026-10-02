@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none">
+  <title>Sluice switch in inactive position</title>
+  <defs>
+    <linearGradient id="off-base" x1="25" y1="26" x2="98" y2="111" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFEF4"/><stop offset="1" stop-color="#BCDCD9"/></linearGradient>
+    <linearGradient id="off-cap" x1="64" y1="30" x2="64" y2="87" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC77D"/><stop offset=".55" stop-color="#FF974C"/><stop offset="1" stop-color="#DD6B36"/></linearGradient>
+  </defs>
+  <rect x="16" y="26" width="96" height="91" rx="24" fill="#093F57" opacity=".17"/>
+  <rect x="18" y="19" width="92" height="91" rx="23" fill="url(#off-base)" stroke="#235C6D" stroke-width="4"/>
+  <path d="M27 42V38a11 11 0 0 1 11-11H90" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="65" r="34" fill="#A64C29" stroke="#235C6D" stroke-width="4"/>
+  <circle cx="64" cy="57" r="34" fill="url(#off-cap)" stroke="#235C6D" stroke-width="4"/>
+  <path d="M41 45a26 26 0 0 1 36-10" stroke="#FFEBC5" stroke-width="4" stroke-linecap="round"/>
+  <path d="m64 41 14 16-14 16-14-16Z" fill="#FFF7DE" stroke="#A94925" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M54 101H74" stroke="#235C6D" stroke-width="5" stroke-linecap="round"/>
+</svg>
