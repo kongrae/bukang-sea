@@ -31,7 +31,7 @@ const scenes = [
     for (const d of 'UL') { swipe(d); await sleep(1200); }` },
   { name: '4-clear', save: { best: done(4), last: 4 }, run: `
     document.querySelector('.lv[data-i="4"]').click(); await sleep(400);
-    for (const d of 'URDLURU') { swipe(d); await sleep(1300); }
+    for (const d of 'ULULRULU') { swipe(d); await sleep(1300); }
     await sleep(1200);` },
   { name: '5-chapter4', save: { best: done(42), last: 42 }, run: `
     document.querySelector('.lv[data-i="42"]').click(); await sleep(400);
