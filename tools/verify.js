@@ -1,6 +1,6 @@
 // Checks every level: legal replay, star target achievable, and net levels really need their nets.
 // Targets follow the authored role allowance; these counts do not predict human difficulty.
-//   node tools/verify.js
+//   node tools/verify.js   (story canals, then the separate pilot course: tools/verify-pilot.js)
 const fs = require('fs');
 const path = require('path');
 const E = require('../src/engine.js');
@@ -49,4 +49,5 @@ LEVELS.forEach((lvl, i) => {
 });
 console.log(failed ? `\n${failed} level(s) failed` : `\nall ${LEVELS.length} levels ok`);
 console.log('Practice: minimum + 2; regular: minimum + 1; challenge: minimum. Nets in [] are the full placement BEFORE each swipe.');
-process.exit(failed ? 1 : 0);
+const pilotFailed = require('./verify-pilot.js').verifyPilot();
+process.exit(failed || pilotFailed ? 1 : 0);

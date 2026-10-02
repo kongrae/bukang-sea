@@ -18,7 +18,7 @@ function scene({ stored={}, reduced=false }={}) {
     ${read('variety-reserves')}
     ${read('daily')}
     const Date=class extends NativeDate{constructor(...args){super(...(args.length?args:['2026-10-01T12:00:00']));}};
-    let written=null,now=0,sequence=0,DAILY=null,FREE=null,LVL=0,g,st,cleared=false,heroW=1;
+    let written=null,now=0,sequence=0,DAILY=null,FREE=null,PILOT=null,LVL=0,g,st,cleared=false,heroW=1;
     const timers=new Map(),frames=[],sounds=[],vibrations=[],draws=[],noop=()=>{};
     const setTimeout=(cb,ms)=>{const id=++sequence;timers.set(id,{cb,due:now+ms});return id;};
     const clearTimeout=id=>timers.delete(id),requestAnimationFrame=cb=>frames.push(cb);

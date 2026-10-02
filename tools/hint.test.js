@@ -10,8 +10,8 @@ const { dailyStageId } = require('../src/daily.js');
 const { freeId } = require('../src/free.js');
 
 // Execute the actual hint handler, solver and allowance with a controllable wall clock.
-function hints({ stored = null, daily = null, free = null, index = 0, cancel = false, noRoute = false } = {}) {
-  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', 'FREE', 'freeId', `
+function hints({ stored = null, daily = null, free = null, pilot = null, index = 0, cancel = false, noRoute = false } = {}) {
+  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', 'FREE', 'freeId', 'PILOT', `
     ${engine}
     ${levels}
     let now = 100000, written = stored, tip = '', hint = null, hintRequest = 0;
@@ -32,7 +32,7 @@ function hints({ stored = null, daily = null, free = null, index = 0, cancel = f
       status:()=>({...elements.hintBtn,label:elements.hintStatus.textContent}),
       next:()=>{hint=null;hintRequest++;updateHintButton();},
       advance:ms=>{now+=ms;updateHintButton();}};
-  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId, free, freeId);
+  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId, free, freeId, pilot);
 }
 
 test('free hints persist for the same run and reset only for a different run or difficulty', async () => {

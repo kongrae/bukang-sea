@@ -49,6 +49,7 @@ if (process.argv.includes('--playtest')) {
 const testAll = new URLSearchParams(location.search).get('all') === '1';
 const STORE_KEY = 'bukang-sea-playtest-${fingerprint}-' + (testAll ? 'lab-' : 'core-') + (/^[A-Za-z0-9_-]{1,24}$/.test(tester) ? tester : 'pilot');`);
   content = replaceOnce(content, 'const unlocked = i => i === 0 || save.best[i - 1] != null;', 'const unlocked = i => testAll || i === 0 || save.best[i - 1] != null;');
+  content = replaceOnce(content, 'const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;', 'const pilotUnlocked = i => testAll || i === 0 || pilotStars(i - 1) > 0;');
   content = replaceOnce(content, '<!-- playtest-label -->', `<small style="position:fixed;bottom:2px;left:8px;z-index:20;pointer-events:none;color:#fff;background:#123b46;padding:2px 5px;border-radius:5px;font-size:9px">PLAYTEST · ${fingerprint} · 기록 별도</small>`);
   content = replaceOnce(content, "$('lvNum').textContent = label;", "$('lvNum').textContent = label + ' · TEST';");
   // Use local fonts so mobile test sessions do not depend on Google Fonts connectivity.

@@ -146,3 +146,32 @@ body { background: radial-gradient(ellipse at 50% 0, #f3ffff, #c6f3f4 48%, #81cd
 @media (min-width:640px) and (min-height:640px) { .card { border-bottom: 3px solid var(--aqua-edge); } }
 @media (max-width:350px) { .home-collection .myshark canvas { width: 44px; } }
 @media (prefers-reduced-motion:reduce) { .clear-celebrating .clear-mascot { animation: none; } }
+/* Pilot course (North Harbor → Sluice Works): small entry in the stage list, region cards with the 3:2 art above the
+   text, a compact next-region preview in results, and a region frame/tint while playing. Devices keep shared colours. */
+.home-details-body .pilot-link { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 12px; text-align: left; background: linear-gradient(120deg, #e3f5fa, #cfe8f0); border: 1px solid #a1d0dc; }
+.pilot-link b { font-size: 14px; font-weight: 700; color: #1d5e72; }
+.pilot-link span { font-size: 12px; color: #426574; }
+.card.pilot { max-height: 92dvh; overflow-y: auto; gap: 12px; }
+.card.pilot h3 { font-size: clamp(26px, 7.5vw, 32px); }
+.pilot-regions { display: grid; gap: 14px; text-align: left; }
+.pilot-region { display: grid; gap: 8px; padding: 10px; border: 2px solid #b4d9d7; border-radius: 18px; background: #f7fcf7; box-shadow: inset 0 2px #fff; }
+.pilot-region.locked { background: #eef3f1; }
+.region-art { aspect-ratio: 3 / 2; border-radius: 13px; overflow: hidden; background: linear-gradient(#c6ecf0, #8fcfe0); }
+.region-art img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.region-art.no-art { aspect-ratio: auto; min-height: 8px; }
+.pilot-region.locked .region-art img { filter: saturate(.55) brightness(.94); }
+.pilot-region-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pilot-region-head b { font: 22px/1.2 var(--font-display); color: #155b70; }
+.pilot-region-head span { font-size: 13px; color: #426574; white-space: nowrap; }
+.pilot-region p { margin: 0; font-size: 14px; line-height: 1.5; color: #304d50; }
+.pilot-region .levels { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pilot-region .lv { min-height: 76px; }
+.region-preview { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; gap: 10px; padding: 10px; border-radius: 15px; background: #e4f3f7; border: 1px solid #a5d3dc; text-align: left; }
+.region-preview.no-art { grid-template-columns: 1fr; }
+.region-preview img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; border-radius: 11px; object-fit: contain; background: #c6ecf0; }
+.region-preview small { display: block; font-size: 12px; color: #426574; font-weight: 700; }
+.region-preview b { display: block; font: 21px/1.25 var(--font-display); color: #155b70; }
+.region-preview span { display: block; font-size: 13px; line-height: 1.5; color: #304d50; }
+.board .frame::after { border-color: var(--board-frame, #7ccdd1); }
+.game-screen[data-region="sluice-works"] .topbar { background: #eef7fbcc; box-shadow: inset 0 -2px 0 #b9d6e3; }
+.game-screen[data-region="sluice-works"] .lvl-title .num { color: #2c6585; }

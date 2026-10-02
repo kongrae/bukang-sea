@@ -19,7 +19,7 @@ function scene(stored = {}, reduced = false) {
     ${engine}
     ${levels}
     const save = Object.assign({best:{},last:0,sessions:{dailyStages:{}},daily:{},owned:['basic'],skin:'basic',journal:{days:{}}},JSON.parse(JSON.stringify(stored)));
-    let written=null,DAILY=null,FREE=null,LVL=0,g,st,cleared=false,selectedChapter=null,loaded=null,dailyOpened=0,dailyContinued=0,sharkDraws=[];
+    let written=null,DAILY=null,FREE=null,PILOT=null,LVL=0,g,st,cleared=false,selectedChapter=null,loaded=null,dailyOpened=0,dailyContinued=0,sharkDraws=[];
     const noop=()=>{},performance={now:()=>1000},window={devicePixelRatio:1},C={water:'#164b60',sea:'#367e85',concrete:'#ddd5c2'};
     const currentSkin=()=>({id:save.skin}),drawShark=(...args)=>sharkDraws.push(args);
     const ctx=new Proxy({createLinearGradient:()=>({addColorStop:noop})},{get:(obj,key)=>obj[key]||noop});

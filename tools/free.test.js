@@ -24,7 +24,7 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     ${read('variety-reserves')}
     ${read('daily')}
     ${read('free')}
-    let written=stored,hook=null,FREE=null,DAILY=null,LVL=0,g,st,anim=null,cleared=false,deco=0;
+    let written=stored,hook=null,FREE=null,DAILY=null,PILOT=null,LVL=0,g,st,anim=null,cleared=false,deco=0;
     const elements=new Map(),noop=()=>{},localStorage={getItem:()=>written,setItem:(key,value)=>written=value};
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',innerHTML:'',inert:false,
       focus:noop,setAttribute:noop,querySelectorAll:()=>[],classList:{toggle:noop}});return elements.get(id);};

@@ -1,5 +1,5 @@
 /* ---------- Small, isolated device examples replayed with the real movement rules ---------- */
-const DEMO_ENGINE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats };
+const DEMO_ENGINE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, pressSwitch };
 const DEVICE_DEMOS = {
   move: { map: ['#######','#.....#','#S....#','#.....#','#######'], actions: [
     { dir: 'R', cue: '오른쪽으로 밀어요', text: '벽 앞까지 한 번에 헤엄쳐요' },
@@ -28,13 +28,17 @@ const DEVICE_DEMOS = {
   whirl: { map: ['#######','#...w.#','#.....#','#Sw...#','#######'], actions: [
     { dir: 'R', cue: '소용돌이 쪽으로 밀어요', text: '짝 소용돌이로 이동해 같은 방향으로 나와요' },
   ], summary: '짝으로 이동한 뒤에도 같은 방향으로 헤엄쳐요' },
+  gate: { map: ['#######','#...#.#','#S.pG.#','#...#.#','#######'], actions: [
+    { dir: 'R', cue: '스위치 쪽으로 밀어요', text: '닫힌 수문 앞, 스위치 위에서 멈춰요', gate: '멈추면 눌려서 연결된 수문이 열려요' },
+    { dir: 'R', cue: '한 번 더 밀어요', text: '열린 수문은 물길처럼 지나가요' },
+  ], summary: '스위치에서 멈춰야 눌리고, 누를 때마다 수문이 바뀌어요' },
 };
-function demoTurn(state) { return { pos: state.pos.slice(), dir: state.dir, boats: state.boats.map(b => b.slice()), nets: state.nets.slice(), moves: state.moves }; }
+function demoTurn(state) { return { pos: state.pos.slice(), dir: state.dir, boats: state.boats.map(b => b.slice()), nets: state.nets.slice(), moves: state.moves, gate: state.gate }; }
 function createDeviceDemo(key) {
   const definition = DEVICE_DEMOS[key];
   if (!definition) return null;
   const grid = DEMO_ENGINE.parseLevel(definition), phases = [];
-  let state = { pos: grid.start.slice(), dir: 'R', boats: grid.boats.map(b => b.slice()), nets: [], moves: 0 }, duration = 0;
+  let state = { pos: grid.start.slice(), dir: 'R', boats: grid.boats.map(b => b.slice()), nets: [], moves: 0, gate: 0 }, duration = 0;
   const add = (kind, seconds, text, from, to = from, extra = {}) => {
     phases.push({ kind, start: duration, duration: seconds, text, from: demoTurn(from), to: demoTurn(to), ...extra });
     duration += seconds;
@@ -50,12 +54,20 @@ function createDeviceDemo(key) {
     }
     state.dir = action.dir;
     add('cue', 0.5, action.cue, state, state, { dir: action.dir });
-    const result = DEMO_ENGINE.slide(grid, state.pos, action.dir, new Set(state.nets), state.boats);
+    const result = DEMO_ENGINE.slide(grid, state.pos, action.dir, new Set(state.nets), state.boats, state.gate);
     const next = { ...demoTurn(state), pos: result.end.slice(), dir: result.path.at(-1)[2], moves: state.moves + 1 };
     add('move', 1.15, action.text, state, next, { path: result.path });
     state = next;
     add('hold', 0.35, action.text, state);
-    const boats = DEMO_ENGINE.stepBoats(grid, state.boats, state.pos[1] * grid.w + state.pos[0], new Set(state.nets));
+    // Same order as a real turn: the stop presses a switch, its gates turn, then boats move.
+    const gate = DEMO_ENGINE.pressSwitch(grid, state.pos, state.gate);
+    if (gate !== state.gate) {
+      const pressed = { ...demoTurn(state), gate };
+      add('gate', 0.55, action.gate, state, pressed);
+      state = pressed;
+      add('hold', 0.45, action.gate, state);
+    }
+    const boats = DEMO_ENGINE.stepBoats(grid, state.boats, state.pos[1] * grid.w + state.pos[0], new Set(state.nets), state.gate);
     if (JSON.stringify(boats) !== JSON.stringify(state.boats)) {
       const nextBoat = { ...demoTurn(state), boats };
       add('boat', 0.55, action.boat, state, nextBoat);
@@ -87,6 +99,6 @@ function sampleDeviceDemo(demo, time) {
     return { x: start % demo.grid.w + (index % demo.grid.w - start % demo.grid.w) * f,
       y: Math.floor(start / demo.grid.w) + (Math.floor(index / demo.grid.w) - Math.floor(start / demo.grid.w)) * f, dir: heading };
   });
-  return { phase, progress, pos, dir, scale, boats, nets: state.nets, moves: state.moves, text: phase.text };
+  return { phase, progress, pos, dir, scale, boats, nets: state.nets, moves: state.moves, gate: state.gate, text: phase.text };
 }
 if (typeof module !== 'undefined') module.exports = { DEVICE_DEMOS, createDeviceDemo, sampleDeviceDemo };

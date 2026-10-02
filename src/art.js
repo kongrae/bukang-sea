@@ -36,3 +36,34 @@ const SHARK_ART = (() => {
   };
   return api;
 })();
+/* Sluice device states (SVG) and region cards (WebP). Optional like the shark art: every device has a drawn fallback
+   that still shows its real state, and a failed card image only hides the picture. */
+const BOARD_ART = (() => {
+  const images = {}, sprites = new Map();
+  const urls = { gateOpen: '@@ART_GATE_OPEN@@', gateClosed: '@@ART_GATE_CLOSED@@', switchOn: '@@ART_SWITCH_ON@@', switchOff: '@@ART_SWITCH_OFF@@' };
+  const api = {
+    onReady: () => {},
+    load() {
+      for (const [name, src] of Object.entries(urls)) {
+        const img = new Image();
+        img.onload = () => { images[name] = img; api.onReady(name); };
+        img.onerror = () => { images[name] = null; api.onReady(name); };
+        img.src = src;
+      }
+    },
+    // px: device pixels of one tile. Each size is rasterised once, so the frame loop only copies bitmaps.
+    get(name, px) {
+      const img = images[name];
+      if (!img || !img.naturalWidth) return null;
+      if (!px) return img;
+      const key = name + ':' + px;
+      if (!sprites.has(key)) {
+        const layer = document.createElement('canvas'); layer.width = layer.height = px;
+        layer.getContext('2d').drawImage(img, 0, 0, px, px); sprites.set(key, layer);
+      }
+      return sprites.get(key);
+    },
+  };
+  return api;
+})();
+const REGION_ART = { 'north-harbor': '@@ART_REGION_NORTH@@', 'sluice-works': '@@ART_REGION_SLUICE@@' };

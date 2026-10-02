@@ -11,13 +11,14 @@ test('every short demo uses legal taps and actual slide/boat outcomes without mu
     assert.ok(demo.duration >= 3 && demo.duration <= 8, `${key}: ${demo.duration}s`);
     for (const phase of demo.phases) {
       if (phase.kind === 'move') {
-        const r = E.slide(grid, phase.from.pos, phase.from.dir, new Set(phase.from.nets), phase.from.boats);
+        const r = E.slide(grid, phase.from.pos, phase.from.dir, new Set(phase.from.nets), phase.from.boats, phase.from.gate);
         assert.ok(r.path.length, key); assert.deepEqual(phase.path, r.path); assert.deepEqual(phase.to.pos, r.end);
         assert.equal(phase.to.moves, phase.from.moves + 1);
         assert.deepEqual(D.sampleDeviceDemo(demo, phase.start + phase.duration / 2).boats.map(b => [b.x,b.y]),
           phase.from.boats.map(b => [b[0] % grid.w,Math.floor(b[0] / grid.w)]), 'boats wait while shark moves');
       }
-      if (phase.kind === 'boat') assert.deepEqual(phase.to.boats, E.stepBoats(grid,phase.from.boats,phase.from.pos[1]*grid.w+phase.from.pos[0],new Set(phase.from.nets)));
+      if (phase.kind === 'boat') assert.deepEqual(phase.to.boats, E.stepBoats(grid,phase.from.boats,phase.from.pos[1]*grid.w+phase.from.pos[0],new Set(phase.from.nets),phase.from.gate));
+      if (phase.kind === 'gate') assert.equal(phase.to.gate, E.pressSwitch(grid,phase.from.pos,phase.from.gate),'only a stop on a switch turns the gates');
       if (phase.kind === 'tap') {
         const i = phase.tap[1] * grid.w + phase.tap[0];
         assert.equal(grid.cells[i], '.'); assert.notEqual(i,phase.from.pos[1]*grid.w+phase.from.pos[0]);
@@ -87,8 +88,8 @@ test('a mixed first encounter records only pages actually opened; skipped device
   scene.select(2);scene.close();assert.deepEqual(scene.state().seen,['buoy','boat','net','whirl']);
   scene.show(true);assert.deepEqual(scene.state().keys,['sand']);
 });
-test('reduced motion starts with a static example and only plays on request; title settings list all six devices', () => {
-  const scene=guide({reduced:true,title:true});scene.show();assert.equal(scene.state().keys.length,6);
+test('reduced motion starts with a static example and only plays on request; title settings list all seven devices', () => {
+  const scene=guide({reduced:true,title:true});scene.show();assert.equal(scene.state().keys.length,7);
   const still=scene.state().time;scene.step(1);assert.equal(scene.state().time,still);assert.equal(scene.state().playing,false);
   scene.select(5);assert.equal(scene.state().playing,false);scene.toggle();assert.equal(scene.state().time,0);scene.step(.5);assert.equal(scene.state().time,.5);
   scene.close();scene.step(1);assert.equal(scene.state().demo,null);

@@ -615,6 +615,7 @@ button:disabled:active { transform: none; }
       <summary><span><b>수로 골라 하기</b><small><span id="levelCount">수로 48곳</span><span id="starTotal">★ 0</span></small></span></summary>
       <div class="home-details-body">
         <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
+        <button class="journey-link pilot-link" id="pilotBtn" type="button"><b>새 물길 시험 코스</b><span>북항 → 수문 시설 ›</span></button>
         <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
         <div class="chapters" id="levelGrid"></div>
       </div>
@@ -706,6 +707,15 @@ button:disabled:active { transform: none; }
   </div>
 </div>
 
+<div class="overlay" id="pilotOverlay" hidden>
+  <div class="card pilot" id="pilotCard" role="dialog" aria-modal="true" aria-labelledby="pilotTitle">
+    <h3 id="pilotTitle" tabindex="-1">새 물길 시험 코스</h3>
+    <p class="sub" id="pilotSummary"></p>
+    <div class="pilot-regions" id="pilotRegions"></div>
+    <button class="btn primary" id="pilotDone" type="button">닫기</button>
+  </div>
+</div>
+
 <div class="overlay" id="journalOverlay" hidden>
   <div class="card journal" id="journalCard" role="dialog" aria-modal="true" aria-labelledby="journalTitle">
     <h3 id="journalTitle" tabindex="-1">구조일지</h3>
@@ -753,6 +763,7 @@ button:disabled:active { transform: none; }
     <div class="clear-body" id="clearBody">
       <div class="stars" id="clearStars"></div>
       <p class="clear-story" id="clearStory" hidden></p>
+      <div class="region-preview" id="clearRegion" hidden></div>
       <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
       <p class="clear-journal-stamp" id="clearJournalStamp" hidden></p>
       <ul class="checks" id="clearChecks"></ul>

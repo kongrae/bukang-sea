@@ -15,7 +15,7 @@ function invalidateScenes() { gameNeedsPaint = heroNeedsPaint = endingNeedsPaint
 const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
 
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
-const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
+const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
 const sheetExits = new Map(), sheetOrigins = new Map();
 function syncSheetInput() {
   $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
@@ -190,6 +190,7 @@ function continueStory() {
   cancelClearPresentation();
   if (FREE) { const difficulty = FREE.difficulty; openFree(); startFree(difficulty, true); }
   else if (DAILY) continueDaily();
+  else if (PILOT) continuePilot();
   else if (LVL === LEVELS.length - 1 && storyProgress().complete) openEnding('clear');
   else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1);
   else show('title');
@@ -357,6 +358,8 @@ const sfx = {
   exit: () => { noise(0.5, 0.2, 400, 2400, 0.6); tone(330, 0.3, 'sine', 0.05, 330); },
   warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
   sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
+  press: () => { tone(420, 0.06, 'square', 0.05); tone(300, 0.12, 'triangle', 0.08, -60, 0.05); },
+  gate: () => { noise(0.28, 0.1, 900, 260, 0.7, 'lowpass'); tone(180, 0.18, 'triangle', 0.06, 50, 0.06); },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
   star: k => tone([523, 659, 784][k], 0.2, 'triangle', 0.09),
   equip: () => { tone(660, 0.12, 'sine', 0.07); tone(880, 0.16, 'sine', 0.07, 0, 0.08); },
@@ -553,6 +556,23 @@ function drawPerson(ctx, px, py, T, seed) {
   ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
   if (seed > 0.45) { ctx.fillStyle = '#e9fbff'; ctx.fillRect(px + r * 0.6, py - r * 1.6, r * 0.8, r * 1.1); }
 }
+// Sluice works quay dressing (promenade tiles only, never water): a short blue pipe with a valve wheel, mooring bollards.
+function drawPipe(ctx, px, py, T, seed) {
+  const len = T * 0.72, w = T * 0.2;
+  ctx.save(); ctx.translate(px + T / 2, py + T / 2); if (Math.floor(seed * 100) % 2) ctx.rotate(Math.PI / 2);
+  ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(1, T * 0.025); ctx.strokeStyle = '#7ea3c2';
+  ctx.fillStyle = '#bfd8ee'; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-len / 2, -w / 2, len, w, w / 2); else ctx.rect(-len / 2, -w / 2, len, w); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#a3c4e0'; for (const k of [-0.3, 0.3]) { ctx.fillRect(len * k - T * 0.03, -w * 0.7, T * 0.06, w * 1.4); ctx.strokeRect(len * k - T * 0.03, -w * 0.7, T * 0.06, w * 1.4); }
+  ctx.strokeStyle = '#2d7184'; ctx.lineWidth = Math.max(1.2, T * 0.03); ctx.beginPath(); ctx.arc(0, 0, w * 0.7, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-w * 0.7, 0); ctx.lineTo(w * 0.7, 0); ctx.moveTo(0, -w * 0.7); ctx.lineTo(0, w * 0.7); ctx.stroke();
+  ctx.restore();
+}
+function drawBollard(ctx, x, y, T) {
+  ctx.fillStyle = 'rgba(9,63,87,.18)'; ctx.beginPath(); ctx.ellipse(x + T * 0.02, y + T * 0.04, T * 0.1, T * 0.07, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f8ffff'; ctx.strokeStyle = '#7da3b5'; ctx.lineWidth = Math.max(1, T * 0.02);
+  ctx.beginPath(); ctx.arc(x, y, T * 0.085, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#5f8fb4'; ctx.beginPath(); ctx.arc(x, y, T * 0.045, 0, 7); ctx.fill();
+}
 function drawExit(ctx, x, y, T, g, gx, gy, t) {
   const grad = ctx.createLinearGradient(x, y, x, y + T);
   grad.addColorStop(0, C.sea); grad.addColorStop(1, C.water);
@@ -600,6 +620,55 @@ function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
   }
   ctx.restore(); ctx.globalAlpha = 1;
 }
+// Sluice gate in a one-tile channel. Uses the provided art when it has loaded, otherwise simple piers and shutter shapes.
+// open: 0 = closed .. 1 = open; the shutter halves slide out of both piers. axis 'V' = water runs up/down (art as drawn),
+// 'H' rotates the drawing only (collision is the whole tile either way). A closed gate never renders as an open channel.
+// Device pixels of one tile for the cached SVG rasters (the canvas transform carries the display scale).
+const tilePixels = (ctx, T) => { const m = ctx.getTransform && ctx.getTransform(); return Math.max(8, Math.round(T * (m && m.a ? Math.hypot(m.a, m.b) : 1))); };
+function drawGate(ctx, x, y, T, open, axis = 'V', pulse = 0) {
+  const art = typeof BOARD_ART !== 'undefined' ? BOARD_ART : null, px = tilePixels(ctx, T);
+  const openImg = art && art.get('gateOpen', px), closedImg = art && art.get('gateClosed', px), shut = 1 - clamp01(open), h = T / 2;
+  ctx.save(); ctx.translate(x + h, y + h); if (axis === 'H') ctx.rotate(Math.PI / 2);
+  if (pulse) ctx.translate(Math.sin(pulse * Math.PI * 3) * T * 0.025, 0);
+  if (openImg && closedImg) {
+    ctx.drawImage(openImg, -h, -h, T, T);
+    if (shut > 0) {
+      const band = T * (37 + shut * 27) / 128;   // pier inner edge (37/128) to the centre (64/128)
+      ctx.save(); ctx.beginPath(); ctx.rect(-h, -h, band, T); ctx.rect(h - band, -h, band, T); ctx.clip();
+      ctx.drawImage(closedImg, -h, -h, T, T); ctx.restore();
+    }
+  } else {
+    const pier = (sx) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(sx, -T * 0.3, T * 0.19, T * 0.57, T * 0.08); else ctx.rect(sx, -T * 0.3, T * 0.19, T * 0.57); ctx.fill(); ctx.stroke(); };
+    ctx.fillStyle = '#fffdf5'; ctx.strokeStyle = '#235c6d'; ctx.lineWidth = Math.max(1.5, T * 0.035);
+    pier(-T * 0.41); pier(T * 0.22);
+    if (shut > 0) {
+      const reach = T * 0.2 * shut;
+      ctx.fillStyle = '#ff974c';
+      ctx.fillRect(-T * 0.22, -T * 0.16, reach + 1, T * 0.32); ctx.fillRect(T * 0.22 - reach - 1, -T * 0.16, reach + 1, T * 0.32);
+      if (shut >= 1) ctx.strokeRect(-T * 0.22, -T * 0.16, T * 0.44, T * 0.32);
+    }
+  }
+  ctx.restore();
+}
+// Switch: a raised orange button when off, a pressed mint button with a check when on (shape, not only colour, differs).
+function drawSwitch(ctx, x, y, T, on, press = 0) {
+  const art = typeof BOARD_ART !== 'undefined' ? BOARD_ART : null, img = art && art.get(on ? 'switchOn' : 'switchOff', tilePixels(ctx, T));
+  const s = 1 - 0.1 * Math.sin(clamp01(press) * Math.PI), cx = x + T / 2, cy = y + T / 2;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+  if (img) ctx.drawImage(img, -T / 2, -T / 2, T, T);
+  else {
+    ctx.fillStyle = '#fffdf5'; ctx.strokeStyle = '#235c6d'; ctx.lineWidth = Math.max(1.5, T * 0.03);
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-T * 0.36, -T * 0.35, T * 0.72, T * 0.71, T * 0.18); else ctx.rect(-T * 0.36, -T * 0.35, T * 0.72, T * 0.71); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = on ? '#4ac8b8' : '#ff974c';
+    ctx.beginPath(); ctx.arc(0, on ? T * 0.02 : -T * 0.05, T * (on ? 0.23 : 0.26), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = on ? '#136e69' : '#235c6d'; ctx.lineWidth = Math.max(2, T * 0.04); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    if (on) { ctx.moveTo(-T * 0.09, T * 0.27); ctx.lineTo(-T * 0.02, T * 0.32); ctx.lineTo(T * 0.1, T * 0.22); }
+    else { ctx.moveTo(-T * 0.08, T * 0.29); ctx.lineTo(T * 0.08, T * 0.29); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 // tileable light pattern for the water surface (computed once)
 const caustic = (() => {
   const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
@@ -626,12 +695,15 @@ const netPop = new Map(), jetFlash = new Map();
 const contactPulse = new Map(), netRetract = new Map();
 let hudLast = { moves: -1, fish: -1 };
 // DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
-let DAILY = null, FREE = null, STORY = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
-const curLevel = () => FREE ? FREE.level : DAILY ? DAILY.level : STORY || LEVELS[LVL];
+// PILOT = {index, level} for the separate North Harbor → Sluice Works course (src/pilot.js).
+let DAILY = null, FREE = null, STORY = null, PILOT = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
+const curLevel = () => FREE ? FREE.level : DAILY ? DAILY.level : PILOT ? PILOT.level : STORY || LEVELS[LVL];
 
 function freshState(level) {
   g = parseLevel(level);
-  return { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
+  const state = { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
+  if (g.switches.length) state.gate = 0;   // switch press parity; canals without switches keep the old turn shape
+  return state;
 }
 function netSet() { return new Set(st.nets); }
 function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
@@ -639,7 +711,9 @@ function fishMask() { let m = 0; st.fish.forEach(i => m |= 1 << i); return m; }
 // Resume only matching layouts and complete, structurally valid turns. Effects and pending input are not saved.
 function levelSignature(level) { return JSON.stringify([level.map, level.nets || 0]); }
 function copyTurn(s) {
-  return { pos: s.pos.slice(), dir: s.dir, fish: s.fish.slice(), nets: s.nets.slice(), boats: s.boats.map(b => b.slice()), moves: s.moves };
+  const copy = { pos: s.pos.slice(), dir: s.dir, fish: s.fish.slice(), nets: s.nets.slice(), boats: s.boats.map(b => b.slice()), moves: s.moves };
+  if (s.gate === 0 || s.gate === 1) copy.gate = s.gate;
+  return copy;
 }
 function restoreSession(record, level, id) {
   if (!record || record.version !== 1 || record.id !== id || record.layout !== levelSignature(level)) return null;
@@ -648,8 +722,10 @@ function restoreSession(record, level, id) {
   const valid = v => {
     if (!v || !Array.isArray(v.pos) || v.pos.length !== 2 || !v.pos.every(Number.isInteger) || !['U', 'D', 'L', 'R'].includes(v.dir)
       || !Number.isSafeInteger(v.moves) || v.moves < 0 || !ints(v.fish, grid.fish.length) || v.fish.some(i => i >= grid.fish.length)
-      || !ints(v.nets, grid.nets) || !Array.isArray(v.boats) || v.boats.length !== grid.boats.length) return false;
+      || !ints(v.nets, grid.nets) || !Array.isArray(v.boats) || v.boats.length !== grid.boats.length
+      || (grid.switches.length ? v.gate !== 0 && v.gate !== 1 : v.gate !== undefined && v.gate !== 0)) return false;
     const [x, y] = v.pos, index = y * grid.w + x;
+    if (grid.cells[index] === 'G' && !gateIsOpen(grid, index, v.gate)) return false;   // a boat may wait in a closing gate; the shark never
     const open = i => Number.isInteger(i) && i >= 0 && i < grid.cells.length && !['#', 'o', 'E'].includes(grid.cells[i]);
     if (x < 0 || x >= grid.w || y < 0 || y >= grid.h || !open(index)) return false;
     if (v.boats.some((b, k) => !Array.isArray(b) || b.length !== 2 || !open(b[0]) || b[0] === index
@@ -679,8 +755,8 @@ function checkpoint() {
   const state = Object.assign(copyTurn(st), { history: st.history.map(copyTurn) });
   // Position and boats commit at swipe time; include ALL fish on that path, even before their visual effects finish.
   if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
-  save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : 'story'] = {
-    version: 1, id: FREE ? freeId(FREE) : DAILY ? dailyStageId(DAILY) : LVL, layout: levelSignature(curLevel()), state };
+  save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : PILOT ? 'pilot' : 'story'] = {
+    version: 1, id: FREE ? freeId(FREE) : DAILY ? dailyStageId(DAILY) : PILOT ? PILOT.level.id : LVL, layout: levelSignature(curLevel()), state };
   if (DAILY && Number.isInteger(DAILY.stage)) {
     if (!save.sessions.dailyStages) save.sessions.dailyStages = {};
     save.sessions.dailyStages[DAILY.stage] = save.sessions.daily;
@@ -735,21 +811,26 @@ function splashAt(x, y, n, dir, force = 1) {
 }
 
 function loadLevel(i, keep, definition = null) {
-  DAILY = null; FREE = null; LVL = i; save.last = i; deco = i;
+  DAILY = null; FREE = null; PILOT = null; LVL = i; save.last = i; deco = i;
   STORY = definition || (keep ? storyLevel(i) : LEVELS[i]);
   const role = LEVEL_ROLES[STORY.role || 'regular'];
   enter(STORY, keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`);
 }
 function loadDaily(daily, keep) {
-  DAILY = daily; FREE = null; deco = dailySeed(dailyStageId(daily)) % 997;
+  DAILY = daily; FREE = null; PILOT = null; deco = dailySeed(dailyStageId(daily)) % 997;
   const label = Number.isInteger(daily.stage) ? `${+daily.date.slice(5, 7)}/${+daily.date.slice(8)} 구조작전 · ${daily.stage + 1} / 3 · ${daily.tier.label}` : '이전 수로 · 진행 이어하기';
   enter(daily.level, keep, label);
 }
 function loadFree(run, keep) {
-  FREE = run; DAILY = null; deco = run.seed % 997;
+  FREE = run; DAILY = null; PILOT = null; deco = run.seed % 997;
   enter(run.level, keep, `자유 수로 · ${FREE_TIERS[run.difficulty].label} · ${run.serial}번째`);
 }
-const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : loadLevel(LVL, null, STORY);
+function loadPilot(i, keep) {
+  const level = PILOT_LEVELS[i], region = PILOT_REGIONS.find(r => r.id === level.region);
+  PILOT = { index: i, level }; DAILY = null; FREE = null; deco = 701 + i;
+  enter(level, keep, `${region.name} · 시험 ${i + 1} / ${PILOT_LEVELS.length} · ${LEVEL_ROLES[level.role || 'regular'].label}`);
+}
+const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : PILOT ? loadPilot(PILOT.index) : loadLevel(LVL, null, STORY);
 function enter(level, keep, label) {
   cancelClearPresentation();
   hintRequest++;
@@ -758,6 +839,7 @@ function enter(level, keep, label) {
   anim = null; hint = null; cleared = false; clearPlayEffects();
   pop = reduceMotion ? null : { t: 0 }; queued = null;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
+  setBoardRegion(level.region);
   $('lvNum').textContent = label;
   $('lvName').textContent = level.name;
   setTip(level.tip);
@@ -773,11 +855,11 @@ function enter(level, keep, label) {
 // shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
 function setupCoach() {
   coach = null;
-  if (!DAILY && !FREE && LVL === 0 && !save.coachSwipe && !st.moves && !st.history.length) {
-    const p = plan(g, st.pos, 0, new Set(), 0, true);
+  if ((PILOT ? PILOT.index === 0 : !DAILY && !FREE && LVL === 0) && !save.coachSwipe && !st.moves && !st.history.length) {
+    const p = plan(g, st.pos, 0, new Set(), 0, true, st.boats, st.gate);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
-    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats);
+    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats, st.gate);
     if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
   }
 }
@@ -807,7 +889,7 @@ function updateHud() {
   $('undoBtn').disabled = !st.history.length;
 }
 function pushHistory() {
-  st.history.push({ pos: st.pos.slice(), dir: st.dir, fish: st.fish.slice(), nets: st.nets.slice(), boats: st.boats.map(b => b.slice()), moves: st.moves });
+  st.history.push(copyTurn(st));
   if (st.history.length > 200) st.history.shift();
 }
 
@@ -816,7 +898,7 @@ function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
   hintRequest++;
-  const r = slide(g, st.pos, d, netSet(), st.boats);
+  const r = turn(g, st.pos, d, netSet(), st.boats, st.gate);
   hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
   if (!r.path.length) {
     bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
@@ -838,11 +920,13 @@ function tryMove(d) {
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
   st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  const boatsFrom = st.boats;
-  if (!r.win) st.boats = stepBoats(g, st.boats, r.end[1] * g.w + r.end[0], netSet());
-  // Show the same turn order as the engine: shark swims, then boats move. Input stays queued until both finish.
+  const boatsFrom = st.boats, gateFrom = st.gate;
+  st.boats = r.boats; if (r.pressed) st.gate = r.gate;
+  // Show the same turn order as the engine: shark swims, a pressed switch turns the gates, then boats move.
+  // Input stays queued until every phase finishes.
+  const gateDur = r.pressed && !reduceMotion ? 0.2 : 0;
   const boatDur = !reduceMotion && !r.win && boatsFrom.some((b, k) => b[0] !== st.boats[k][0] || b[1] !== st.boats[k][1]) ? 0.16 : 0;
-  anim = { boatsFrom, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+  anim = { boatsFrom, gateFrom, pressed: r.pressed, gateDur, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   prepareSwim(anim);
   bump = null; settle = null; pop = null;
@@ -869,6 +953,11 @@ function landShark(a) {
   if (a.landed || a.win) return;
   a.landed = true;
   const [x, y] = a.pts[a.steps];
+  if (a.pressed) {   // stopping on a switch presses it; the linked gates turn right after (gate phase)
+    sfx.press(); haptic('medium'); ring(x, y, 0.9, 0.6);
+    if (!reduceMotion) { jetFlash.set(y * g.w + x, 1); g.gates.forEach(i => jetFlash.set(i, 1)); }
+    sfx.gate();
+  }
   if (cellAt(g, x, y) === 's') {
     settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
     if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
@@ -877,7 +966,7 @@ function landShark(a) {
   const d = a.dirs[a.steps], [dx, dy] = DIRS[d], index = (y + dy) * g.w + x + dx;
   const soft = cellAt(g, x + dx, y + dy) !== '#' && st.nets.includes(index), amp = Math.min(1, a.steps / 5) * (soft ? 0.5 : 1);
   settle = { t: 0, d, amp };
-  if (!reduceMotion && (soft || cellAt(g, x + dx, y + dy) === 'o')) contactPulse.set(index, { at: clock, amp });
+  if (!reduceMotion && (soft || ['o', 'G'].includes(cellAt(g, x + dx, y + dy)))) contactPulse.set(index, { at: clock, amp });
   ring(x + dx * 0.3, y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
   splashAt(x + dx * 0.45, y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
   sfx.stop(amp);
@@ -898,6 +987,7 @@ function undo() {
   hintRequest++;
   const h = st.history.pop();
   Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
+  if (h.gate === 0 || h.gate === 1) st.gate = h.gate;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
   cleared = false; hint = null; queued = null; clearPlayEffects(); pop = reduceMotion ? null : { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
@@ -907,6 +997,8 @@ function restart() { if (anim) return; replay(); haptic('light'); }
 
 function tapTile(gx, gy) {
   if (anim || cleared) return;
+  const device = cellAt(g, gx, gy);
+  if (device === 'p' || device === 'G') { setTip(device === 'p' ? '스위치는 상어가 그 위에서 멈춰야 눌려요.' : '수문은 스위치로 열고 닫아요. 닫힌 수문은 벽처럼 막아요.'); return; }
   if (!g.nets) { setTip('화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
   const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
@@ -932,7 +1024,7 @@ function tapTile(gx, gy) {
 const HINT_INSTANT = 2, HINT_COOLDOWN_MS = 12000;
 let hintSearching = 0;
 function hintUsageRecord() {
-  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL;
+  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : PILOT ? 'pilot:' + PILOT.level.id : 'story:' + LVL;
   const record = save.hintUsage[key];
   return record && Number.isSafeInteger(record.count) && record.count >= 0
     && Number.isSafeInteger(record.lastUsed) && record.lastUsed >= 0 ? record : { count: 0, lastUsed: 0 };
@@ -943,7 +1035,7 @@ function hintWait(now = Date.now()) {
   return Math.ceil(Math.max(0, record.lastUsed + HINT_COOLDOWN_MS - now) / 1000);
 }
 function recordHintUse() {
-  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : 'story:' + LVL, record = hintUsageRecord();
+  const key = FREE ? freeId(FREE) : DAILY ? 'daily:' + dailyStageId(DAILY) : PILOT ? 'pilot:' + PILOT.level.id : 'story:' + LVL, record = hintUsageRecord();
   save.hintUsage[key] = { count: Math.min(Number.MAX_SAFE_INTEGER, record.count + 1), lastUsed: Date.now() };
   const keys = Object.keys(save.hintUsage).filter(k => k.startsWith('daily:'));
   const days = [...new Set(keys.map(k => k.slice(6, 16)))].sort();
@@ -990,7 +1082,7 @@ async function showHint() {
     if (!current()) return;
     const ns = netSet(), left = g.nets - st.nets.length;
     const find = async needAll => {
-      const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats);
+      const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats, st.gate);
       while (current()) {
         const step = search.next();
         if (step.done) return step.value;
@@ -1035,13 +1127,13 @@ function clearLater(callback, delay, token, overlay = true) {
   clearTimers.add(timer);
 }
 function rewardSnapshot() {
-  const story = !DAILY && !FREE;
+  const story = !DAILY && !FREE && !PILOT;
   return { best: story ? save.best[LVL] || 0 : 0,
     stage: DAILY && Number.isInteger(DAILY.stage) ? dailyProgress(DAILY.date).stars[DAILY.stage] : 0,
     stamp: DAILY ? save.journal.days[DAILY.date] || 0 : 0 };
 }
 function collectRewardEvents(before, stars, skins, badges) {
-  const story = !DAILY && !FREE, stamp = DAILY ? save.journal.days[DAILY.date] || 0 : 0;
+  const story = !DAILY && !FREE && !PILOT, stamp = DAILY ? save.journal.days[DAILY.date] || 0 : 0;
   if (story && stars > before.best) { rewardPending.stars.add(LVL); pendingStoryCount = true; }
   if (story && !before.best && LVL + 1 < LEVELS.length) {
     rewardPending.levels.add(LVL + 1);
@@ -1117,7 +1209,7 @@ function onClear() {
   const token = clearPresentation, before = rewardSnapshot();
   const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
-  delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : 'story'];
+  delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : PILOT ? 'pilot' : 'story'];
   if (DAILY && Number.isInteger(DAILY.stage)) delete save.sessions.dailyStages[DAILY.stage];
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
@@ -1125,6 +1217,7 @@ function onClear() {
   const earned = [true, stars >= 2, stars === 3];
   if (FREE) recordFreeClear(FREE, stars);
   else if (DAILY) recordDailyStage(DAILY, stars);
+  else if (PILOT) recordPilotClear(PILOT.index, stars);   // separate course record: never story stars or skins
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
   const freshSkins = refreshSkins();
   const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
@@ -1137,15 +1230,21 @@ function onClear() {
   $('clearJournalStamp').hidden = !event.stamp;
   $('clearJournalStamp').textContent = event.stamp === 2 ? '✓ 오늘의 작전 완료 도장을 찍었어요!' : '● 오늘의 참여 도장을 찍었어요!';
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
-  const chap = chapterOf(LVL), chapterEnd = !DAILY && !FREE && LVL === chap.end, last = !DAILY && !FREE && LVL === LEVELS.length - 1;
-  const journey = !DAILY && !FREE && storyProgress(), rescueComplete = last && journey.complete;
+  const story = !DAILY && !FREE && !PILOT, chap = chapterOf(LVL), chapterEnd = story && LVL === chap.end, last = story && LVL === LEVELS.length - 1;
+  const journey = story && storyProgress(), rescueComplete = last && journey.complete;
   const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
-  $('clearStory').hidden = !milestone;
-  $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : '';
-  $('clearTitle').classList.toggle('story-title', !!milestone);
+  // Pilot: the North Harbor boundary previews the next region; the last canal closes the course. No forced intro sheet.
+  const regionEnd = PILOT && (PILOT.level.boundary || PILOT.level.finale) ? PILOT.level : null;
+  $('clearStory').hidden = !milestone && !regionEnd;
+  $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : regionEnd ? (regionEnd.finale ? '수문을 모두 지나 바깥 바다로 나갔어요! 시험 코스를 끝까지 구출했어요.'
+    : '북항을 지나왔어요! 다음은 스위치로 수문을 여닫는 수문 시설이에요.') : '';
+  $('clearRegion').hidden = !(regionEnd && regionEnd.boundary);
+  if (regionEnd && regionEnd.boundary) showRegionPreview($('clearRegion'), PILOT_LEVELS[PILOT.index + 1].region, '다음 지역');
+  $('clearTitle').classList.toggle('story-title', !!milestone || !!regionEnd);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
   $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
   $('clearTitle').textContent = FREE ? '자유 수로 구출 성공!' : DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
+    : PILOT ? (PILOT.level.finale ? '시험 코스 완료!' : PILOT.level.boundary ? '북항 통과!' : titles[stars - 1])
     : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
   const row = (label, val, ok, k = -1) => `<li${k >= 0 && earned[k] ? ` class="reward-check" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms"` : ''}><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
   $('clearChecks').innerHTML =
@@ -1154,13 +1253,14 @@ function onClear() {
     row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3, 2) +
     (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
     (FREE ? row(`${FREE_TIERS[FREE.difficulty].label} 수로`, `누적 ${save.free.completed[FREE.difficulty]}개 완료`, true) : '') +
+    (PILOT ? row('시험 코스', `${pilotProgress().count} / ${PILOT_LEVELS.length} 수로 완료`, true) : '') +
     (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
     (DAILY ? row('누적 기록', `참여 ${journalTotals().visits}일 · 작전 완료 ${journalTotals().operations}일`, true) : '') +
     (freshBadges.length ? `<li class="reward-badge"><span>새 기념 배지</span><span class="ok">${freshBadges.map(r => r.name).join(', ')}</span></li>` : '') +
     (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>` : '');
   $('operationStamp').hidden = !operation || progress.count !== 3;
   $('operationStamp').classList.toggle('reward-stamp', event.stamp === 2 && !reduceMotion);
-  $('nextBtn').textContent = FREE ? '새 수로' : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
+  $('nextBtn').textContent = FREE ? '새 수로' : PILOT ? (PILOT.level.finale ? '코스 목록' : PILOT.level.boundary ? '수문 시설로' : '다음 수로') : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
   clearReveal = (celebrate = true) => {
     clearReveal = null;
@@ -1596,14 +1696,28 @@ function buildSea() {
   }
 }
 const cellType = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h) ? (seaCells.has(x + ',' + y) ? '~' : '#') : cellAt(g, x, y);
+// Region surfaces for the board (water, sea, quay, seams, rails, plantings, frame). Story canals and North Harbor keep the
+// shared look. Devices, fish, nets and exits keep their colours in every region; decoration stays on promenade tiles.
+let boardSurface = null;
+function setBoardRegion(regionId) {
+  const region = typeof PILOT_REGIONS !== 'undefined' && regionId ? PILOT_REGIONS.find(r => r.id === regionId) : null, p = region && region.palette;
+  boardSurface = { water: p ? p.water : C.water, sea: p ? p.sea : C.sea, land: p ? p.land : ['#f8f8e8', '#dcebdc'], seam: p ? p.seam : C['concrete-2'],
+    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview: !!(PILOT && PILOT.level.boundary) };
+  frameEl.style.setProperty('--board-frame', p ? p.frame : '');
+  $('gameScreen').dataset.region = region ? region.id : '';
+}
 const isLand = (x, y) => cellType(x, y) === '#';
 function buildStatic() {
   buildSea();
   staticLayer = document.createElement('canvas');
   staticLayer.width = cvs.width; staticLayer.height = cvs.height;
   const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  const P = boardSurface || (setBoardRegion(null), boardSurface);
   const landPaint = s.createLinearGradient(0, -OY, CW, CH - OY);
-  landPaint.addColorStop(0, '#f8f8e8'); landPaint.addColorStop(1, '#dcebdc');
+  landPaint.addColorStop(0, P.land[0]); landPaint.addColorStop(1, P.land[1]);
+  // North Harbor's last canal previews the sluice works: pipes appear on the quay near its exit.
+  const exits = []; for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === 'E') exits.push([i % g.w, Math.floor(i / g.w)]);
+  const sluiceDecor = (x, y) => P.decor === 'sluice' || (P.preview && exits.some(([ex, ey]) => Math.abs(ex - x) + Math.abs(ey - y) <= 4));
   // every cell that is at least partly on screen
   const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
   waterPath = new Path2D();
@@ -1612,13 +1726,13 @@ function buildStatic() {
     if (c === '~') {
       // open sea: deepens with distance from the canal
       const d = Math.max(Math.abs(Math.min(x, g.w - 1 - x, 0)), Math.abs(Math.min(y, g.h - 1 - y, 0)));
-      s.fillStyle = C.sea; s.fillRect(px, py, T, T);
+      s.fillStyle = P.sea; s.fillRect(px, py, T, T);
       s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
       waterPath.rect(px, py, T, T); continue;
     }
-    if (c !== '#') { s.fillStyle = C.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
+    if (c !== '#') { s.fillStyle = P.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
     s.fillStyle = landPaint; s.fillRect(px, py, T, T);
-    s.strokeStyle = C['concrete-2']; s.lineWidth = 1; s.globalAlpha = 0.23;
+    s.strokeStyle = P.seam; s.lineWidth = 1; s.globalAlpha = 0.23;
     s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
     const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke(); s.globalAlpha = 1;
   }
@@ -1640,14 +1754,15 @@ function buildStatic() {
     const waterSides = nb.filter(([dx, dy]) => !isLand(x + dx, y + dy));
     if (!waterSides.length) {
       if (seed < (inside ? 0.25 : 0.16)) {
-        s.save(); s.globalAlpha = 0.6; s.fillStyle = C.park;
+        if (sluiceDecor(x, y)) { if (seed < (inside ? 0.13 : 0.08)) drawPipe(s, px, py, T, seed); continue; }   // pipes read heavier than shrubs
+        s.save(); s.globalAlpha = 0.6; s.fillStyle = P.park;
         s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill();
         s.fillStyle = 'rgba(255,255,255,.1)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); s.restore();
       }
       continue;
     }
     waterSides.forEach(([dx, dy], k) => {
-      s.strokeStyle = C.rail; s.lineWidth = Math.max(2.5, T * 0.065); s.lineCap = 'round';
+      s.strokeStyle = P.rail; s.lineWidth = Math.max(2.5, T * 0.065); s.lineCap = 'round';
       s.beginPath();
       if (dy === -1) { s.moveTo(px, py + 2); s.lineTo(px + T, py + 2); }
       if (dy === 1) { s.moveTo(px, py + T - 2); s.lineTo(px + T, py + T - 2); }
@@ -1662,7 +1777,7 @@ function buildStatic() {
         if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
         if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
         if (dy) qx = px + T * along; else qy = py + T * along;
-        s.save(); s.globalAlpha = 0.4; drawPerson(s, qx, qy, T, sd); s.restore();
+        s.save(); s.globalAlpha = 0.4; if (sluiceDecor(x, y)) { s.globalAlpha = 0.8; drawBollard(s, qx, qy, T); } else drawPerson(s, qx, qy, T, sd); s.restore();
       }
     });
   }
@@ -1765,7 +1880,7 @@ function step(dt) {
     if (swimming && a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
     if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
     if (a.t >= a.dur) landShark(a);
-    if (a.t >= a.dur + a.boatDur) finishAnim();
+    if (a.t >= a.dur + a.gateDur + a.boatDur) finishAnim();
   }
   let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
   view.ang = reduceMotion ? view.target : view.ang + da * (1 - Math.exp(-dt * 22));
@@ -1822,6 +1937,23 @@ function draw(t) {
     }
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
+  // Switches and gates keep the turn-start state while the shark swims. A press turns them in the gate phase; a gate
+  // a boat held open closes as that boat leaves (boat phase). Reduced motion shows the final state on arrival.
+  if (g.gates.length) {
+    const swimming = anim && anim.t < anim.dur, gate0 = anim ? anim.gateFrom : st.gate, boats0 = anim ? anim.boatsFrom : st.boats;
+    const span = (start, len) => !anim ? 1 : len > 0 ? clamp01((anim.t - start) / len) : anim.t >= start ? 1 : 0;
+    const pressK = anim && anim.pressed ? span(anim.dur, anim.gateDur) : 1;
+    g.switches.forEach(i => drawSwitch(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, (swimming ? gate0 : st.gate) === 1, reduceMotion || pressK >= 1 ? 0 : pressK));
+    g.gates.forEach(i => {
+      const held0 = boats0.some(b => b[0] === i), held1 = st.boats.some(b => b[0] === i);
+      const from = gateIsOpen(g, i, gate0) || held0 ? 1 : 0, to = gateIsOpen(g, i, st.gate) || held1 ? 1 : 0;
+      const k = from === to ? 1 : gateIsOpen(g, i, gate0) !== gateIsOpen(g, i, st.gate) && !held0
+        ? span(anim ? anim.dur : 0, anim ? anim.gateDur : 0) : span(anim ? anim.dur + anim.gateDur : 0, anim ? anim.boatDur : 0);
+      const eased = 1 - Math.pow(1 - k, 2), hit = contactPulse.get(i);
+      drawGate(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, swimming ? from : from + (to - from) * eased, gatePassage(g, i),
+        hit ? clamp01((clock - hit.at) / 0.32) : 0);
+    });
+  }
   // surface rings and the wake behind the shark
   for (const p of particles) if (p.kind === 'ring') {
     const k = 1 - p.life;
@@ -1842,11 +1974,12 @@ function draw(t) {
   }
   // Patrol boats remain on their old tile during the swim and glide only after the shark arrives.
   const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
-  const bk = anim ? (anim.t < anim.dur ? 0 : anim.boatDur ? 1 - Math.pow(1 - clamp01((anim.t - anim.dur) / anim.boatDur), 2) : 1) : 1;
+  const boatStart = anim ? anim.dur + anim.gateDur : 0;
+  const bk = anim ? (anim.t < boatStart ? 0 : anim.boatDur ? 1 - Math.pow(1 - clamp01((anim.t - boatStart) / anim.boatDur), 2) : 1) : 1;
   st.boats.forEach((b, k) => {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
     const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
-    const heading = anim && anim.t < anim.dur ? anim.boatsFrom[k][1] : b[1];
+    const heading = anim && anim.t < boatStart ? anim.boatsFrom[k][1] : b[1];
     drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim);
   });
   for (const [i, at] of netRetract) {
@@ -2027,6 +2160,91 @@ function drawHero(t) {
   hctx.restore();
 }
 
+/* ---------- pilot course: North Harbor → Sluice Works (separate records, stable ids) ---------- */
+// save.pilot = { version: 1, best: { p01: 1..3 } } and save.sessions.pilot. Never mixed with story stars, skins,
+// daily or free records; unknown ids and invalid stars are dropped without touching anything else.
+function pilotRecord() {
+  const record = save.pilot;
+  if (!record || record.version !== 1 || !record.best || typeof record.best !== 'object' || Array.isArray(record.best)) save.pilot = { version: 1, best: {} };
+  for (const [id, stars] of Object.entries(save.pilot.best)) {
+    if (!PILOT_LEVELS.some(l => l.id === id) || !Number.isInteger(stars) || stars < 1 || stars > 3) delete save.pilot.best[id];
+  }
+  return save.pilot;
+}
+const pilotStars = i => PILOT_LEVELS[i] ? pilotRecord().best[PILOT_LEVELS[i].id] || 0 : 0;
+const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;
+function pilotProgress() {
+  const stars = PILOT_LEVELS.map((_, i) => pilotStars(i));
+  return { stars, count: stars.filter(Boolean).length, total: stars.reduce((a, b) => a + b, 0) };
+}
+function recordPilotClear(i, stars) {
+  const level = PILOT_LEVELS[i];
+  if (!level || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
+  const record = pilotRecord();
+  record.best[level.id] = Math.max(record.best[level.id] || 0, stars); persist();
+}
+function pilotSession(i) {
+  const level = PILOT_LEVELS[i];
+  return level && pilotUnlocked(i) ? restoreSession(save.sessions.pilot, level, level.id) : null;
+}
+function pilotTarget() {
+  const id = save.sessions.pilot?.id, resume = PILOT_LEVELS.findIndex(l => l.id === id);
+  if (resume >= 0 && pilotSession(resume)) return resume;
+  const next = PILOT_LEVELS.findIndex((_, i) => !pilotStars(i));
+  return next >= 0 ? next : PILOT_LEVELS.length - 1;
+}
+const pilotOpen = () => !$('pilotOverlay').hidden;
+function renderPilotLink() {
+  const progress = pilotProgress();
+  $('pilotBtn').innerHTML = `<b>새 물길 시험 코스</b><span>북항 → 수문 시설 · ${progress.count} / ${PILOT_LEVELS.length} ›</span>`;
+  $('pilotBtn').setAttribute('aria-label', `새 물길 시험 코스, 북항에서 수문 시설까지, ${progress.count} / ${PILOT_LEVELS.length} 수로 구출`);
+}
+// Region pictures are introduction art only: never read them as playable tiles. A failed image just hides itself.
+function setRegionArt(img, regionId) {
+  img.onerror = () => { img.closest('.region-art, .region-preview')?.classList.add('no-art'); img.hidden = true; };
+  img.src = REGION_ART[regionId];
+}
+function showRegionPreview(el, regionId, label) {
+  const region = PILOT_REGIONS.find(r => r.id === regionId);
+  el.classList.remove('no-art');
+  el.innerHTML = `<img alt="" width="720" height="480"><div><small>${label}</small><b>${region.name}</b><span>${region.goal}</span></div>`;
+  setRegionArt(el.querySelector('img'), regionId);
+}
+function renderPilot() {
+  const progress = pilotProgress(), target = pilotTarget(), resumeId = pilotSession(target) ? PILOT_LEVELS[target].id : null;
+  $('pilotSummary').textContent = `${PILOT_LEVELS.length}개 수로 중 ${progress.count}개 구출 · ★ ${progress.total} / ${PILOT_LEVELS.length * 3}`;
+  $('pilotRegions').innerHTML = PILOT_REGIONS.map(region => {
+    const indices = PILOT_LEVELS.map((l, i) => l.region === region.id ? i : -1).filter(i => i >= 0);
+    const done = indices.filter(i => pilotStars(i)).length, open = pilotUnlocked(indices[0]);
+    return `<section class="pilot-region${open ? '' : ' locked'}" aria-label="${region.name}, ${done} / ${indices.length} 수로 구출">
+      <div class="region-art"><img alt="" width="720" height="480" data-region-art="${region.id}"></div>
+      <div class="pilot-region-head"><b>${region.name}</b><span>${done} / ${indices.length} 수로</span></div>
+      <p>${open ? region.goal : '북항의 마지막 수로를 통과하면 열려요.'}</p>
+      <div class="levels">${indices.map((i, k) => {
+        const level = PILOT_LEVELS[i], stars = pilotStars(i), ok = pilotUnlocked(i), resume = level.id === resumeId;
+        return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-pilot="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="시험 ${i + 1} ${level.name}${ok ? `, 별 ${stars}개${resume ? ', 이어하기' : ''}` : ', 잠김'}"><span class="n">${i + 1}</span><span class="nm">${ok ? level.name : '잠김'}</span><span class="st">${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></span></button>`;
+      }).join('')}</div></section>`;
+  }).join('');
+  $('pilotRegions').querySelectorAll('[data-region-art]').forEach(img => setRegionArt(img, img.dataset.regionArt));
+}
+function openPilot() {
+  if (!$('gameScreen').hidden) show('title');
+  renderPilot(); openSheet('pilotOverlay');
+  $('pilotCard').scrollTop = 0; $('pilotTitle').focus({ preventScroll: true });
+  const current = $('pilotRegions').querySelector('.lv.cur');
+  if (current && current.scrollIntoView) current.scrollIntoView({ block: 'nearest' });
+}
+function closePilot() { closeSheet('pilotOverlay', 'pilotBtn'); }
+function startPilot(i) {
+  if (!PILOT_LEVELS[i] || !pilotUnlocked(i)) return;
+  const keep = pilotSession(i);
+  closeSheet('pilotOverlay', null, false); show('game'); loadPilot(i, keep);
+}
+function continuePilot() {
+  const next = PILOT.index + 1;
+  if (next < PILOT_LEVELS.length && pilotUnlocked(next)) loadPilot(next, pilotSession(next)); else openPilot();
+}
+
 /* ---------- UI wiring ---------- */
 let selectedChapter = null;
 function renderLevelGrid(followProgress = false) {
@@ -2071,6 +2289,7 @@ function renderLegend() {
     ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
+    ['gate', '스위치·수문 · 멈추면 열고 닫아요'],
   ];
   $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
   $('legend').querySelectorAll('canvas').forEach(drawLegendIcon);
@@ -2086,6 +2305,7 @@ function drawLegendIcon(c) {
   if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
   if (k === 'sand') drawSand(x, 0, 0, S, 5);
   if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
+  if (k === 'gate') { drawGate(x, 0, 0, S * 0.62, 0); drawSwitch(x, S * 0.4, S * 0.38, S * 0.6, false); }
 }
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
@@ -2095,6 +2315,7 @@ const DEVICE_GUIDES = [
   { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
   { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
+  { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
 ];
 let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1;
 const guideOpen = () => !$('guideOverlay').hidden;
@@ -2167,6 +2388,11 @@ function drawDeviceDemo() {
     if (JET[cell]) drawJet(x, px, py, size, JET[cell], guideTime);
     if (cell === 's') drawSand(x, px, py, size, i);
     if (cell === 'w') drawWhirl(x, px + size / 2, py + size / 2, size, guideTime);
+    if (cell === 'p') drawSwitch(x, px, py, size, sample.gate === 1, phase.kind === 'gate' && !reduceMotion ? sample.progress : 0);
+    if (cell === 'G') {   // the gate phase turns the shutter between the two recorded engine states
+      const from = gateIsOpen(grid, i, phase.from.gate) ? 1 : 0, to = gateIsOpen(grid, i, phase.to.gate) ? 1 : 0;
+      drawGate(x, px, py, size, phase.kind === 'gate' ? from + (to - from) * sample.progress : to, gatePassage(grid, i));
+    }
   });
   // A fixed route remains available when automatic motion is disabled.
   if (reduceMotion && !guidePlaying) {
@@ -2209,7 +2435,7 @@ function show(which, animate = true) {
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
   resetHero();
-  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
+  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderPilotLink(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
@@ -2235,6 +2461,10 @@ $('endingDailyBtn').addEventListener('click', endingToDaily);
 $('endingOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEnding(); });
 $('dailyBtn').addEventListener('click', () => { ac(); openDaily(); });
 $('freeBtn').addEventListener('click', () => { ac(); openFree(); });
+$('pilotBtn').addEventListener('click', () => { ac(); openPilot(); });
+$('pilotDone').addEventListener('click', closePilot);
+$('pilotOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closePilot(); });
+$('pilotRegions').addEventListener('click', e => { const b = e.target.closest('[data-pilot]'); if (b && !b.disabled) { ac(); startPilot(+b.dataset.pilot); } });
 $('freeDone').addEventListener('click', closeFree);
 $('freeOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeFree(); });
 $('freeTiers').addEventListener('click', e => {
@@ -2325,6 +2555,7 @@ window.addEventListener('keydown', e => {
   if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
   if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
   if (freeOpen()) { if (e.key === 'Escape') closeFree(); return; }
+  if (pilotOpen()) { if (e.key === 'Escape') closePilot(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
@@ -2352,6 +2583,7 @@ if (capApp) capApp.addListener('backButton', () => {
   else if (journalOpen()) closeJournal();
   else if (dailyOpen()) closeDaily();
   else if (freeOpen()) closeFree();
+  else if (pilotOpen()) closePilot();
   else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();
@@ -2375,12 +2607,15 @@ function start(data) {
     const run = freeRecord(data.free.difficulty);
     if (run && freeId(run) === data.free.id) { openFree(); startFree(run.difficulty); }
   }
-  else if (data && !data.daily && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
+  else if (data && Number.isInteger(data.pilot) && data.screen === 'game' && PILOT_LEVELS[data.pilot] && pilotUnlocked(data.pilot)) {
+    show('game', false); requestAnimationFrame(() => loadPilot(data.pilot, pilotSession(data.pilot)));
+  }
+  else if (data && !data.daily && !Number.isInteger(data.pilot) && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
   else show('title', false);
   startFrames();
 }
 window.claude?.hot?.snapshot?.(() => { pauseGame(); return { screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
-  free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null,
+  free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null, pilot: PILOT ? PILOT.index : null,
   dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }; });
 const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 if (typeof SHARK_ART !== 'undefined') {
@@ -2393,6 +2628,10 @@ if (typeof SHARK_ART !== 'undefined') {
     });
   };
   SHARK_ART.load();
+}
+if (typeof BOARD_ART !== 'undefined') {
+  BOARD_ART.onReady = () => { invalidateScenes(); guidePaintTime = -1; if ($('legend').childElementCount) $('legend').querySelectorAll('canvas').forEach(drawLegendIcon); };
+  BOARD_ART.load();
 }
 $('clearMascot').addEventListener('error', e => { e.currentTarget.hidden = true; });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
