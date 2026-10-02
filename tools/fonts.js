@@ -15,7 +15,7 @@ const FAMILIES = [
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
 
 function usedChars() {
-  const text = ['shell.html', 'engine.js', 'levels.js', 'daily.js', 'free.js', 'device-demo.js', 'game.js'].map(f => fs.readFileSync(path.join(root, 'src', f), 'utf8')).join('');
+  const text = ['shell.html', 'engine.js', 'levels.js', 'variety.js', 'daily.js', 'free.js', 'device-demo.js', 'game.js'].map(f => fs.readFileSync(path.join(root, 'src', f), 'utf8')).join('');
   const set = new Set();
   for (let c = 0x20; c < 0x7f; c++) set.add(String.fromCharCode(c));   // all printable ASCII
   for (const ch of text) if (ch.codePointAt(0) > 0x7f && !/\s/.test(ch)) set.add(ch);

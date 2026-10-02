@@ -76,6 +76,8 @@ if (!save.free || save.free.version !== 1) save.free = { version: 1, runs: [], c
 if (!Array.isArray(save.free.runs)) save.free.runs = [];
 save.free.runs = save.free.runs.slice(0, 3);
 save.free.completed = [0, 1, 2].map(i => Number.isSafeInteger(save.free.completed?.[i]) && save.free.completed[i] >= 0 ? save.free.completed[i] : 0);
+save.free.recent = [0, 1, 2].map(i => Array.isArray(save.free.recent?.[i])
+  ? save.free.recent[i].filter(key => typeof key === 'string' && key.length <= 4096).slice(-6) : []);
 // Keep the previous single puzzle separately so starting an operation never overwrites it.
 if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
   save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
@@ -97,7 +99,7 @@ function normalizeJournal() {
     if (journalDateValid(date) && Number.isInteger(stars) && stars >= 1 && stars <= 3) days[date] = Math.max(days[date] || 0, 1);
   }
   for (const [date, record] of Object.entries(save.dailyOps)) {
-    if (!journalDateValid(date) || record?.version !== DAILY_OPERATION_VERSION || !Array.isArray(record.stars)) continue;
+    if (!journalDateValid(date) || ![1, DAILY_OPERATION_VERSION].includes(record?.version) || !Array.isArray(record.stars)) continue;
     const cleared = record.stars.slice(0, 3).filter(n => Number.isInteger(n) && n >= 1 && n <= 3).length;
     if (cleared) days[date] = Math.max(days[date] || 0, cleared === 3 ? 2 : 1);
   }
@@ -624,8 +626,8 @@ const netPop = new Map(), jetFlash = new Map();
 const contactPulse = new Map(), netRetract = new Map();
 let hudLast = { moves: -1, fish: -1 };
 // DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
-let DAILY = null, FREE = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
-const curLevel = () => FREE ? FREE.level : DAILY ? DAILY.level : LEVELS[LVL];
+let DAILY = null, FREE = null, STORY = null, deco = 0;   // Only one mode is active; each mode keeps its own saved turns.
+const curLevel = () => FREE ? FREE.level : DAILY ? DAILY.level : STORY || LEVELS[LVL];
 
 function freshState(level) {
   g = parseLevel(level);
@@ -659,8 +661,12 @@ function restoreSession(record, level, id) {
   if (!valid(s) || !Array.isArray(s.history) || s.history.length > 200 || s.history.some(h => !valid(h) || h.moves > s.moves)) return null;
   return Object.assign(copyTurn(s), { history: s.history.map(copyTurn) });
 }
+function storyLevel(i) {
+  const legacy = LEGACY_STORY_LEVELS[i], record = save.sessions.story;
+  return legacy && record?.id === i && record.layout === levelSignature(legacy) ? legacy : LEVELS[i];
+}
 function storySession(i = save.sessions.story?.id) {
-  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, LEVELS[i], i) : null;
+  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, storyLevel(i), i) : null;
 }
 function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
 function dailySessionRecord(daily) {
@@ -728,10 +734,11 @@ function splashAt(x, y, n, dir, force = 1) {
   }
 }
 
-function loadLevel(i, keep) {
+function loadLevel(i, keep, definition = null) {
   DAILY = null; FREE = null; LVL = i; save.last = i; deco = i;
-  const role = LEVEL_ROLES[LEVELS[i].role || 'regular'];
-  enter(LEVELS[i], keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${role.label}`);
+  STORY = definition || (keep ? storyLevel(i) : LEVELS[i]);
+  const role = LEVEL_ROLES[STORY.role || 'regular'];
+  enter(STORY, keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`);
 }
 function loadDaily(daily, keep) {
   DAILY = daily; FREE = null; deco = dailySeed(dailyStageId(daily)) % 997;
@@ -742,7 +749,7 @@ function loadFree(run, keep) {
   FREE = run; DAILY = null; deco = run.seed % 997;
   enter(run.level, keep, `자유 수로 · ${FREE_TIERS[run.difficulty].label} · ${run.serial}번째`);
 }
-const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : loadLevel(LVL);
+const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : loadLevel(LVL, null, STORY);
 function enter(level, keep, label) {
   cancelClearPresentation();
   hintRequest++;
@@ -1188,16 +1195,27 @@ function recordDaily(date, stars) {
 }
 function dailyProgress(date) {
   const record = save.dailyOps[date];
-  const stars = DAILY_STAGES.map((_, i) => record?.version === DAILY_OPERATION_VERSION && Number.isInteger(record.stars?.[i])
+  const stars = DAILY_STAGES.map((_, i) => [1, DAILY_OPERATION_VERSION].includes(record?.version) && Number.isInteger(record.stars?.[i])
     ? Math.max(0, Math.min(3, record.stars[i])) : 0);
   return { stars, count: stars.filter(Boolean).length, next: stars.findIndex(n => !n), total: stars.reduce((a, b) => a + b, 0) };
 }
+// A started date stays on its original generator, even before its first clear.
+function dailyOperationVersion(date) {
+  const record = save.dailyOps[date];
+  if ([1, DAILY_OPERATION_VERSION].includes(record?.version)) return record.version;
+  const packets = [save.sessions.daily, ...Object.values(save.sessions.dailyStages)];
+  for (const packet of packets) for (const version of [1, DAILY_OPERATION_VERSION]) {
+    if (DAILY_STAGES.some((_, stage) => packet?.id === dailyStageId({ date, stage, version }))) return version;
+  }
+  return DAILY_OPERATION_VERSION;
+}
 function recordDailyStage(daily, stars) {
   if (!journalDateValid(daily.date) || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
-  if (Number.isInteger(daily.stage) && daily.version === DAILY_OPERATION_VERSION && DAILY_STAGES[daily.stage]) {
+  if (Number.isInteger(daily.stage) && [1, DAILY_OPERATION_VERSION].includes(daily.version) && DAILY_STAGES[daily.stage]) {
+    if (save.dailyOps[daily.date] && save.dailyOps[daily.date].version !== daily.version) return;
     const progress = dailyProgress(daily.date);
     progress.stars[daily.stage] = Math.max(progress.stars[daily.stage], stars);
-    save.dailyOps[daily.date] = { version: DAILY_OPERATION_VERSION, stars: progress.stars };
+    save.dailyOps[daily.date] = { version: daily.version, stars: progress.stars };
     recordJournal(daily.date, progress.stars.every(n => n > 0));
     const days = Object.keys(save.dailyOps).sort();
     days.slice(0, Math.max(0, days.length - 120)).forEach(k => delete save.dailyOps[k]);
@@ -1215,9 +1233,9 @@ function dailyStreak() {
 let dailyRequest = 0, dailyCacheDate = '', shownDailyDate = '', dailyCache = new Map(), legacyDaily = null;
 const dailyOpen = () => !$('dailyOverlay').hidden;
 function savedDailyStage(date) {
-  const id = save.sessions.daily?.id;
-  const active = DAILY_STAGES.findIndex((_, stage) => id === dailyStageId({ date, stage, version: DAILY_OPERATION_VERSION }));
-  return active >= 0 ? active : DAILY_STAGES.findIndex((_, stage) => save.sessions.dailyStages[stage]?.id === dailyStageId({ date, stage, version: DAILY_OPERATION_VERSION }));
+  const id = save.sessions.daily?.id, version = dailyOperationVersion(date);
+  const active = DAILY_STAGES.findIndex((_, stage) => id === dailyStageId({ date, stage, version }));
+  return active >= 0 ? active : DAILY_STAGES.findIndex((_, stage) => save.sessions.dailyStages[stage]?.id === dailyStageId({ date, stage, version }));
 }
 function renderDaily() {
   const date = dailyDate(), progress = dailyProgress(date), streak = dailyStreak();
@@ -1236,15 +1254,15 @@ function renderDaily() {
   $('journalSummary').textContent = `참여 ${totals.visits}일 · 완료 ${totals.operations}일`;
 }
 function renderOperation() {
-  const date = dailyDate(), progress = dailyProgress(date);
+  const date = dailyDate(), progress = dailyProgress(date), version = dailyOperationVersion(date);
   shownDailyDate = date;
-  $('operationDate').textContent = `${dateLabel(date)} · ${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
+  $('operationDate').textContent = `${dateLabel(date)} · ${version === 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
   $('operationNote').textContent = progress.count === 3 ? '오늘의 작전을 마쳤어요! 별을 더 모으거나 내일 새 수로에 도전해요.'
     : save.daily[date] ? (progress.count ? '오늘 참여가 인정됐어요. 나머지 수로도 이어서 도전해요.' : '이전 수로의 참여 기록은 유지돼요. 새 작전에도 도전해 보세요.')
     : '한 수로만 완료해도 연속 기록이 이어져요.';
   $('dailyStages').innerHTML = DAILY_STAGES.map((tier, stage) => {
     const locked = progress.stars.slice(0, stage).some(n => !n), stars = progress.stars[stage];
-    const id = { date, stage, version: DAILY_OPERATION_VERSION }, packet = dailySessionRecord(id);
+    const id = { date, stage, version }, packet = dailySessionRecord(id);
     const resume = packet?.id === dailyStageId(id), moves = packet?.state?.moves;
     const state = resume && Number.isSafeInteger(moves) ? `${moves}회 진행 · 이어하기` : stars ? `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)} · 다시 도전`
       : locked ? '앞 수로를 완료하면 열려요' : '시작하기';
@@ -1269,7 +1287,7 @@ function closeDaily() {
   closeSheet('dailyOverlay', 'dailyBtn');
 }
 async function startDaily(stage) {
-  const date = dailyDate(), progress = dailyProgress(date);
+  const date = dailyDate(), progress = dailyProgress(date), version = dailyOperationVersion(date);
   if (date !== shownDailyDate) { renderDaily(); renderOperation(); $('operationStatus').textContent = '날짜가 바뀌어 새 작전이 열렸어요.'; return; }
   if (!DAILY_STAGES[stage] || progress.stars.slice(0, stage).some(n => !n)) return;
   const request = ++dailyRequest;
@@ -1279,10 +1297,10 @@ async function startDaily(stage) {
   try {
     await new Promise(resolve => setTimeout(resolve, 0));
     if (request !== dailyRequest) return;
-    if (dailyCacheDate !== date) { dailyCacheDate = date; dailyCache = new Map(); }
+    if (dailyCacheDate !== `${date}:v${version}`) { dailyCacheDate = `${date}:v${version}`; dailyCache = new Map(); }
     let daily = dailyCache.get(stage);
     if (!daily) {
-      const search = makeDailyStageSearch(date, stage);
+      const search = makeDailyStageSearch(date, stage, version);
       let step;
       do {
         if (request !== dailyRequest) return;
@@ -1445,7 +1463,7 @@ let freeRequest = 0;
 const freeCache = new Map(), freeOpen = () => !$('freeOverlay').hidden;
 function freeRecord(difficulty) {
   const run = save.free.runs[difficulty];
-  return run && run.version === FREE_VERSION && run.difficulty === difficulty
+  return run && [1, FREE_VERSION].includes(run.version) && run.difficulty === difficulty
     && Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
     && Number.isSafeInteger(run.serial) && run.serial > 0
     && Number.isInteger(run.stars) && run.stars >= 0 && run.stars <= 3
@@ -1499,8 +1517,8 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
     if (!run) {
       const serial = create ? (previous?.serial || 0) + 1 : previous.serial;
       if (!Number.isSafeInteger(serial)) throw new Error('free serial exhausted');
-      for (let attempt = 0; attempt < (create ? 5 : 1); attempt++) {
-        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty);
+      for (let attempt = 0; attempt < (create ? 12 : 1); attempt++) {
+        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version);
         let step;
         do {
           if (request !== freeRequest) return;
@@ -1511,6 +1529,8 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
         if (!step.value) throw new Error('free generation failed');
         const candidate = { ...step.value, serial }, layout = levelSignature(candidate.level);
         if (create && previous?.layout === layout) continue;
+        if (create && save.free.recent[difficulty].includes(varietyLayoutKey(candidate.level))) continue;
+        if (create && attempt < 8 && previous && (previous.family === candidate.level.family || previous.maskId === candidate.level.maskId)) continue;
         if (!create && previous.layout !== layout) throw new Error('free layout changed');
         run = candidate; break;
       }
@@ -1519,9 +1539,10 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
     if (!run) throw new Error('no different free layout');
     // Commit only a finished, distinct puzzle. Cancellation and failed searches preserve the previous turn.
     if (create) {
-      save.free.runs[difficulty] = { version: FREE_VERSION, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level) };
+      save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId };
+      save.free.recent[difficulty] = [...save.free.recent[difficulty], varietyLayoutKey(run.level)].slice(-6);
       delete save.sessions['free' + difficulty];
-      for (const key of Object.keys(save.hintUsage)) if (key.startsWith(`free:v${FREE_VERSION}:${difficulty}:`)) delete save.hintUsage[key];
+      for (const key of Object.keys(save.hintUsage)) if ([1, FREE_VERSION].some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
       if (previous) freeCache.delete(freeId(previous));
       persist();
     }
@@ -2032,7 +2053,7 @@ function renderLevelGrid(followProgress = false) {
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
-  $('journeyLabel').innerHTML = `<b>수로 ${target + 1} · ${LEVELS[target].name}</b>${resume ? `<span>${resume.moves}회 진행</span>` : ''}`;
+  $('journeyLabel').innerHTML = `<b>수로 ${target + 1} · ${(resume ? storyLevel(target) : LEVELS[target]).name}</b>${resume ? `<span>${resume.moves}회 진행</span>` : ''}`;
   $('playBtn').textContent = resume || Object.keys(save.best).length ? '이어서 구출!' : '구출 시작!';
   const progress = storyProgress();
   $('journeyBtn').textContent = `구출 여정 · ${progress.count} / ${LEVELS.length} 수로${progress.complete ? ' · 구출 성공' : ''} ›`;
@@ -2345,8 +2366,8 @@ function start(data) {
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
-    ? data.dailyVersion === DAILY_OPERATION_VERSION && makeDailyStage(data.daily, data.dailyStage) : makeDaily(data.daily));
-  const level = resumeDaily ? resumeDaily.level : data && LEVELS[data.lvl];
+    ? [1, DAILY_OPERATION_VERSION].includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion) : makeDaily(data.daily));
+  const level = resumeDaily ? resumeDaily.level : data && storyLevel(data.lvl);
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
   else if (data && data.free && data.screen === 'game') {

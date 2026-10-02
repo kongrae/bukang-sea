@@ -20,6 +20,8 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
   const functions = ['levelSignature','copyTurn','restoreSession','checkpoint','freshState','loadFree','onClear'].map(functionSource).join('\n');
   return new Function('stored','seeds', `
     ${read('engine')}
+    ${read('variety')}
+    ${read('variety-reserves')}
     ${read('daily')}
     ${read('free')}
     let written=stored,hook=null,FREE=null,DAILY=null,LVL=0,g,st,anim=null,cleared=false,deco=0;
@@ -111,9 +113,30 @@ test('real solutions clear the free mode, count each run once, retain best stars
   assert.deepEqual(game.save().journal.days,{});assert.equal(game.element('clearTitle').textContent,'자유 수로 구출 성공!');
   assert.equal(game.element('nextBtn').textContent,'새 수로');assert.equal(game.element('clearStory').hidden,true);
   game.replay();game.finish(1);assert.equal(game.save().free.completed[2],1);assert.equal(game.save().free.runs[2].stars,3);
-  const restored=scene(game.saved());restored.open();await restored.start(2,false,true);restored.finish(2);
+  const restored=scene(game.saved(),Array(12).fill(97));restored.open();await restored.start(2,false,true);restored.finish(2);
   assert.equal(restored.save().free.completed[2],1);
   restored.open();await restored.start(2,true);restored.finish(1);assert.equal(restored.save().free.completed[2],2);
+});
+
+test('a v1 run resumes its exact board and turns; requesting a new run upgrades only that difficulty', async () => {
+  const old=F.makeFree(42,0,1),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
+  const game=scene();game.generator(function*(){return old;});game.open();await game.start(0);game.move(plan.steps[0]);game.hint();
+  const reload=scene(game.saved(),Array(12).fill(97));reload.open();await reload.start(0);
+  assert.equal(reload.run().version,1);assert.deepEqual(reload.run().level.map,old.level.map);assert.deepEqual(reload.state(),game.state());
+  reload.open();await reload.start(0,true);assert.equal(reload.run().version,2);assert.equal(reload.run().serial,2);
+  assert.equal(reload.save().hintUsage[F.freeId(old)],undefined);
+});
+
+test('successive free requests avoid six recent boards and prefer a different idea, including after reload', async () => {
+  const V=require('../src/variety');let game=scene(null,Array.from({length:150},(_,i)=>i));const keys=[];
+  for(let i=0;i<18;i++) {
+    const previous=game.run();game.open();await game.start(0,true);const run=game.run();
+    assert.equal(run.serial,i+1,'new request must succeed');
+    const key=V.varietyLayoutKey(run.level);assert.ok(!keys.slice(-6).includes(key));keys.push(key);
+    if(previous)assert.notEqual(run.level.family,previous.level.family);
+    if(i===8)game=scene(game.saved(),Array.from({length:150},(_,j)=>j+100));
+  }
+  assert.equal(game.save().free.recent[0].length,6);
 });
 
 test('new puzzle is distinct, replaces only its difficulty and resets only that run hint allowance', async () => {

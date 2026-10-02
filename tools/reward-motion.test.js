@@ -14,6 +14,8 @@ function scene({ stored={}, reduced=false }={}) {
   return new Function('stored','reduceMotion','NativeDate',`
     ${read('engine')}
     ${read('levels')}
+    ${read('variety')}
+    ${read('variety-reserves')}
     ${read('daily')}
     const Date=class extends NativeDate{constructor(...args){super(...(args.length?args:['2026-10-01T12:00:00']));}};
     let written=null,now=0,sequence=0,DAILY=null,FREE=null,LVL=0,g,st,cleared=false,heroW=1;
@@ -67,7 +69,7 @@ function scene({ stored={}, reduced=false }={}) {
       pending:()=>({levels:[...rewardPending.levels],stars:[...rewardPending.stars],chapters:[...rewardPending.chapters],
         dates:[...rewardPending.stamps],badges:[...rewardPending.badges],skins:[...rewardPending.skins]}),
       openJournal,closeJournal,openSkins,selectSkin,closeSkins,step:stepRewardPreviews,apply:applyStoryRewards,
-      finish:(index,stars=3,daily=null)=>{LVL=index;DAILY=daily?makeDailyStage('2026-10-01',daily.stage):null;
+      finish:(index,stars=3,daily=null)=>{LVL=index;DAILY=daily?makeDailyStage('2026-10-01',daily.stage,dailyOperationVersion('2026-10-01')):null;
         g=parseLevel(curLevel());st={fish:stars>=2?g.fish.map((_,i)=>i):[],moves:curLevel().par+(stars===2?1:0)};
         $('clearOverlay').hidden=true;$('titleScreen').hidden=true;onClear();}
     };

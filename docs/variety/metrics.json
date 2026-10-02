@@ -1,0 +1,3322 @@
+{
+  "date": "2026-10-02",
+  "baseline": "e81f794",
+  "method": "Shapes normalize rotations/reflections of walls only, not dynamic equivalence. Routes are one shortest full-collection solution, not unique ideas.",
+  "sampling": {
+    "free": "seeds 0..89 per difficulty",
+    "daily": "2026-10-02..2026-10-29 per stage"
+  },
+  "before": {
+    "story": {
+      "samples": 48,
+      "uniqueShapes": 18,
+      "uniqueLayouts": 48,
+      "uniqueRoutes": 46,
+      "adjacentShapeRepeats": 5,
+      "adjacentLayoutRepeats": 0,
+      "fallback": 0,
+      "minimumMoves": {
+        "5": 3,
+        "6": 8,
+        "7": 7,
+        "8": 2,
+        "9": 4,
+        "10": 8,
+        "11": 4,
+        "12": 2,
+        "13": 2,
+        "14": 4,
+        "15": 1,
+        "16": 2,
+        "17": 1
+      },
+      "families": {
+        "null": 48
+      },
+      "generationMs": null
+    },
+    "free": [
+      {
+        "samples": 90,
+        "uniqueShapes": 3,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 24,
+        "adjacentShapeRepeats": 47,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "5": 10,
+          "6": 55,
+          "7": 25
+        },
+        "families": {
+          "null": 90
+        },
+        "generationMs": {
+          "median": 0.26,
+          "p95": 2.36,
+          "max": 6.72
+        }
+      },
+      {
+        "samples": 90,
+        "uniqueShapes": 4,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 82,
+        "adjacentShapeRepeats": 25,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "8": 19,
+          "9": 40,
+          "10": 31
+        },
+        "families": {
+          "null": 90
+        },
+        "generationMs": {
+          "median": 0.82,
+          "p95": 4.81,
+          "max": 7.18
+        }
+      },
+      {
+        "samples": 90,
+        "uniqueShapes": 4,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 90,
+        "adjacentShapeRepeats": 30,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 1,
+        "minimumMoves": {
+          "11": 30,
+          "12": 27,
+          "13": 18,
+          "14": 15
+        },
+        "families": {
+          "null": 90
+        },
+        "generationMs": {
+          "median": 10.02,
+          "p95": 99.97,
+          "max": 395.73
+        }
+      }
+    ],
+    "daily": [
+      {
+        "samples": 28,
+        "uniqueShapes": 2,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 14,
+        "adjacentShapeRepeats": 21,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "5": 4,
+          "6": 18,
+          "7": 6
+        },
+        "families": {
+          "null": 28
+        },
+        "generationMs": {
+          "median": 0.31,
+          "p95": 1.24,
+          "max": 2.24
+        }
+      },
+      {
+        "samples": 28,
+        "uniqueShapes": 4,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 27,
+        "adjacentShapeRepeats": 5,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "8": 10,
+          "9": 11,
+          "10": 7
+        },
+        "families": {
+          "null": 28
+        },
+        "generationMs": {
+          "median": 0.78,
+          "p95": 5.06,
+          "max": 8.54
+        }
+      },
+      {
+        "samples": 28,
+        "uniqueShapes": 4,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 28,
+        "adjacentShapeRepeats": 10,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "11": 5,
+          "12": 12,
+          "13": 3,
+          "14": 8
+        },
+        "families": {
+          "null": 28
+        },
+        "generationMs": {
+          "median": 13.58,
+          "p95": 142.49,
+          "max": 155.26
+        }
+      }
+    ]
+  },
+  "after": {
+    "story": {
+      "samples": 48,
+      "uniqueShapes": 29,
+      "uniqueLayouts": 48,
+      "uniqueRoutes": 47,
+      "adjacentShapeRepeats": 2,
+      "adjacentLayoutRepeats": 0,
+      "fallback": 0,
+      "minimumMoves": {
+        "5": 3,
+        "6": 6,
+        "7": 9,
+        "8": 4,
+        "9": 7,
+        "10": 5,
+        "11": 4,
+        "12": 3,
+        "13": 1,
+        "14": 3,
+        "15": 1,
+        "16": 1,
+        "17": 1
+      },
+      "families": {
+        "null": 48
+      },
+      "generationMs": null
+    },
+    "free": [
+      {
+        "samples": 90,
+        "uniqueShapes": 15,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 54,
+        "adjacentShapeRepeats": 6,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 1,
+        "minimumMoves": {
+          "4": 7,
+          "5": 4,
+          "6": 21,
+          "7": 25,
+          "8": 33
+        },
+        "families": {
+          "branches": 31,
+          "loop": 27,
+          "pockets": 32
+        },
+        "generationMs": {
+          "median": 0.76,
+          "p95": 2.63,
+          "max": 14.4
+        }
+      },
+      {
+        "samples": 90,
+        "uniqueShapes": 13,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 80,
+        "adjacentShapeRepeats": 5,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "6": 8,
+          "7": 15,
+          "8": 24,
+          "9": 20,
+          "10": 13,
+          "11": 10
+        },
+        "families": {
+          "current": 23,
+          "loop": 23,
+          "patrol": 22,
+          "sand": 22
+        },
+        "generationMs": {
+          "median": 0.45,
+          "p95": 8.61,
+          "max": 17
+        }
+      },
+      {
+        "samples": 90,
+        "uniqueShapes": 18,
+        "uniqueLayouts": 90,
+        "uniqueRoutes": 88,
+        "adjacentShapeRepeats": 7,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "8": 15,
+          "9": 15,
+          "10": 19,
+          "11": 12,
+          "12": 14,
+          "13": 10,
+          "14": 5
+        },
+        "families": {
+          "current": 20,
+          "net": 14,
+          "patrol": 22,
+          "sand": 16,
+          "warp": 18
+        },
+        "generationMs": {
+          "median": 1.01,
+          "p95": 13.36,
+          "max": 29.42
+        }
+      }
+    ],
+    "daily": [
+      {
+        "samples": 28,
+        "uniqueShapes": 9,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 15,
+        "adjacentShapeRepeats": 2,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "6": 15,
+          "7": 13
+        },
+        "families": {
+          "branches": 12,
+          "loop": 8,
+          "pockets": 8
+        },
+        "generationMs": {
+          "median": 1.2,
+          "p95": 3.6,
+          "max": 4.01
+        }
+      },
+      {
+        "samples": 28,
+        "uniqueShapes": 10,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 27,
+        "adjacentShapeRepeats": 1,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 0,
+        "minimumMoves": {
+          "8": 11,
+          "9": 6,
+          "10": 11
+        },
+        "families": {
+          "current": 8,
+          "loop": 4,
+          "patrol": 8,
+          "sand": 8
+        },
+        "generationMs": {
+          "median": 1.61,
+          "p95": 11.16,
+          "max": 39.99
+        }
+      },
+      {
+        "samples": 28,
+        "uniqueShapes": 10,
+        "uniqueLayouts": 28,
+        "uniqueRoutes": 28,
+        "adjacentShapeRepeats": 0,
+        "adjacentLayoutRepeats": 0,
+        "fallback": 2,
+        "minimumMoves": {
+          "11": 16,
+          "12": 4,
+          "13": 3,
+          "14": 5
+        },
+        "families": {
+          "net": 12,
+          "patrol": 4,
+          "warp": 12
+        },
+        "generationMs": {
+          "median": 22.75,
+          "p95": 229.8,
+          "max": 238.36
+        }
+      }
+    ]
+  },
+  "storyBefore": [
+    {
+      "stage": 1,
+      "name": "첫 굽이",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "5a2cd073bd75e16f",
+      "layout": "b5a9d38f24141330",
+      "size": "7x7",
+      "counts": {},
+      "nets": 0,
+      "full": 6,
+      "escape": 6,
+      "detour": 0,
+      "route": "RULURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": []
+    },
+    {
+      "stage": 2,
+      "name": "휘어진 수로",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "74adba3dddc549eb",
+      "layout": "888d1249aa0e5952",
+      "size": "7x9",
+      "counts": {
+        "o": 2
+      },
+      "nets": 0,
+      "full": 5,
+      "escape": 5,
+      "detour": 0,
+      "route": "ULURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": []
+    },
+    {
+      "stage": 3,
+      "name": "숭어 한 마리",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "b84afa48c2e73495",
+      "size": "7x10",
+      "counts": {
+        "o": 3,
+        "f": 1
+      },
+      "nets": 0,
+      "full": 5,
+      "escape": 3,
+      "detour": 2,
+      "route": "URULU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "S자 물길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "f44b8c832f0264d9",
+      "layout": "f206525a33114f72",
+      "size": "7x10",
+      "counts": {
+        "f": 2,
+        "o": 3
+      },
+      "nets": 0,
+      "full": 6,
+      "escape": 5,
+      "detour": 1,
+      "route": "URDURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 5,
+      "name": "친수공원 한복판",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "e1f40fd0da5bfcf9",
+      "size": "7x11",
+      "counts": {
+        "o": 4,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URDLURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 6,
+      "name": "구조정 등장",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "d149b94006798f3c",
+      "layout": "bc34301a79eb0f28",
+      "size": "7x9",
+      "counts": {
+        "o": 3,
+        "f": 2,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "ULURULU",
+      "used": [
+        "boat"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 7,
+      "name": "물대포",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "bca724521aa7b09b",
+      "size": "7x10",
+      "counts": {
+        "f": 1,
+        "o": 3,
+        "<": 1,
+        ">": 1
+      },
+      "nets": 0,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "UDRULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 8,
+      "name": "물줄기 미로",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "f44b8c832f0264d9",
+      "layout": "455edc8a8e517345",
+      "size": "7x10",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        "<": 1,
+        "^": 1,
+        ">": 1
+      },
+      "nets": 0,
+      "full": 8,
+      "escape": 4,
+      "detour": 4,
+      "route": "UDRULURU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 9,
+      "name": "소방정 총출동",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "88134d2a367d7778",
+      "size": "7x11",
+      "counts": {
+        "^": 1,
+        "o": 4,
+        "f": 3,
+        "<": 1,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 2,
+      "detour": 8,
+      "route": "URUDLDRULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "stage": 10,
+      "name": "그물 작전",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "74adba3dddc549eb",
+      "layout": "6496672a1c241b75",
+      "size": "7x9",
+      "counts": {
+        "f": 1,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 5,
+      "escape": 3,
+      "detour": 2,
+      "route": "ULDRU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 1,
+      "netPlacements": 1,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 11,
+      "name": "그물과 물줄기",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "478f608e3af4717a",
+      "size": "7x10",
+      "counts": {
+        "f": 2,
+        "o": 2,
+        "<": 1,
+        "^": 1
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "UULULU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 12,
+      "name": "바다로 가는 길",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "31200653a638c185",
+      "size": "7x11",
+      "counts": {
+        "o": 2,
+        "f": 3,
+        "b": 2,
+        ">": 1,
+        "v": 1
+      },
+      "nets": 2,
+      "full": 9,
+      "escape": 5,
+      "detour": 4,
+      "route": "ULURDLULU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 4,
+      "netPlacements": 3,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 13,
+      "name": "작은 순환로",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "5e83abc44fe2a099",
+      "layout": "e8c3d699c2e9c7d2",
+      "size": "7x8",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 3,
+      "detour": 4,
+      "route": "URDLURU",
+      "used": [],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 14,
+      "name": "옆문 출구",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "217693a671d08943",
+      "layout": "1c77123682e51d63",
+      "size": "7x9",
+      "counts": {
+        "o": 3,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 8,
+      "escape": 2,
+      "detour": 6,
+      "route": "ULURDRUR",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 15,
+      "name": "회오리 물길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "5e83abc44fe2a099",
+      "layout": "2d9fdc8e5bacc944",
+      "size": "7x8",
+      "counts": {
+        "o": 1,
+        "f": 2,
+        "^": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 2,
+      "detour": 7,
+      "route": "ULDDRULDR",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 16,
+      "name": "구조정 두 척",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "a20e710138058e33",
+      "layout": "e3f2c0f6b8925df3",
+      "size": "7x11",
+      "counts": {
+        "f": 2,
+        "v": 1,
+        "b": 2,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 7,
+      "detour": 2,
+      "route": "UDURLRURU",
+      "used": [
+        "boat"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 17,
+      "name": "분수 광장",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "ab2eb3e347cb21f2",
+      "size": "7x11",
+      "counts": {
+        "o": 2,
+        ">": 2,
+        "f": 3,
+        "^": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 2,
+      "detour": 8,
+      "route": "ULDRRDLURU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 18,
+      "name": "화단 옆 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2c8b943792177720",
+      "layout": "9caa3066af15eb57",
+      "size": "7x10",
+      "counts": {
+        "f": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 5,
+      "detour": 1,
+      "route": "URULRU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 1,
+      "netPlacements": 1,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 19,
+      "name": "지그재그",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "a20e710138058e33",
+      "layout": "1412db4e53d688e4",
+      "size": "7x11",
+      "counts": {
+        "v": 1,
+        "o": 2,
+        "f": 3,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 5,
+      "detour": 5,
+      "route": "URDRLURURU",
+      "used": [],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 20,
+      "name": "옆문과 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "217693a671d08943",
+      "layout": "226d0e36760f488d",
+      "size": "7x9",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        ">": 1
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "ULRDUR",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 21,
+      "name": "갈림길",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "e9ef3aad4bac0895",
+      "layout": "ce7e693791b451cb",
+      "size": "8x9",
+      "counts": {
+        "o": 2,
+        "<": 1,
+        "f": 3,
+        ">": 1
+      },
+      "nets": 0,
+      "full": 12,
+      "escape": 5,
+      "detour": 7,
+      "route": "UUULDLDRUULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 4,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "stage": 22,
+      "name": "화단 섬",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2c8b943792177720",
+      "layout": "3f97aa72aae0ed11",
+      "size": "7x10",
+      "counts": {
+        "v": 1,
+        "f": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URULURU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 23,
+      "name": "숭어 떼",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "8d0a27c8a7851e7f",
+      "size": "7x11",
+      "counts": {
+        "f": 3,
+        "^": 1,
+        "o": 2,
+        "B": 1,
+        ">": 1,
+        "b": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 13,
+      "escape": 2,
+      "detour": 11,
+      "route": "URULUDDLUURRU",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 24,
+      "name": "운하의 끝",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "e9ef3aad4bac0895",
+      "layout": "8e3537b45761b7b3",
+      "size": "8x9",
+      "counts": {
+        "f": 3,
+        "o": 4
+      },
+      "nets": 2,
+      "full": 10,
+      "escape": 7,
+      "detour": 3,
+      "route": "URURULDURU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 25,
+      "name": "뱃길 물살",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "6d542f12de3b3d26",
+      "size": "9x11",
+      "counts": {
+        "^": 2,
+        "f": 2,
+        ">": 1,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 5,
+      "detour": 5,
+      "route": "ULDLRULLUR",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 26,
+      "name": "석호의 숭어",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "6468264e4ea818a3",
+      "size": "9x10",
+      "counts": {
+        "o": 2,
+        ">": 1,
+        "v": 1,
+        "f": 3
+      },
+      "nets": 0,
+      "full": 11,
+      "escape": 3,
+      "detour": 8,
+      "route": "URDLDLRDRUU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "stage": 27,
+      "name": "거센 물살",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "1733ad96f2dfeb37",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        "o": 3,
+        ">": 1,
+        "v": 1,
+        "b": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 5,
+      "detour": 9,
+      "route": "ULUDLRLUDRURUL",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 28,
+      "name": "잔잔한 석호",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "c67bfc364f1896e4",
+      "size": "9x10",
+      "counts": {
+        ">": 1,
+        "v": 1,
+        "o": 3,
+        "f": 3
+      },
+      "nets": 0,
+      "full": 13,
+      "escape": 3,
+      "detour": 10,
+      "route": "URDLDRULDLURU",
+      "used": [],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 29,
+      "name": "구조정 호위",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "1fdd716f1d6e5d68",
+      "size": "9x11",
+      "counts": {
+        "b": 2,
+        ">": 1,
+        "f": 3,
+        "o": 2,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 17,
+      "escape": 6,
+      "detour": 11,
+      "route": "UURDLULUDURDULLLU",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 4,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 30,
+      "name": "방파제 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "c2b89c115c1c186e",
+      "size": "8x12",
+      "counts": {
+        "o": 2,
+        "f": 2
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 6,
+      "detour": 0,
+      "route": "ULURUL",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 31,
+      "name": "파도 너머",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "76e93ae71545c844",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        ">": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 6,
+      "detour": 1,
+      "route": "ULURUUL",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 32,
+      "name": "방파제 길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "dcd59bc3e9d60447",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        ">": 1,
+        "o": 2,
+        "b": 1,
+        "^": 1,
+        "B": 1,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 5,
+      "detour": 9,
+      "route": "ULDLRDUDRULRUL",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 33,
+      "name": "등대 아래",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "3ef86721f0c130ee",
+      "size": "9x10",
+      "counts": {
+        "<": 1,
+        "f": 3,
+        "o": 3
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URULDRU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 34,
+      "name": "석호의 밤",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "f5a0d61f7262219d",
+      "size": "9x10",
+      "counts": {
+        "v": 1,
+        "f": 3,
+        "o": 4,
+        "^": 1
+      },
+      "nets": 1,
+      "full": 10,
+      "escape": 5,
+      "detour": 5,
+      "route": "URLURULRRU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 35,
+      "name": "두 겹 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "45af5fbb9a5d886a",
+      "size": "9x11",
+      "counts": {
+        "f": 2,
+        "o": 2,
+        "v": 1
+      },
+      "nets": 2,
+      "full": 6,
+      "escape": 5,
+      "detour": 1,
+      "route": "URULRU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 36,
+      "name": "넓은 바다로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "e24a9c642fdfbdd7",
+      "size": "9x11",
+      "counts": {
+        "o": 4,
+        "f": 3,
+        ">": 2
+      },
+      "nets": 2,
+      "full": 11,
+      "escape": 6,
+      "detour": 5,
+      "route": "URUDLUURDLU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 37,
+      "name": "모래톱",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "b32b6b990238c24b",
+      "size": "9x10",
+      "counts": {
+        "f": 1,
+        "s": 3,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 3,
+      "detour": 4,
+      "route": "ULUDRUU",
+      "used": [
+        "sand"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 38,
+      "name": "모래 징검다리",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "7f70cba757a1844f",
+      "size": "9x10",
+      "counts": {
+        "o": 2,
+        "s": 4,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 2,
+      "detour": 8,
+      "route": "URDLDULDRU",
+      "used": [
+        "sand"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 39,
+      "name": "삼각주",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "6b665282dc914a23",
+      "layout": "0e171190d912d5c1",
+      "size": "9x10",
+      "counts": {
+        "f": 2,
+        "s": 3,
+        "v": 1,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 7,
+      "detour": 7,
+      "route": "ULUULRULULDRLU",
+      "used": [
+        "jet",
+        "sand"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 40,
+      "name": "소용돌이",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "e7628ac21731a81c",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "o": 1,
+        "f": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 3,
+      "detour": 7,
+      "route": "URDLRDLULU",
+      "used": [
+        "warp"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 41,
+      "name": "빙글빙글 모래섬",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "98d55f4802f33f6a",
+      "size": "9x10",
+      "counts": {
+        "s": 2,
+        "v": 1,
+        "f": 2,
+        "w": 2
+      },
+      "nets": 0,
+      "full": 11,
+      "escape": 4,
+      "detour": 7,
+      "route": "URRURDLLRUU",
+      "used": [
+        "jet",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 42,
+      "name": "쌍둥이 물길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "069e313c7afebadc",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "f": 2,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 15,
+      "escape": 9,
+      "detour": 6,
+      "route": "URDRULURULDRULU",
+      "used": [
+        "warp"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 43,
+      "name": "해자",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "bcb0d991e31cd61b",
+      "layout": "931f91862a5f68f6",
+      "size": "9x10",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        "s": 1,
+        "w": 2
+      },
+      "nets": 0,
+      "full": 16,
+      "escape": 7,
+      "detour": 9,
+      "route": "URDLURDRDULDLURU",
+      "used": [],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 44,
+      "name": "물살 건너기",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "fc29db781cf0a402",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "s": 2,
+        "f": 3,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 16,
+      "escape": 8,
+      "detour": 8,
+      "route": "URDDLULDRRUDLULU",
+      "used": [
+        "jet",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 45,
+      "name": "모래 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "6b665282dc914a23",
+      "layout": "0963801c06a9fd54",
+      "size": "9x10",
+      "counts": {
+        "f": 2,
+        "s": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 9,
+      "escape": 7,
+      "detour": 2,
+      "route": "ULURULDLU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 4,
+      "netPlacements": 4,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 46,
+      "name": "소용돌이 광장",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "8ef3205b031516e6",
+      "size": "9x10",
+      "counts": {
+        "s": 3,
+        ">": 1,
+        "f": 3,
+        "<": 1,
+        "w": 2,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 2,
+      "detour": 12,
+      "route": "ULDRLUDLURLRUU",
+      "used": [
+        "jet",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 4,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "stage": 47,
+      "name": "성곽 수로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "bcb0d991e31cd61b",
+      "layout": "9adfa911d7499ad1",
+      "size": "9x10",
+      "counts": {
+        "w": 2,
+        "f": 2,
+        "s": 1,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 11,
+      "escape": 7,
+      "detour": 4,
+      "route": "ULUDRURLULU",
+      "used": [
+        "net",
+        "warp"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 48,
+      "name": "먼바다로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "330a2b4e1b088be3",
+      "size": "9x9",
+      "counts": {
+        "f": 4,
+        "o": 2,
+        "w": 2,
+        "s": 2,
+        "^": 1,
+        "v": 1
+      },
+      "nets": 1,
+      "full": 12,
+      "escape": 6,
+      "detour": 6,
+      "route": "URLDDLRUDULU",
+      "used": [
+        "jet",
+        "net",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 5,
+      "netPlacements": 5,
+      "fishOrder": [
+        3,
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "storyAfter": [
+    {
+      "stage": 1,
+      "name": "첫 굽이",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "5a2cd073bd75e16f",
+      "layout": "b5a9d38f24141330",
+      "size": "7x7",
+      "counts": {},
+      "nets": 0,
+      "full": 6,
+      "escape": 6,
+      "detour": 0,
+      "route": "RULURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": []
+    },
+    {
+      "stage": 2,
+      "name": "휘어진 수로",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "74adba3dddc549eb",
+      "layout": "888d1249aa0e5952",
+      "size": "7x9",
+      "counts": {
+        "o": 2
+      },
+      "nets": 0,
+      "full": 5,
+      "escape": 5,
+      "detour": 0,
+      "route": "ULURU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": []
+    },
+    {
+      "stage": 3,
+      "name": "숭어 한 마리",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "b84afa48c2e73495",
+      "size": "7x10",
+      "counts": {
+        "o": 3,
+        "f": 1
+      },
+      "nets": 0,
+      "full": 5,
+      "escape": 3,
+      "detour": 2,
+      "route": "URULU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "두 방의 숭어",
+      "role": "regular",
+      "idea": "두 방의 수집 순서",
+      "family": null,
+      "shape": "baa823e3bd5e80fa",
+      "layout": "9e2306aa9078f3c8",
+      "size": "9x9",
+      "counts": {
+        "f": 2,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 6,
+      "escape": 5,
+      "detour": 1,
+      "route": "URDRDU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 5,
+      "name": "네 갈래 광장",
+      "role": "regular",
+      "idea": "양쪽 가지 먼저 둘러보기",
+      "family": null,
+      "shape": "895d7430b8f076dd",
+      "layout": "3d17913bf79788c9",
+      "size": "9x9",
+      "counts": {
+        "o": 2,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 8,
+      "escape": 7,
+      "detour": 1,
+      "route": "ULULRULU",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 6,
+      "name": "구조정 등장",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "d149b94006798f3c",
+      "layout": "bc34301a79eb0f28",
+      "size": "7x9",
+      "counts": {
+        "o": 3,
+        "f": 2,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "ULURULU",
+      "used": [
+        "boat"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 7,
+      "name": "물대포",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "bca724521aa7b09b",
+      "size": "7x10",
+      "counts": {
+        "f": 1,
+        "o": 3,
+        "<": 1,
+        ">": 1
+      },
+      "nets": 0,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "UDRULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 8,
+      "name": "물살 바꿔 타기",
+      "role": "regular",
+      "idea": "물줄기에 들어가는 방향",
+      "family": null,
+      "shape": "4c5346ab29cc382f",
+      "layout": "b247da70112e45b9",
+      "size": "8x9",
+      "counts": {
+        "f": 2,
+        "o": 2,
+        "v": 1,
+        "^": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 6,
+      "detour": 1,
+      "route": "ULURURL",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 9,
+      "name": "소방정 총출동",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "88134d2a367d7778",
+      "size": "7x11",
+      "counts": {
+        "^": 1,
+        "o": 4,
+        "f": 3,
+        "<": 1,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 2,
+      "detour": 8,
+      "route": "URUDLDRULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "stage": 10,
+      "name": "그물 작전",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "74adba3dddc549eb",
+      "layout": "6496672a1c241b75",
+      "size": "7x9",
+      "counts": {
+        "f": 1,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 5,
+      "escape": 3,
+      "detour": 2,
+      "route": "ULDRU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 1,
+      "netPlacements": 1,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 11,
+      "name": "그물과 물줄기",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "77d4df92f77e23cd",
+      "layout": "478f608e3af4717a",
+      "size": "7x10",
+      "counts": {
+        "f": 2,
+        "o": 2,
+        "<": 1,
+        "^": 1
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "UULULU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 12,
+      "name": "바다로 가는 길",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "31200653a638c185",
+      "size": "7x11",
+      "counts": {
+        "o": 2,
+        "f": 3,
+        "b": 2,
+        ">": 1,
+        "v": 1
+      },
+      "nets": 2,
+      "full": 9,
+      "escape": 5,
+      "detour": 4,
+      "route": "ULURDLULU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 4,
+      "netPlacements": 3,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 13,
+      "name": "작은 순환로",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "5e83abc44fe2a099",
+      "layout": "e8c3d699c2e9c7d2",
+      "size": "7x8",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 3,
+      "detour": 4,
+      "route": "URDLURU",
+      "used": [],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 14,
+      "name": "섬 옆문",
+      "role": "regular",
+      "idea": "옆문 지나 다시 돌아오기",
+      "family": null,
+      "shape": "99aedd2fad64fc3e",
+      "layout": "bf365105eeffd70d",
+      "size": "8x8",
+      "counts": {
+        "o": 2,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 8,
+      "escape": 5,
+      "detour": 3,
+      "route": "RDLRULDR",
+      "used": [],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 15,
+      "name": "회오리 물길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "5e83abc44fe2a099",
+      "layout": "2d9fdc8e5bacc944",
+      "size": "7x8",
+      "counts": {
+        "o": 1,
+        "f": 2,
+        "^": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 2,
+      "detour": 7,
+      "route": "ULDDRULDR",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 16,
+      "name": "구조정 두 척",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "a20e710138058e33",
+      "layout": "e3f2c0f6b8925df3",
+      "size": "7x11",
+      "counts": {
+        "f": 2,
+        "v": 1,
+        "b": 2,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 7,
+      "detour": 2,
+      "route": "UDURLRURU",
+      "used": [
+        "boat"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 17,
+      "name": "두 개의 연결로",
+      "role": "regular",
+      "idea": "두 연결로 선택",
+      "family": null,
+      "shape": "6999c53ead3c27ba",
+      "layout": "6e4cf8364ee83497",
+      "size": "9x9",
+      "counts": {
+        "^": 2,
+        "f": 2,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 8,
+      "escape": 5,
+      "detour": 3,
+      "route": "URDLDLRU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 18,
+      "name": "화단 옆 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2c8b943792177720",
+      "layout": "9caa3066af15eb57",
+      "size": "7x10",
+      "counts": {
+        "f": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 5,
+      "detour": 1,
+      "route": "URULRU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 1,
+      "netPlacements": 1,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 19,
+      "name": "움직이는 징검다리",
+      "role": "regular",
+      "idea": "순찰선을 정지점으로 쓰기",
+      "family": null,
+      "shape": "8e1ae176c116ee99",
+      "layout": "a4fc80985b1f3ca3",
+      "size": "9x9",
+      "counts": {
+        "f": 2,
+        "o": 2,
+        "b": 1
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 3,
+      "detour": 6,
+      "route": "UDRDRLURU",
+      "used": [
+        "boat"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 20,
+      "name": "옆문과 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "217693a671d08943",
+      "layout": "226d0e36760f488d",
+      "size": "7x9",
+      "counts": {
+        "o": 2,
+        "f": 2,
+        ">": 1
+      },
+      "nets": 1,
+      "full": 6,
+      "escape": 2,
+      "detour": 4,
+      "route": "ULRDUR",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 21,
+      "name": "갈림길",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "e9ef3aad4bac0895",
+      "layout": "ce7e693791b451cb",
+      "size": "8x9",
+      "counts": {
+        "o": 2,
+        "<": 1,
+        "f": 3,
+        ">": 1
+      },
+      "nets": 0,
+      "full": 12,
+      "escape": 5,
+      "detour": 7,
+      "route": "UUULDLDRUULU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 4,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "stage": 22,
+      "name": "화단 섬",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2c8b943792177720",
+      "layout": "3f97aa72aae0ed11",
+      "size": "7x10",
+      "counts": {
+        "v": 1,
+        "f": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URULURU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 23,
+      "name": "숭어 떼",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "37a1d0bd486b7ea1",
+      "layout": "8d0a27c8a7851e7f",
+      "size": "7x11",
+      "counts": {
+        "f": 3,
+        "^": 1,
+        "o": 2,
+        "B": 1,
+        ">": 1,
+        "b": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 13,
+      "escape": 2,
+      "detour": 11,
+      "route": "URULUDDLUURRU",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 24,
+      "name": "운하의 끝",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "e9ef3aad4bac0895",
+      "layout": "8e3537b45761b7b3",
+      "size": "8x9",
+      "counts": {
+        "f": 3,
+        "o": 4
+      },
+      "nets": 2,
+      "full": 10,
+      "escape": 7,
+      "detour": 3,
+      "route": "URURULDURU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 25,
+      "name": "뱃길 물살",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "6d542f12de3b3d26",
+      "size": "9x11",
+      "counts": {
+        "^": 2,
+        "f": 2,
+        ">": 1,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 5,
+      "detour": 5,
+      "route": "ULDLRULLUR",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 26,
+      "name": "석호의 숭어",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "6468264e4ea818a3",
+      "size": "9x10",
+      "counts": {
+        "o": 2,
+        ">": 1,
+        "v": 1,
+        "f": 3
+      },
+      "nets": 0,
+      "full": 11,
+      "escape": 3,
+      "detour": 8,
+      "route": "URDLDLRDRUU",
+      "used": [
+        "jet"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "stage": 27,
+      "name": "거센 물살",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "1733ad96f2dfeb37",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        "o": 3,
+        ">": 1,
+        "v": 1,
+        "b": 1,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 5,
+      "detour": 9,
+      "route": "ULUDLRLUDRURUL",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 28,
+      "name": "옆길 산책",
+      "role": "regular",
+      "idea": "짧은 옆길 우회",
+      "family": null,
+      "shape": "8f2f4d5ebe3a0097",
+      "layout": "79db74146bd9b5df",
+      "size": "9x8",
+      "counts": {
+        "o": 2,
+        "f": 2
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 6,
+      "detour": 1,
+      "route": "URDRDUR",
+      "used": [],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 29,
+      "name": "구조정 호위",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "1fdd716f1d6e5d68",
+      "size": "9x11",
+      "counts": {
+        "b": 2,
+        ">": 1,
+        "f": 3,
+        "o": 2,
+        "<": 1
+      },
+      "nets": 0,
+      "full": 17,
+      "escape": 6,
+      "detour": 11,
+      "route": "UURDLULUDURDULLLU",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 4,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 30,
+      "name": "마당을 건너는 그물",
+      "role": "regular",
+      "idea": "두 마당에서 그물 재사용",
+      "family": null,
+      "shape": "a3e5718281ed75d8",
+      "layout": "941c340b7fbb4be9",
+      "size": "9x10",
+      "counts": {
+        "f": 3,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 8,
+      "escape": 5,
+      "detour": 3,
+      "route": "RURURDUR",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 5,
+      "netPlacements": 5,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 31,
+      "name": "파도 너머",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "76e93ae71545c844",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        ">": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 6,
+      "detour": 1,
+      "route": "ULURUUL",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 32,
+      "name": "방파제 길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "2bebf12a733a96d1",
+      "layout": "dcd59bc3e9d60447",
+      "size": "8x12",
+      "counts": {
+        "f": 3,
+        ">": 1,
+        "o": 2,
+        "b": 1,
+        "^": 1,
+        "B": 1,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 5,
+      "detour": 9,
+      "route": "ULDLRDUDRULRUL",
+      "used": [
+        "boat",
+        "jet"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 33,
+      "name": "등대 아래",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "3ef86721f0c130ee",
+      "size": "9x10",
+      "counts": {
+        "<": 1,
+        "f": 3,
+        "o": 3
+      },
+      "nets": 1,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URULDRU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 34,
+      "name": "석호의 밤",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "3c5c113b4deef3c4",
+      "layout": "f5a0d61f7262219d",
+      "size": "9x10",
+      "counts": {
+        "v": 1,
+        "f": 3,
+        "o": 4,
+        "^": 1
+      },
+      "nets": 1,
+      "full": 10,
+      "escape": 5,
+      "detour": 5,
+      "route": "URLURULRRU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 35,
+      "name": "가지마다 정지점",
+      "role": "regular",
+      "idea": "막힌 가지의 정지점 만들기",
+      "family": null,
+      "shape": "7b4513bf6008e2f9",
+      "layout": "6ccfb7870251ff5c",
+      "size": "9x9",
+      "counts": {
+        "f": 3,
+        "o": 2
+      },
+      "nets": 2,
+      "full": 9,
+      "escape": 4,
+      "detour": 5,
+      "route": "RDURUDRUR",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 36,
+      "name": "넓은 바다로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "95491c0cf1be1cce",
+      "layout": "e24a9c642fdfbdd7",
+      "size": "9x11",
+      "counts": {
+        "o": 4,
+        "f": 3,
+        ">": 2
+      },
+      "nets": 2,
+      "full": 11,
+      "escape": 6,
+      "detour": 5,
+      "route": "URUDLUURDLU",
+      "used": [
+        "jet",
+        "net"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 3,
+      "netPlacements": 3,
+      "fishOrder": [
+        2,
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 37,
+      "name": "모래톱",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "b32b6b990238c24b",
+      "size": "9x10",
+      "counts": {
+        "f": 1,
+        "s": 3,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 3,
+      "detour": 4,
+      "route": "ULUDRUU",
+      "used": [
+        "sand"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 38,
+      "name": "모래톱 갈림길",
+      "role": "regular",
+      "idea": "모래톱에서 방향 바꾸기",
+      "family": null,
+      "shape": "f0c63b738f1bddb6",
+      "layout": "b2e7106971fdd41d",
+      "size": "8x9",
+      "counts": {
+        "f": 2,
+        "s": 2,
+        "o": 1
+      },
+      "nets": 0,
+      "full": 7,
+      "escape": 5,
+      "detour": 2,
+      "route": "URULURU",
+      "used": [
+        "sand"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 39,
+      "name": "삼각주",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "6b665282dc914a23",
+      "layout": "0e171190d912d5c1",
+      "size": "9x10",
+      "counts": {
+        "f": 2,
+        "s": 3,
+        "v": 1,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 14,
+      "escape": 7,
+      "detour": 7,
+      "route": "ULUULRULULDRLU",
+      "used": [
+        "jet",
+        "sand"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 40,
+      "name": "소용돌이",
+      "role": "learn",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "e7628ac21731a81c",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "o": 1,
+        "f": 1
+      },
+      "nets": 0,
+      "full": 10,
+      "escape": 3,
+      "detour": 7,
+      "route": "URDLRDLULU",
+      "used": [
+        "warp"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0
+      ]
+    },
+    {
+      "stage": 41,
+      "name": "빙글빙글 모래섬",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "8dcba759564b5864",
+      "layout": "98d55f4802f33f6a",
+      "size": "9x10",
+      "counts": {
+        "s": 2,
+        "v": 1,
+        "f": 2,
+        "w": 2
+      },
+      "nets": 0,
+      "full": 11,
+      "escape": 4,
+      "detour": 7,
+      "route": "URRURDLLRUU",
+      "used": [
+        "jet",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 42,
+      "name": "쌍둥이 물길",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "069e313c7afebadc",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "f": 2,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 15,
+      "escape": 9,
+      "detour": 6,
+      "route": "URDRULURULDRULU",
+      "used": [
+        "warp"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 43,
+      "name": "떨어진 두 물길",
+      "role": "regular",
+      "idea": "떨어진 두 바다 연결",
+      "family": null,
+      "shape": "4a95f2dad9fcf9e8",
+      "layout": "12d511beba509bb9",
+      "size": "9x9",
+      "counts": {
+        "f": 3,
+        "o": 2,
+        "w": 2
+      },
+      "nets": 0,
+      "full": 9,
+      "escape": 8,
+      "detour": 1,
+      "route": "URDLURLDR",
+      "used": [
+        "warp"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        2,
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 44,
+      "name": "물살 건너기",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "fc29db781cf0a402",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "s": 2,
+        "f": 3,
+        "v": 1
+      },
+      "nets": 0,
+      "full": 16,
+      "escape": 8,
+      "detour": 8,
+      "route": "URDDLULDRRUDLULU",
+      "used": [
+        "jet",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 3,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "stage": 45,
+      "name": "모래 그물",
+      "role": "regular",
+      "idea": null,
+      "family": null,
+      "shape": "6b665282dc914a23",
+      "layout": "0963801c06a9fd54",
+      "size": "9x10",
+      "counts": {
+        "f": 2,
+        "s": 2,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 9,
+      "escape": 7,
+      "detour": 2,
+      "route": "ULURULDLU",
+      "used": [
+        "net"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 4,
+      "netPlacements": 4,
+      "fishOrder": [
+        0,
+        1
+      ]
+    },
+    {
+      "stage": 46,
+      "name": "건너편 모래톱",
+      "role": "regular",
+      "idea": "건너간 물길에서 정지하기",
+      "family": null,
+      "shape": "3a8600beb27e1400",
+      "layout": "18c052bf4403f7fd",
+      "size": "9x9",
+      "counts": {
+        "w": 2,
+        "s": 1,
+        "f": 3,
+        "o": 2
+      },
+      "nets": 0,
+      "full": 12,
+      "escape": 5,
+      "detour": 7,
+      "route": "ULURDLDRULRU",
+      "used": [
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 0,
+      "netChanges": 0,
+      "netPlacements": 0,
+      "fishOrder": [
+        0,
+        2,
+        1
+      ]
+    },
+    {
+      "stage": 47,
+      "name": "성곽 수로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "bcb0d991e31cd61b",
+      "layout": "9adfa911d7499ad1",
+      "size": "9x10",
+      "counts": {
+        "w": 2,
+        "f": 2,
+        "s": 1,
+        "o": 2
+      },
+      "nets": 1,
+      "full": 11,
+      "escape": 7,
+      "detour": 4,
+      "route": "ULUDRURLULU",
+      "used": [
+        "net",
+        "warp"
+      ],
+      "revisitedStops": 1,
+      "netChanges": 2,
+      "netPlacements": 2,
+      "fishOrder": [
+        1,
+        0
+      ]
+    },
+    {
+      "stage": 48,
+      "name": "먼바다로",
+      "role": "challenge",
+      "idea": null,
+      "family": null,
+      "shape": "c4afc1f844a651c6",
+      "layout": "330a2b4e1b088be3",
+      "size": "9x9",
+      "counts": {
+        "f": 4,
+        "o": 2,
+        "w": 2,
+        "s": 2,
+        "^": 1,
+        "v": 1
+      },
+      "nets": 1,
+      "full": 12,
+      "escape": 6,
+      "detour": 6,
+      "route": "URLDDLRUDULU",
+      "used": [
+        "jet",
+        "net",
+        "sand",
+        "warp"
+      ],
+      "revisitedStops": 2,
+      "netChanges": 5,
+      "netPlacements": 5,
+      "fishOrder": [
+        3,
+        0,
+        1,
+        2
+      ]
+    }
+  ]
+}

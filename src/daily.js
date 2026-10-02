@@ -98,7 +98,10 @@ function makeDaily(date) {
   return null;
 }
 /* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
-const DAILY_OPERATION_VERSION = 1;
+const DAILY_OPERATION_VERSION = 2;
+const DV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
+  : { VARIETY_DAILY_THEMES, variedCanalSearch };
+const DAILY_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
 const DAILY_STAGES = [
   { name: '첫 물길', label: '쉬움', min: 5, max: 7, slack: 2, escape: 3,
     masks: ['bend', 'hook', 'wide'], tip: '첫 수로예요. 숭어를 챙기고 바다로 나가요.' },
@@ -127,7 +130,7 @@ function* operationPlan(g, nets, needAll) {
   }
   return undefined; // budget exhausted; this is not proof that no route exists
 }
-function* makeDailyStageSearch(date, stage) {
+function* makeDailyStageV1Search(date, stage) {
   const tier = DAILY_STAGES[stage];
   if (!tier || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const weekday = new Date(date + 'T12:00:00').getDay();
@@ -136,7 +139,7 @@ function* makeDailyStageSearch(date, stage) {
   const spec = stage === 0 ? { buoys: 3, fish: 2 }
     : stage === 1 ? { buoys: 3, fish: 2, jets: weekday % 2, boats: +(weekday % 3 === 0), sand: 1 }
     : { buoys: 3, fish: 3, jets: 1, sand: 1, whirls: +(weekday % 2 === 0), boats: nets ? 0 : 1 };
-  const rand = rng(dailySeed(`shark-sos-operation-v${DAILY_OPERATION_VERSION}-${date}-${stage}`));
+  const rand = rng(dailySeed(`shark-sos-operation-v1-${date}-${stage}`));
   for (let attempt = 0; attempt < 240; attempt++) {
     yield;
     const mask = MASKS[tier.masks[Math.floor(rand() * tier.masks.length)]];
@@ -148,18 +151,31 @@ function* makeDailyStageSearch(date, stage) {
     const escape = yield* operationPlan(g, nets, false);
     if (!escape || escape.moves < tier.escape || full.moves <= escape.moves) continue;
     if (nets && (yield* operationPlan(g, 0, true)) !== null) continue;
-    return { date, stage, version: DAILY_OPERATION_VERSION, tier,
+    return { date, stage, version: 1, tier,
       level: { name: tier.name, map, nets, par: full.moves + tier.slack, tip: tier.tip } };
   }
   const fallback = DAILY_FALLBACKS[stage];
-  return { date, stage, version: DAILY_OPERATION_VERSION, tier, fallback: true,
+  return { date, stage, version: 1, tier, fallback: true,
     level: { name: tier.name, map: fallback.map.slice(), nets: fallback.nets, par: fallback.par, tip: tier.tip } };
 }
-function makeDailyStage(date, stage) {
-  const search = makeDailyStageSearch(date, stage);
+function dailyTheme(date) {
+  const day = Math.floor(Date.parse(date + 'T12:00:00Z') / 86400000);
+  return Number.isFinite(day) ? DV.VARIETY_DAILY_THEMES[((day % 7) + 7) % 7] : null;
+}
+function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION) {
+  if (version === 1) return yield* makeDailyStageV1Search(date, stage);
+  const tier = DAILY_STAGES[stage], theme = dailyTheme(date);
+  if (version !== 2 || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  const level = yield* DV.variedCanalSearch(dailySeed(`shark-sos-operation-v2-${date}-${stage}`), theme.families[stage], tier,
+    { rng, MASKS, place, operationPlan }, DAILY_RESERVES, 240);
+  if (!level) return null;
+  return { date, stage, version, tier, theme: theme.label, fallback: !!level.fallback, level: { ...level, name: level.idea } };
+}
+function makeDailyStage(date, stage, version = DAILY_OPERATION_VERSION) {
+  const search = makeDailyStageSearch(date, stage, version);
   let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
 if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
-  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan };
+  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, dailyTheme };

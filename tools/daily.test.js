@@ -9,6 +9,7 @@ const { replayPlan } = require('./replay-plan');
 const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
 const dailySource = fs.readFileSync(path.join(__dirname, '../src/daily.js'), 'utf8');
 const engineSource = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
+const varietySource = ['variety', 'variety-reserves'].map(name => fs.readFileSync(path.join(__dirname, '../src/', name + '.js'), 'utf8')).join('\n');
 const functionSource = name => {
   const match = source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))
     || source.match(new RegExp(`function ${name}\\([^]*?\\n}`));
@@ -24,6 +25,7 @@ function operation(stored = null) {
   const functions = ['levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'dailySessionRecord', 'dailySession', 'checkpoint', 'freshState', 'loadDaily', 'onClear', 'skinNeedText'].map(functionSource).join('\n');
   return new Function('stored', 'NativeDate', `
     ${engineSource}
+    ${varietySource}
     ${dailySource}
     let today = '2026-09-30', written = stored, tickHook = null;
     const Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [today + 'T12:00:00'])); } };
@@ -69,13 +71,13 @@ function operation(stored = null) {
   `)(stored, Date);
 }
 
-test('90 days of three deterministic stages replay under actual rules, with increasing move budgets', () => {
+test('legacy v1: 90 days keep their exact maps, targets and replayable solutions', () => {
   const hash = crypto.createHash('sha256');
   for (let day=0; day<90; day++) {
     const date = new Date(Date.UTC(2026,8,30+day)).toISOString().slice(0,10), layouts = new Set();
     let previous = 0;
     for (let stage=0; stage<3; stage++) {
-      const daily=D.makeDailyStage(date,stage), tier=D.DAILY_STAGES[stage];
+      const daily=D.makeDailyStage(date,stage,1), tier=D.DAILY_STAGES[stage];
       assert.ok(daily, `${date} stage ${stage}`);
       hash.update(JSON.stringify([daily.date,daily.stage,daily.version,daily.level.map,daily.level.nets,daily.level.par]));
       const g=E.parseLevel(daily.level), full=E.plan(g,g.start,0,new Set(),g.nets,true), escape=E.plan(g,g.start,0,new Set(),g.nets,false);
@@ -86,7 +88,7 @@ test('90 days of three deterministic stages replay under actual rules, with incr
       assert.equal(daily.level.par,full.moves+tier.slack);
       if(g.nets) assert.equal(E.plan(g,g.start,0,new Set(),0,true),null,'nets must matter');
       layouts.add(JSON.stringify(daily.level.map));
-      if(day<7) assert.deepEqual(D.makeDailyStage(date,stage),daily,'same date and stage');
+      if(day<7) assert.deepEqual(D.makeDailyStage(date,stage,1),daily,'same date and stage');
     }
     assert.equal(layouts.size,3);
   }
@@ -102,6 +104,42 @@ test('reserve routes satisfy the same stage difficulty and star rules', () => {
     assert.ok(escape.moves>=tier.escape&&full.moves>escape.moves);
     assert.equal(level.par,full.moves+tier.slack);
   });
+});
+
+test('v2: 90 dates replay three thematic, distinct stages with meaningful device use and deterministic targets', () => {
+  const V=require('../src/variety');
+  const hash=crypto.createHash('sha256');
+  for(let day=0;day<90;day++) {
+    const date=new Date(Date.UTC(2026,9,2+day)).toISOString().slice(0,10),layouts=new Set();let previous=0;
+    for(let stage=0;stage<3;stage++) {
+      const daily=D.makeDailyStage(date,stage),g=E.parseLevel(daily.level),full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
+      hash.update(JSON.stringify([daily.level.map,daily.level.nets||0,daily.level.par]));
+      replayPlan(g,full);replayPlan(g,escape,{needAll:false});
+      const tier=D.DAILY_STAGES[stage],family=V.VARIETY_FAMILIES[daily.level.family];
+      assert.ok(full.moves>=tier.min&&full.moves<=tier.max&&full.moves>previous&&full.moves>escape.moves);previous=full.moves;
+      assert.ok(escape.moves>=tier.escape);assert.equal(daily.level.par,full.moves+tier.slack);
+      assert.equal(daily.level.family,D.dailyTheme(date).families[stage]);
+      if(family.device)assert.ok(V.varietyRouteUse(g,full).used.has(family.device));
+      if(g.nets)assert.equal(E.plan(g,g.start,0,new Set(),0,true),null);
+      layouts.add(V.varietyLayoutKey(daily.level));
+      if(day<7)assert.deepEqual(D.makeDailyStage(date,stage),daily);
+    }
+    assert.equal(layouts.size,3);
+  }
+  assert.equal(hash.digest('hex'),'707163b8153e86c3997c58f15b08d73a831d1e476c18e9713feeb3ab811a75ad','bump the generator version before changing published v2 maps');
+});
+
+test('unfinished v1 operation keeps its layout, hints, stars and generator for the entire date', async () => {
+  const old=D.makeDailyStage('2026-09-30',0,1),setup=operation();setup.load(old);
+  const g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);setup.move(plan.seq[0]);
+  const saved=setup.save();saved.hintUsage[D.dailyStageId(old)]={count:2,lastUsed:123};
+  const game=operation(JSON.stringify(saved));game.open();await game.start(0);
+  assert.equal(game.active().version,1);assert.deepEqual(game.state(),setup.state());
+  assert.deepEqual(game.save().hintUsage,saved.hintUsage);game.clear(3);
+  for(const stage of [1,2]){game.open();await game.start(stage);assert.equal(game.active().version,1);game.clear(1);}
+  assert.deepEqual(game.progress().stars,[3,1,1]);assert.equal(game.totals().operations,1);
+  game.date('2026-10-01');game.open();await game.start(0);assert.equal(game.active().version,2);
+  assert.deepEqual(game.progress('2026-09-30').stars,[3,1,1]);
 });
 
 test('one clear retains attendance; three clears complete the operation; replay cannot reduce or duplicate stars', async () => {

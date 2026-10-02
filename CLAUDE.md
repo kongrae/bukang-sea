@@ -42,7 +42,9 @@ src/
   art.js       투명 상어 WebP 로딩·외형 캐시. 실패 시 game.js의 Canvas 대체 그림
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
   levels.js    LEVELS 배열 (48개 수로) + CHAPTERS (장 이름, 레벨 수) + LEVEL_ROLES (연습/일반/도전)
-  daily.js     3단계 구조작전 생성기 + 이전 단일 수로 호환 + 수로 마스크(MASKS)·rng·place. 브라우저·node 겸용
+  variety.js   8개 풀이 유형·14개 공간 마스크·장치 사용 검증·대칭 배치 비교·v2 공통 생성
+  variety-reserves.js  실제 해법을 검증한 예비 수로 59개. 생성 버전을 바꾸지 않고 수정 금지
+  daily.js     v2 주제별 3단계 구조작전 + 이전 작전 v1/단일 수로 호환 + MASKS·rng·place
   free.js      날짜와 독립된 세 난이도의 시드 기반 자유 수로 생성기. 실제 규칙으로 해법·난이도 검증
   device-demo.js 장치 안내의 짧은 반복 예시. 독립된 맵에서 실제 이동/구조정 규칙으로 타임라인 계산
   game.js      렌더링(canvas), 입력, 상태, UI. IIFE 하나
@@ -65,10 +67,12 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다. WebP 3개도 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다.
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다. WebP 3개도 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
+
+2026-10-02 다양화 V01: 스토리 12개 교체, 자유·일일 작전 v2, 유형별 예비 수로 59개, 최근 자유 6개 배치 회피. 현재 48개 분류·난이도·검증 결과는 `docs/PUZZLE-VARIETY.md`, 재현 지표는 `npm run variety`가 기준이다. `LEGACY_STORY_LEVELS`와 이전 생성기 v1은 진행 복원용이므로 변경하지 않는다. 같은 버전의 맵/별 기준은 지문 테스트로 고정한다. 아래의 2026-09-30 단일 일일 v2와 새 작전 v2는 서로 다른 생성기다.
 
 - 스와이프한 방향으로 **막힐 때까지** 미끄러진다. 한 번 스와이프 = 이동 1회. 움직이지 못하면 이동으로 치지 않는다.
 - 막는 것: `#` 산책로(격자 밖도 동일), `o` 부표, 구조정, 플레이어가 친 그물.
