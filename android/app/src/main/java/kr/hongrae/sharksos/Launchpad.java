@@ -2,6 +2,7 @@ package kr.hongrae.sharksos;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.util.Log;
 
 import com.android.installreferrer.api.InstallReferrerClient;
@@ -18,17 +19,22 @@ import java.nio.charset.StandardCharsets;
  * LaunchPad(apptesters.cc) closed-test install verification, ported from their Kotlin guide
  * (https://apptesters.cc/guide/install-detection).
  *
- * Reads the Play Install Referrer once. Only when the app was installed through a LaunchPad exchange link
- * (referrer "utm_source=launchpad&app_id=...&exchange_id=...") the referrer string is POSTed to LaunchPad so the
- * tester is marked as installed. Normal installs send nothing, which is what assets/privacy.html and the Play data
- * safety declaration describe. The check is retried on later launches only while the upload has not succeeded.
+ * Once per installation (keyed by PackageInfo.firstInstallTime, so a restored Auto Backup of the preferences cannot
+ * mask a fresh LaunchPad reinstall) the Play Install Referrer is read. Only when the app was installed through a
+ * LaunchPad exchange link (referrer "utm_source=launchpad&app_id=...&exchange_id=...") the referrer string is POSTed
+ * to LaunchPad so the tester is marked as installed. Normal installs send nothing, which is what assets/privacy.html
+ * and the Play data safety declaration describe. A failed upload is retried on later launches at most MAX_ATTEMPTS
+ * times; a 4xx answer is treated as final.
  */
 final class Launchpad {
     private static final String TAG = "Launchpad";
     private static final String PREFS = "launchpad";
-    private static final String KEY_DONE = "referrerChecked";
+    private static final String KEY_HANDLED_INSTALL = "handledInstallTime";   // firstInstallTime already dealt with
+    private static final String KEY_SENT_REFERRER = "sentReferrer";          // referrer accepted by LaunchPad
+    private static final String KEY_ATTEMPTS = "attempts";
     private static final String ENDPOINT = "https://apptesters.cc/api/verify-install";
     private static final int TIMEOUT_MS = 10000;
+    private static final int MAX_ATTEMPTS = 5;
 
     private Launchpad() {}
 
@@ -36,7 +42,8 @@ final class Launchpad {
     static void verifyInstall(Context context) {
         final Context app = context.getApplicationContext();
         final SharedPreferences prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        if (prefs.getBoolean(KEY_DONE, false)) return;
+        final long installTime = firstInstallTime(app);
+        if (prefs.getLong(KEY_HANDLED_INSTALL, -1) == installTime) return;
         final InstallReferrerClient client = InstallReferrerClient.newBuilder(app).build();
         try {
             client.startConnection(new InstallReferrerStateListener() {
@@ -45,15 +52,17 @@ final class Launchpad {
                     try {
                         if (code == InstallReferrerClient.InstallReferrerResponse.OK) {
                             String referrer = client.getInstallReferrer().getInstallReferrer();
-                            if (referrer != null && referrer.contains("launchpad")) {
-                                send(referrer, prefs);
+                            boolean launchpad = referrer != null && referrer.contains("launchpad");
+                            if (launchpad && !referrer.equals(prefs.getString(KEY_SENT_REFERRER, ""))) {
+                                send(referrer, prefs, installTime);
                             } else {
-                                prefs.edit().putBoolean(KEY_DONE, true).apply();   // not a LaunchPad install: nothing to send, ever
+                                markHandled(prefs, installTime);   // not a LaunchPad install, or already reported
                             }
                         } else if (code == InstallReferrerClient.InstallReferrerResponse.FEATURE_NOT_SUPPORTED
                                 || code == InstallReferrerClient.InstallReferrerResponse.DEVELOPER_ERROR) {
-                            prefs.edit().putBoolean(KEY_DONE, true).apply();   // no Play referrer on this device
+                            markHandled(prefs, installTime);   // no Play referrer on this device, ever
                         }
+                        // SERVICE_UNAVAILABLE etc.: try again on a later launch
                     } catch (Exception e) {
                         Log.w(TAG, "install referrer unavailable", e);
                     } finally {
@@ -69,7 +78,19 @@ final class Launchpad {
         }
     }
 
-    private static void send(final String referrer, final SharedPreferences prefs) {
+    private static long firstInstallTime(Context app) {
+        try {
+            return app.getPackageManager().getPackageInfo(app.getPackageName(), 0).firstInstallTime;
+        } catch (PackageManager.NameNotFoundException | RuntimeException e) {
+            return 0L;
+        }
+    }
+
+    private static void markHandled(SharedPreferences prefs, long installTime) {
+        prefs.edit().putLong(KEY_HANDLED_INSTALL, installTime).remove(KEY_ATTEMPTS).apply();
+    }
+
+    private static void send(final String referrer, final SharedPreferences prefs, final long installTime) {
         new Thread(() -> {
             HttpURLConnection conn = null;
             try {
@@ -82,13 +103,27 @@ final class Launchpad {
                 conn.setDoOutput(true);
                 try (OutputStream out = conn.getOutputStream()) { out.write(body); }
                 int status = conn.getResponseCode();
-                if (status >= 200 && status < 300) prefs.edit().putBoolean(KEY_DONE, true).apply();
                 Log.i(TAG, "verify-install " + status);
+                if (status >= 200 && status < 300) {
+                    prefs.edit().putString(KEY_SENT_REFERRER, referrer).apply();
+                    markHandled(prefs, installTime);
+                } else if (status >= 400 && status < 500) {
+                    markHandled(prefs, installTime);   // LaunchPad rejected it for good; retrying cannot help
+                } else {
+                    countFailure(prefs, installTime);
+                }
             } catch (Exception e) {
-                Log.w(TAG, "verify-install failed, will retry on next launch", e);
+                Log.w(TAG, "verify-install failed", e);
+                countFailure(prefs, installTime);
             } finally {
                 if (conn != null) conn.disconnect();
             }
         }, "launchpad-verify").start();
+    }
+
+    private static void countFailure(SharedPreferences prefs, long installTime) {
+        int attempts = prefs.getInt(KEY_ATTEMPTS, 0) + 1;
+        if (attempts >= MAX_ATTEMPTS) markHandled(prefs, installTime);   // give up quietly after a few launches
+        else prefs.edit().putInt(KEY_ATTEMPTS, attempts).apply();
     }
 }
