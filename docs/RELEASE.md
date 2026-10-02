@@ -56,6 +56,9 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 - **출시용 번들**: `npm run android:release` → `android/app/build/outputs/bundle/release/app-release.aab`(업로드 키로 서명). Play Console에 올릴 때마다 `android/app/build.gradle`의 `versionCode`를 1씩 올리고 `versionName`도 맞춘다.
 - Play Console 첫 업로드 때 **Play App Signing 사용**(기본값)을 그대로 둔다: Google이 앱 서명 키를 보관하고, 우리는 업로드 키로만 서명한다.
 
+### LaunchPad 품앗이 설치 확인(SDK 방식)
+비공개 테스트 테스터 품앗이(apptesters.cc)는 `android/app/src/main/java/kr/hongrae/sharksos/Launchpad.java`가 담당한다. 첫 실행 때 Play Install Referrer를 한 번 읽어 `launchpad`가 들어 있을 때만(품앗이 링크 설치) `https://apptesters.cc/api/verify-install`에 참조 문자열을 POST하고, 성공하면 SharedPreferences `launchpad.referrerChecked`로 종료한다. 일반 설치·웹에는 전송이 없다. 의존성은 `com.android.installreferrer:installreferrer:2.2`뿐이며 OkHttp 대신 HttpURLConnection을 쓴다. 바꾸면 assets/privacy.html 3항과 Play 데이터 보안 선언(STORE.md)을 함께 맞춘다. 품앗이가 끝나면 코드를 제거하고 선언을 되돌릴 수 있다.
+
 ### Google Play 등록 흐름
 개인 계정의 신원 승인·Android 기기·전화번호 인증과 첫 내부 테스트부터 프로덕션까지의 현재 순서는 [PLAY-CONSOLE-SETUP.md](PLAY-CONSOLE-SETUP.md)를 따른다(2026-10-01 공식 안내 확인).
 

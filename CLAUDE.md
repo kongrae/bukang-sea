@@ -61,7 +61,7 @@ docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
 capacitor.config.json  appId kr.hongrae.sharksos, webDir=www, SystemBars(LIGHT, insets→CSS 변수)
-android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정
+android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정. `Launchpad.java`는 LaunchPad(apptesters.cc) 품앗이 링크로 설치된 경우에만 Play 설치 참조 문자열을 한 번 전송(비공개 테스트 참여 확인, 2026-10-02). 일반 설치는 아무것도 보내지 않으며 privacy.html·데이터 보안 선언과 함께 유지한다
 www/           build:web 결과 (gitignore)
 ```
 
