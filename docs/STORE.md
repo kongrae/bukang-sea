@@ -70,7 +70,7 @@
 
 | 파일 | 용도 | 규격 |
 |---|---|---|
-| `assets/icons/icon-512.png` | 앱 아이콘(3D 아트 원본 `assets/icon-concepts/shark-sos-3d-v1-original.png`에서 `npm run icons`로 생성) | 512×512 PNG (필수) |
+| `assets/icons/icon-512.png` | 앱 아이콘(프레임 없는 v2 원본 `assets/icon-concepts/shark-sos-android-v2/icon-1024.png`에서 `npm run icons`로 생성, versionCode 4부터) | 512×512 PNG (필수) |
 | `feature-graphic.png` | 그래픽 이미지(`tools/feature-graphic.html`, 리디자인 타이틀 카드 구성) | 1024×500 |
 | `1-title.png` | 메인 화면(이어서 구출, 오늘의 도전·자유 수로·내 상어·구조일지) | 1080×1920 |
 | `2-jets.png` | 물줄기 수로 + 힌트 표시 | 1080×1920 |

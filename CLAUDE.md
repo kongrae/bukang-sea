@@ -15,7 +15,7 @@ npm run build            # src/ → dist/index.html (브라우저에서 바로 �
 npm run build:artifact   # src/ → dist/artifact.html (<html>/<head> 없이, Claude 아티팩트 게시용)
 npm run build:web        # src/ → www/ (PWA: manifest, 서비스 워커, 아이콘. Capacitor webDir 겸용)
 npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 붙이면 같은 Wi-Fi 휴대폰에서 접속)
-npm run icons            # assets/icon-concepts/shark-sos-3d-v1-original.png(3D 아이콘 원본) → assets/icons/*.png, icon.svg(파비콘 래퍼), 적응형/스플래시 소스 (Chrome 헤드리스 필요)
+npm run icons            # assets/icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, 적응형 전경·배경 포함) → assets/icons/*.png, icon.svg(파비콘 래퍼), 적응형/스플래시 소스 (Chrome 헤드리스 필요)
 npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 → assets/fonts/ (build:web 이 누락 글자를 경고하면 실행)
 node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
 npm run cap:sync         # build:web + Capacitor android 동기화
@@ -58,7 +58,7 @@ tools/
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
   icons.js     아이콘 PNG 렌더링
   serve.js     로컬 정적 서버
-assets/        icon-concepts/shark-sos-3d-v1-original.png(앱 아이콘 원본) → icons/*.png + icon.svg(파비콘용 PNG 래퍼, 생성물), art/(투명 상어 WebP), fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
+assets/        icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, versionCode 4부터. 3d-v1은 아트 기준) → icons/*.png + icon.svg(파비콘용 PNG 래퍼, 생성물), art/(투명 상어 WebP), fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과

@@ -1,8 +1,9 @@
 // Renders the icon master to every raster the web app and the native apps need, using a headless Chromium
 // (Chrome or Edge). Run only when the icon changes; the outputs are committed.
 //   node tools/icons.js            (set BROWSER=<path to chrome/msedge> if auto-detect fails)
-// Master: assets/icon-concepts/shark-sos-3d-v1-original.png (opaque 1254x1254 3D art, the 2026-10-02 redesign
-// reference; see docs/VISUAL-REDESIGN.md). The former vector icon lives in git history (assets/icon.svg before e81f794).
+// Master: assets/icon-concepts/shark-sos-android-v2/ (frameless 2026-10-02 icon: icon-1024.png plus the 108dp adaptive
+// foreground/background layers; see its README.md). versionCode 2-3 used shark-sos-3d-v1-original.png, still the art
+// reference in docs/VISUAL-REDESIGN.md. The former vector icon lives in git history (assets/icon.svg before e81f794).
 // Outputs
 //   assets/icons/icon-192.png, icon-512.png, apple-touch-icon.png   PWA manifest / iOS home screen / Play icon
 //   assets/icon.svg                                                 favicon wrapper around icon-192.png
@@ -26,17 +27,20 @@ const candidates = [
 const browser = candidates.find(p => fs.existsSync(p));
 if (!browser) { console.error('No Chromium browser found. Set BROWSER=<path>.'); process.exit(1); }
 
-const MASTER = path.join(root, 'assets', 'icon-concepts', 'shark-sos-3d-v1-original.png');
+const MASTER = path.join(root, 'assets', 'icon-concepts', 'shark-sos-android-v2');
 const PAGE_BG = '#c6f3f4';   // capacitor.config.json backgroundColor: splash page colour
-const ICON_BG = '#5cd6ef';   // the master's aqua bezel: adaptive icon background behind the scaled foreground
-const master = `data:image/png;base64,${fs.readFileSync(MASTER).toString('base64')}`;
-const img = style => `<img style="display:block;position:absolute;${style}" src="${master}">`;
-const full = img('left:0;top:0;width:100%;height:100%');
-// adaptive icon: the launcher masks the 108dp layer down to ~66dp, so keep the art in the middle 66%
-const foreground = img('left:17%;top:17%;width:66%;height:66%');
-const background = `<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, #a6eefc 0%, ${ICON_BG} 60%, #2fb5d8 100%)"></div>`;
+const ICON_BG = '#5cd6ef';   // page colour behind the opaque renders (also the assets generate fallback colour)
+const png = name => `data:image/png;base64,${fs.readFileSync(path.join(MASTER, name)).toString('base64')}`;
+const img = (src, style) => `<img style="display:block;position:absolute;${style}" src="${src}">`;
+const icon = png('icon-1024.png');
+const full = img(icon, 'left:0;top:0;width:100%;height:100%');
+// adaptive icon: @capacitor/assets wraps both layers in <inset 16.7%> (mipmap-anydpi-v26), so its sources are the
+// central 72dp of the 108dp v2 layers. The v2 foreground already sits inside the 66dp safe circle: crop, don't shrink.
+const crop = 'left:-25%;top:-25%;width:150%;height:150%';
+const foreground = img(png('foreground-1024.png'), crop);
+const background = img(png('background-1024.png'), crop);
 // splash: the app icon as a rounded tile (28% of the shorter side) on the page colour
-const splash = img('left:36%;top:36%;width:28%;height:28%;border-radius:22%');
+const splash = img(icon, 'left:36%;top:36%;width:28%;height:28%;border-radius:22%');
 
 const jobs = [
   { body: full, out: 'assets/icons/icon-192.png', size: 192 },
