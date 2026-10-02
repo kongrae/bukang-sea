@@ -379,6 +379,66 @@ test('course records are separate: stars and sessions never touch story, daily, 
   assert.match(source, /PILOT \? 'pilot:' \+ PILOT\.level\.id : 'story:' \+ LVL/, 'separate hint allowance key');
 });
 
+test('course results: the North Harbor boundary previews the sluice works, the finale closes the course, next follows the course', () => {
+  const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
+  const pilotSource = source.slice(source.indexOf('/* ---------- pilot course:'), source.indexOf('/* ---------- UI wiring'));
+  const story = source.slice(source.indexOf('/* ---------- story journey:'), source.indexOf('/* ---------- shark skins:'));
+  const best = n => Object.fromEntries(PILOT_LEVELS.slice(0, n).map(l => [l.id, 3]));
+  const scene = stored => new Function('stored', `
+    ${engineSource}
+    ${read('levels.js')}
+    ${read('pilot.js')}
+    const save = JSON.parse(stored); let written = null;
+    const STORE_KEY = 'test', localStorage = {setItem: (k, v) => { written = v; }};
+    const elements = new Map(), noop = () => {};
+    const $ = id => { if (!elements.has(id)) elements.set(id, {id, hidden: true, textContent: '', innerHTML: '', scrollTop: 0,
+      classList: {toggle: noop, remove: noop, add: noop}, setAttribute: noop, focus: noop, querySelector: () => ({}), querySelectorAll: () => []}); return elements.get(id); };
+    let DAILY = null, FREE = null, PILOT = null, LVL = 0, g, st, cleared = false, loaded = null, shown = null;
+    const reduceMotion = true, sfx = {win: noop, star: noop}, haptic = noop, setTimeout = cb => cb();
+    const openSheet = id => { $(id).hidden = false; }, closeSheet = id => { $(id).hidden = true; };
+    const document = {hidden: false}, renderSuspended = () => false, REGION_ART = {};
+    const refreshSkins = () => [], earnedJournalRewards = () => [], renderLevelGrid = noop, unlocked = () => true, totalStars = () => 0;
+    const restoreSession = () => null, loadPilot = i => { loaded = i; }, show = which => { shown = which; $('gameScreen').hidden = which !== 'game'; };
+    const curLevel = () => PILOT.level, dailySessionKey = () => 'daily';
+    const loadLevel = noop, openDaily = noop, continueDaily = noop, openFree = noop, startFree = noop, currentSkin = () => ({});
+    ${fn('chapterOf')}
+    ${fn('persist')}
+    ${rewardSource}
+    ${fn('onClear')}
+    ${story}
+    ${pilotSource}
+    $('gameScreen').hidden = false;
+    return {
+      clear: index => { PILOT = {index, level: PILOT_LEVELS[index]}; g = parseLevel(PILOT.level); st = {fish: g.fish.map((_, i) => i), moves: PILOT.level.par}; onClear(); },
+      next: () => continueStory(), el: id => $(id), save: () => JSON.parse(written), loaded: () => loaded, shown: () => shown
+    };
+  `)(JSON.stringify(stored));
+  const base = { best: { 0: 2 }, owned: ['basic'], skin: 'basic', journal: { version: 1, days: {} }, sessions: { story: { id: 0 }, pilot: { id: 'p04' } } };
+  const boundary = scene({ ...base, pilot: { version: 1, best: best(3) } });
+  boundary.clear(3);
+  assert.equal(boundary.el('clearTitle').textContent, '북항 통과!');
+  assert.equal(boundary.el('clearRegion').hidden, false);
+  assert.match(boundary.el('clearRegion').innerHTML, /다음 지역[^]*수문 시설/);
+  assert.equal(boundary.el('nextBtn').textContent, '수문 시설로');
+  assert.match(boundary.el('clearChecks').innerHTML, /시험 코스[^]*4 \/ 12 수로 완료/);
+  const saved = boundary.save();
+  assert.equal(saved.pilot.best.p04, 3); assert.deepEqual(saved.best, { 0: 2 }, 'story stars untouched');
+  assert.equal(saved.sessions.pilot, undefined); assert.deepEqual(saved.sessions.story, { id: 0 }, 'story session untouched');
+  boundary.next(); assert.equal(boundary.loaded(), 4, 'next opens the first sluice canal');
+  const finale = scene({ ...base, pilot: { version: 1, best: best(11) } });
+  finale.clear(11);
+  assert.equal(finale.el('clearTitle').textContent, '시험 코스 완료!');
+  assert.equal(finale.el('clearRegion').hidden, true);
+  assert.match(finale.el('clearStory').textContent, /시험 코스를 끝까지/);
+  assert.equal(finale.el('nextBtn').textContent, '코스 목록');
+  finale.next();
+  assert.equal(finale.el('pilotOverlay').hidden, false, 'the course sheet opens after the last canal');
+  assert.equal(finale.shown(), 'title');
+  const regular = scene({ ...base, pilot: { version: 1, best: best(5) } });
+  regular.clear(5);
+  assert.equal(regular.el('clearRegion').hidden, true); assert.equal(regular.el('nextBtn').textContent, '다음 수로');
+});
+
 test('all builds embed exactly the needed sluice and region art; originals and previews stay out', () => {
   const { gameBody, ART } = require('./build-source');
   const body = gameBody();

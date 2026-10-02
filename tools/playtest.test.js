@@ -79,3 +79,24 @@ test('test build preserves progression by default and unlocks later stages only 
     assert.ok(prod.includes('const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;'),rel);
   }
 });
+test('pilot canals keep their p01–p12 ids in the attempts sheet and are listed after story numbers, never merged', () => {
+  const pilot=attempt('P05',1,'clear',55); pilot[4]='p05';
+  const rows=R.parseAttempts(csv(R.ATTEMPT_HEADERS,[attempt('P05',1,'clear',40),pilot]));
+  const s=R.summarize(rows,[]);
+  assert.deepEqual(s.groups.map(g=>g.level),[6,'p05']);
+  const unknown=pilot.slice(); unknown[4]='p13';
+  assert.throws(()=>R.parseAttempts(csv(R.ATTEMPT_HEADERS,[unknown])),/범위/);
+  const current=pilot.slice(); current[3]=R.buildId();
+  assert.ok(R.makeReport(R.parseAttempts(csv(R.ATTEMPT_HEADERS,[current])),[]).includes('p05 시험 첫 수문'));
+});
+test('pilot survey separates no answer from none, rejects unknown canals, and reports mentions with their denominators', () => {
+  const row=(id,rule,hints,repeat,next)=>[id,'new','android',build,rule,hints,repeat,next,'','core'];
+  const surveys=R.parsePilotSurveys(csv(R.PILOT_SURVEY_HEADERS,[row('P11','yes','p06;p08','none',4),row('P12','partly','p08','p02',5),row('P13','','','','')]));
+  assert.equal(surveys[2].hint_levels,null); assert.deepEqual(surveys[0].repeat_levels,[]);
+  const report=R.makeReport([],[],surveys);
+  assert.ok(report.includes('| 3 | 1/1/0 (n=2) | 4.5/2 | p08 2/2, p06 1/2 | p02 1/2 |'));
+  assert.throws(()=>R.parsePilotSurveys(csv(R.PILOT_SURVEY_HEADERS,[row('P11','yes','p99','',3)])),/p01–p12/);
+  assert.throws(()=>R.parsePilotSurveys(csv(R.PILOT_SURVEY_HEADERS,[row('P11','maybe','','',3)])),/gate_rule/);
+  assert.throws(()=>R.parsePilotSurveys(csv(R.PILOT_SURVEY_HEADERS,[row('P11','yes','','',6)])),/범위/);
+  assert.ok(R.makeReport().includes('| — | — | — | — | 0 | 미수집 | 미수집 | 미수집 | 미수집 |'),'empty pilot section is pending, not zero');
+});

@@ -4,8 +4,11 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const root = path.join(__dirname, '..');
 const LEVELS = new Function(fs.readFileSync(path.join(root, 'src/levels.js'), 'utf8') + '; return LEVELS;')();
+const { PILOT_LEVELS } = require('../src/pilot.js');
 const ATTEMPT_HEADERS = ['participant_id','cohort','device','build','level','attempt','outcome','duration_sec','moves','stars','hints','undos','misinputs','assisted','notes','session'];
 const SURVEY_HEADERS = ['participant_id','cohort','device','build','readability','control','fun','again','resume','notes','session'];
+// Pilot course (North Harbor → Sluice Works) questions; the attempts sheet records course canals as p01–p12 in `level`.
+const PILOT_SURVEY_HEADERS = ['participant_id','cohort','device','build','gate_rule','hint_levels','repeat_levels','next_region','notes','session'];
 function buildId() {
   const body = require('./build-source').gameBody();
   return crypto.createHash('sha256').update(body).digest('hex').slice(0, 12);
@@ -49,6 +52,13 @@ function meta(r) {
   return r;
 }
 const personKey = r => [r.participant_id, r.build].join('|');
+// Story canals are numbers 1–48; pilot canals keep their stable ids so they are never confused with story numbers.
+function levelValue(value) {
+  if (/^p\d{2}$/.test(value)) { if (!PILOT_LEVELS.some(l => l.id === value)) throw new Error('level 범위 오류'); return value; }
+  return number(value, 'level', {min: 1, max: LEVELS.length, required: true});
+}
+const levelOrder = level => typeof level === 'number' ? level : LEVELS.length + 1 + PILOT_LEVELS.findIndex(l => l.id === level);
+const levelName = level => typeof level === 'number' ? LEVELS[level - 1].name : '시험 ' + PILOT_LEVELS.find(l => l.id === level).name;
 function checkPeople(rows) {
   const people = new Map();
   for (const r of rows) {
@@ -61,7 +71,7 @@ function parseAttempts(text) {
   const seen = new Set();
   const rows = records(text, ATTEMPT_HEADERS).map(r => {
     meta(r);
-    r.level = number(r.level, 'level', {min: 1, max: LEVELS.length, required: true});
+    r.level = levelValue(r.level);
     r.attempt = number(r.attempt, 'attempt', {min: 1, required: true});
     if (!['clear','abandon','timeout','blocked','not_run'].includes(r.outcome)) throw new Error('outcome 형식 오류');
     const key = personKey(r) + '|' + r.session + '|' + r.level + '|' + r.attempt;
@@ -95,6 +105,26 @@ function parseSurveys(text) {
   });
   checkPeople(rows); return rows;
 }
+// '' = not asked/no answer, 'none' = asked and no canal named, otherwise p01–p12 separated by ';'.
+function idList(value, name) {
+  if (value === '') return null;
+  if (value === 'none') return [];
+  const ids = value.split(/[;\s]+/).filter(Boolean);
+  if (!ids.length || ids.some(id => !PILOT_LEVELS.some(l => l.id === id)) || new Set(ids).size !== ids.length) throw new Error(name + '는 p01–p12를 ;로 구분하거나 none');
+  return ids;
+}
+function parsePilotSurveys(text) {
+  const seen = new Set();
+  const rows = records(text, PILOT_SURVEY_HEADERS).map(r => {
+    meta(r); const key = personKey(r) + '|' + r.session;
+    if (seen.has(key)) throw new Error('시험 코스 설문 중복'); seen.add(key);
+    if (!['yes','partly','no',''].includes(r.gate_rule)) throw new Error('gate_rule 형식 오류');
+    r.hint_levels = idList(r.hint_levels, 'hint_levels'); r.repeat_levels = idList(r.repeat_levels, 'repeat_levels');
+    r.next_region = number(r.next_region, 'next_region', {min: 1, max: 5});
+    return r;
+  });
+  checkPeople(rows); return rows;
+}
 function median(values) {
   if (!values.length) return null;
   const a = values.slice().sort((x, y) => x - y), i = Math.floor(a.length / 2);
@@ -119,15 +149,16 @@ function summarize(attempts, surveys) {
         hints:fraction(r => r.hints > 0, hintsKnown), misinputs:fraction(r => r.misinputs > 0, inputKnown),
         clearSeconds:median(clear.map(r => r.duration_sec)), abandon:rows.filter(r => r.outcome === 'abandon').length,
         timeout:rows.filter(r => r.outcome === 'timeout').length, blocked:rows.filter(r => r.outcome === 'blocked').length};
-    }).sort((a,b) => a.build.localeCompare(b.build) || a.session.localeCompare(b.session) || a.cohort.localeCompare(b.cohort) || a.device.localeCompare(b.device) || a.level - b.level)};
+    }).sort((a,b) => a.build.localeCompare(b.build) || a.session.localeCompare(b.session) || a.cohort.localeCompare(b.cohort) || a.device.localeCompare(b.device) || levelOrder(a.level) - levelOrder(b.level))};
 }
-function makeReport(attempts = [], surveys = []) {
+function makeReport(attempts = [], surveys = [], pilotSurveys = []) {
+  checkPeople([...attempts, ...surveys, ...pilotSurveys]);
   const summary = summarize(attempts, surveys), currentBuild = buildId(), lines = ['# 플레이테스트 결과', '', `현재 게임 빌드: ${currentBuild}`, '',
     `실제 플레이 기록: ${summary.participants}명(빌드별 ID 기준). 재도전 ${summary.retries}건. 미실시 ${summary.notRun}건. 설문 ${surveys.length}건.`, '',
     summary.participants ? '아래 수치는 입력한 실제 관찰 기록만 집계했다. 첫 시도와 재도전을 분리하고 빌드·경험·기기별로 나눴다.' : '실제 이용자 플레이 기록이 없다. 체감 난이도·재미·휴대폰 조작 품질은 아직 판단할 수 없다.', '',
     '| 빌드 | 세션 | 경험 | 기기 | 수로 | 첫 시도 n | 탈출 | 별 3개 | 도움 없이 탈출 | 힌트 사용 | 오조작 발생 | 클리어 시간 중앙값(초) | 포기/초과/기능 막힘 |',
     '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'];
-  for (const g of summary.groups) lines.push(`| ${g.build} | ${g.session} | ${g.cohort} | ${g.device} | ${g.level}${g.build === currentBuild ? ' ' + LEVELS[g.level-1].name : ''} | ${g.n} | ${g.clear} | ${g.three} | ${g.unaided} | ${g.hints} | ${g.misinputs} | ${g.clearSeconds === null ? '미수집' : g.clearSeconds.toFixed(1)} | ${g.abandon}/${g.timeout}/${g.blocked} |`);
+  for (const g of summary.groups) lines.push(`| ${g.build} | ${g.session} | ${g.cohort} | ${g.device} | ${g.level}${g.build === currentBuild ? ' ' + levelName(g.level) : ''} | ${g.n} | ${g.clear} | ${g.three} | ${g.unaided} | ${g.hints} | ${g.misinputs} | ${g.clearSeconds === null ? '미수집' : g.clearSeconds.toFixed(1)} | ${g.abandon}/${g.timeout}/${g.blocked} |`);
   if (!summary.groups.length) lines.push('| — | — | — | — | — | 0 | 미수집 | 미수집 | 미수집 | 미수집 | 미수집 | 미수집 | — |');
   lines.push('', '각 비율은 분자/관찰 가능한 분모다. 포기·시간 초과·기능 막힘도 첫 시도 탈출/별 분모에 포함한다. 미실시는 제외한다. 빈 관찰 수치는 0으로 간주하지 않는다. 시간 중앙값은 클리어한 첫 시도만 대상으로 하므로 포기/초과 건수와 함께 읽는다.', '',
     '## 설문', '', '| 빌드 | 세션 | 경험 | 기기 | n | 가독성 중앙값/n | 조작 중앙값/n | 재미 중앙값/n | 다시 할 의향 | 이어하기 성공 |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
@@ -136,6 +167,20 @@ function makeReport(attempts = [], surveys = []) {
   const rating = (rows, f) => {const v = rows.map(r => r[f]).filter(v => v !== null); return v.length ? median(v).toFixed(1) + '/' + v.length : '미수집';};
   for (const rows of surveyGroups.values()) {const r=rows[0]; lines.push(`| ${r.build} | ${r.session} | ${r.cohort} | ${r.device} | ${rows.length} | ${rating(rows,'readability')} | ${rating(rows,'control')} | ${rating(rows,'fun')} | ${fraction(r=>r.again===1,rows.filter(r=>r.again!==null))} | ${fraction(r=>r.resume==='pass',rows.filter(r=>['pass','fail'].includes(r.resume)))} |`);}
   if (!surveyGroups.size) lines.push('| — | — | — | — | 0 | 미수집 | 미수집 | 미수집 | 미수집 | 미수집 |');
+  lines.push('', '## 시험 코스 설문', '', '스위치 규칙 설명은 p06 뒤 “스위치는 언제 눌리나요?”에 대한 답이다. 판 언급은 응답자가 직접 고른 판이며 실제 힌트 사용 횟수는 위 시도 기록을 본다.', '',
+    '| 빌드 | 세션 | 경험 | 기기 | n | 스위치 규칙 설명(맞음/일부/틀림) | 다음 지역 기대 중앙값/n | 힌트가 필요했던 판 | 반복으로 느낀 판 |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  const pilotGroups = new Map();
+  for (const r of pilotSurveys) {const key = [r.build,r.session,r.cohort,r.device].join('|'); if (!pilotGroups.has(key)) pilotGroups.set(key, []); pilotGroups.get(key).push(r);}
+  const mentions = (rows, f) => {
+    const known = rows.filter(r => r[f] !== null); if (!known.length) return '미수집';
+    const counts = new Map(); known.forEach(r => r[f].forEach(id => counts.set(id, (counts.get(id) || 0) + 1)));
+    return counts.size ? [...counts].sort((a, b) => b[1] - a[1] || levelOrder(a[0]) - levelOrder(b[0])).map(([id, n]) => `${id} ${n}/${known.length}`).join(', ') : `없음 0/${known.length}`;
+  };
+  for (const rows of pilotGroups.values()) {
+    const r = rows[0], rule = rows.filter(x => x.gate_rule), count = v => rule.filter(x => x.gate_rule === v).length;
+    lines.push(`| ${r.build} | ${r.session} | ${r.cohort} | ${r.device} | ${rows.length} | ${rule.length ? `${count('yes')}/${count('partly')}/${count('no')} (n=${rule.length})` : '미수집'} | ${rating(rows,'next_region')} | ${mentions(rows,'hint_levels')} | ${mentions(rows,'repeat_levels')} |`);
+  }
+  if (!pilotGroups.size) lines.push('| — | — | — | — | 0 | 미수집 | 미수집 | 미수집 | 미수집 |');
   lines.push('', '표본이 적으면 원인 파악용 관찰로만 사용한다. 서로 다른 빌드/경험/기기 기록을 합쳐 개선 효과나 시장 반응을 단정하지 않는다. 개별 발언과 재현 절차는 원본 notes를 함께 읽는다.', '');
   return lines.join('\n');
 }
@@ -144,10 +189,13 @@ if (require.main === module) {
     const args = process.argv.slice(2), outAt = args.indexOf('--out');
     const output = outAt >= 0 ? args.splice(outAt, 2)[1] : null;
     if (outAt >= 0 && !output) throw new Error('--out 뒤에 보고서 경로를 지정하세요');
-    if (args.length > 2) throw new Error('사용법: node tools/playtest-report.js [attempts.csv] [survey.csv] [--out report.md]');
-    const report = makeReport(args[0] ? parseAttempts(fs.readFileSync(args[0], 'utf8')) : [], args[1] ? parseSurveys(fs.readFileSync(args[1], 'utf8')) : []);
+    const pilotAt = args.indexOf('--pilot'), pilotFile = pilotAt >= 0 ? args.splice(pilotAt, 2)[1] : null;
+    if (pilotAt >= 0 && !pilotFile) throw new Error('--pilot 뒤에 시험 코스 설문 CSV를 지정하세요');
+    if (args.length > 2) throw new Error('사용법: node tools/playtest-report.js [attempts.csv] [survey.csv] [--pilot pilot-survey.csv] [--out report.md]');
+    const report = makeReport(args[0] ? parseAttempts(fs.readFileSync(args[0], 'utf8')) : [], args[1] ? parseSurveys(fs.readFileSync(args[1], 'utf8')) : [],
+      pilotFile ? parsePilotSurveys(fs.readFileSync(pilotFile, 'utf8')) : []);
     if (output) {fs.mkdirSync(path.dirname(path.resolve(output)), {recursive:true}); fs.writeFileSync(output, report); console.log('wrote ' + output);}
     else console.log(report);
   } catch (e) {console.error(e.message); process.exitCode = 1;}
 }
-module.exports = {ATTEMPT_HEADERS,SURVEY_HEADERS,buildId,parseCsv,parseAttempts,parseSurveys,summarize,makeReport};
+module.exports = {ATTEMPT_HEADERS,SURVEY_HEADERS,PILOT_SURVEY_HEADERS,buildId,parseCsv,parseAttempts,parseSurveys,parsePilotSurveys,summarize,makeReport};

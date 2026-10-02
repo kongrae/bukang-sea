@@ -21,7 +21,8 @@ node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽
 npm run cap:sync         # build:web + Capacitor android 동기화
 npm run android:debug    # cap:sync + 디버그 APK 빌드(JDK 21: ~/.jdks/jdk-21*, 시스템 JDK 17은 그대로)
 npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-keys, 비밀번호는 android/keystore.properties, 둘 다 커밋 금지)
-npm run verify           # 모든 해법을 실제 규칙으로 재생하고 최소 이동 수 ≤ 별 기준(par)인지 검사
+npm run verify           # 모든 해법을 실제 규칙으로 재생하고 최소 이동 수 ≤ 별 기준(par)인지 검사 (스토리 48개 다음 시험 코스 12개를 따로 검사)
+npm run verify:pilot     # 시험 코스(북항→수문 시설) 12개만: 역할별 별 기준·기록 해법·수문 필수성(스위치 고정 반사실)·벽 구조 중복
 npm test                 # 풀이기·일일 퍼즐 호환·구조정 연출·진행 복원·장치 안내 회귀 검사
 npm run build:playtest   # playtest/ 관찰용 빌드. 기본 정상 진행, ?tester=P01&all=1은 후반 수로 개방(기록 격리)
 npm run serve:playtest   # localhost:5175 (?tester=P01로 이용자별 기록, --host는 tools/serve.js로 실행)
@@ -42,15 +43,19 @@ src/
   art.js       투명 상어 WebP 로딩·외형 캐시. 실패 시 game.js의 Canvas 대체 그림
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
   levels.js    LEVELS 배열 (48개 수로) + CHAPTERS (장 이름, 레벨 수) + LEVEL_ROLES (연습/일반/도전)
+  pilot.js     시험 코스 PILOT_LEVELS(p01–p12, 지역·학습 의도·역할·검증 경로) + PILOT_REGIONS(북항/수문 시설, 판 표면 팔레트)
   variety.js   8개 풀이 유형·14개 공간 마스크·장치 사용 검증·대칭 배치 비교·v2 공통 생성
   variety-reserves.js  실제 해법을 검증한 예비 수로 59개. 생성 버전을 바꾸지 않고 수정 금지
   daily.js     v2 주제별 3단계 구조작전 + 이전 작전 v1/단일 수로 호환 + MASKS·rng·place
   free.js      날짜와 독립된 세 난이도의 시드 기반 자유 수로 생성기. 실제 규칙으로 해법·난이도 검증
-  device-demo.js 장치 안내의 짧은 반복 예시. 독립된 맵에서 실제 이동/구조정 규칙으로 타임라인 계산
+  device-demo.js 장치 안내의 짧은 반복 예시. 독립된 맵에서 실제 이동/스위치·수문/구조정 규칙으로 타임라인 계산
   game.js      렌더링(canvas), 입력, 상태, UI. IIFE 하나
 tools/
   build.js     src 파일들을 이어 붙여 단일 HTML 생성
-  verify.js    해법 재생·그물 필요성·역할별 별 기준 검증
+  verify.js    해법 재생·그물 필요성·역할별 별 기준 검증 (끝에 verify-pilot.js 실행)
+  verify-pilot.js  시험 코스 12개 검증. 스토리 결과로 대신하지 않는다
+  prepare-region-art.js  지역 소개 PNG 원본 → assets/art/regions/*.webp(720×480). 기존 sharp 경로를 인자로 받음
+  pilot.test.js  스위치·수문 규칙·순서·풀이기 전수 대조·저장/되돌리기·힌트·예시·기록 분리·빌드 내장 검사
   difficulty.js  실제 재배치 규칙의 이동 기준표. 고정 그물 bits는 생성기/선택 진단용
   render.test.js  실제 이동·프레임·저장 함수로 구조정 연출, 전체 수로 복원, 되돌리기, 장치 안내 검사
   playtest-report.js  CSV 첫 시도/설문 집계. 빌드·core/lab·경험·기기 분리, 포기·초과 포함, 빈 관찰 제외
@@ -58,7 +63,7 @@ tools/
   gen.js       수로 마스크에 물체를 무작위 배치해 목표 par에 가까운 레벨 탐색
   icons.js     아이콘 PNG 렌더링
   serve.js     로컬 정적 서버
-assets/        icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, versionCode 4부터. 3d-v1은 아트 기준) → icons/*.png + icon.svg(파비콘용 PNG 래퍼, 생성물), art/(투명 상어 WebP), fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
+assets/        icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, versionCode 4부터. 3d-v1은 아트 기준) → icons/*.png + icon.svg(파비콘용 PNG 래퍼, 생성물), art/(투명 상어 WebP, content-refresh-v1/ 지역·수문 아트 원본(수정 금지), regions/ 지역 카드 WebP 파생본), fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
@@ -67,7 +72,7 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `slide`, `plan` 등)을 공유한다. WebP 3개도 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다.
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 상어 WebP 3개, 수문·스위치 SVG 4개, 지역 카드 WebP 2개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART` 목록, 토큰은 src에 한 번씩).
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -83,6 +88,7 @@ www/           build:web 결과 (gitignore)
 - `s` 모래톱: 미끄러지다 올라서면 그 칸에서 멈춘다(막는 칸은 아님). 출발 칸이면 무시.
 - `w` 소용돌이: 레벨당 정확히 한 쌍. 들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 미끄러진다(slide 경로에 4번째 원소 true로 표시). 한 이동에서 같은 소용돌이를 다시 만나면 멈춘다.
 - 그물: 레벨의 `nets` 개수만큼 빈 물 칸(`.`)을 탭해서 설치/회수. 이동 횟수에 포함되지 않음. 숭어·상어 위치·물줄기 칸에는 설치 불가.
+- 스위치 `p`·수문 `G`(처음 닫힘)/`g`(처음 열림), 2026-10-02 시험 코스부터: 한 수로의 스위치·수문은 한 연결 그룹이고 상태는 누름 홀짝 `gate`(0/1) 하나다. **상어의 이동이 스위치 칸에서 끝날 때만** 눌러 모든 수문을 토글한다(지나감·출발·막힘·탈출·그물 편집은 무반응). 한 턴 = 턴 시작 수문 상태로 미끄러짐 → 스위치 → 수문 → 바뀐 수문으로 구조정(`turn()`). 닫힌 수문은 벽, 수문은 폭 1칸 통로에만(가장자리 제외, `parseLevel`이 검사), 그물은 스위치·수문에 설치 불가. 구조정이 있는 채 닫힌 수문은 구조정이 나갈 때까지 열려 있다. 스위치 없는 수로는 탐색 상태·순서·저장 형식이 이전과 같다. 상세 결정과 이유는 `docs/CONTENT-PILOT.md`.
 - 별은 순서대로 획득: 탈출 1개 → 숭어 전부 2개 → 숭어 전부 + `이동 수 ≤ par` 3개. 숭어를 건너뛴 빠른 탈출은 1개이며 다음 수로는 계속 열린다. 숭어 없는 연습판은 숭어 조건을 자동 충족한다.
 
 ## 레벨 형식
@@ -96,7 +102,9 @@ www/           build:web 결과 (gitignore)
 ] }
 ```
 
-기호: `#` 산책로 · `.` 물 · `S` 시작 · `E` 바다 출구(가장자리) · `f` 숭어 · `o` 부표 · `b`/`B` 구조정(가로/세로 순찰) · `^v<>` 물줄기 · `s` 모래톱 · `w` 소용돌이(한 쌍)
+기호: `#` 산책로 · `.` 물 · `S` 시작 · `E` 바다 출구(가장자리) · `f` 숭어 · `o` 부표 · `b`/`B` 구조정(가로/세로 순찰) · `^v<>` 물줄기 · `s` 모래톱 · `w` 소용돌이(한 쌍) · `p` 스위치 · `G`/`g` 수문(처음 닫힘/열림)
+
+**시험 코스**(`src/pilot.js`, 2026-10-02 R01–R05)는 스토리와 별도 모드 `PILOT`이다. ID `p01`–`p12`는 저장 키이므로 바꾸거나 재사용하지 않는다. 기록 `save.pilot = { version: 1, best: { ID: 별 } }`, 진행 `save.sessions.pilot`, 힌트 `pilot:ID`. 별은 스킨 조건에 더하지 않는다. 진입은 메인 `수로 골라 하기` 안 `새 물길 시험 코스`. 수로를 고치면 `npm run verify:pilot`으로 `par`(역할 규칙)·`route`·수문 필수성을 확인한다. 수로 표·지역 연출·검증 결과·재개 지점은 `docs/CONTENT-PILOT.md`.
 
 장 구성: 1장 북항 수로(1–12) · 2장 친수공원 운하(13–24) · 3장 방파제 너머(25–36) · 4장 외항 물길(37–48, 모래톱·소용돌이). 레벨은 배열 끝에만 추가한다(진행 상황이 인덱스로 저장되므로 중간 삽입·순서 변경 금지). 추가하면 `CHAPTERS`의 count도 맞춘다(verify가 검사). (출시 전이라 2026-09-30에 2·3장 순서를 한 번 재배치했다. 출시 후에는 순서 변경 금지.)
 
@@ -115,14 +123,14 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 
 ## game.js 개요
 
-- 상태 `st = { pos, dir, fish[], nets[], moves, history[] }`. 되돌리기는 history 스냅샷 pop (그물 설치/회수도 포함).
+- 상태 `st = { pos, dir, fish[], nets[], moves, history[] }`(스위치 수로는 `gate` 포함). 되돌리기는 history 스냅샷 pop (그물 설치/회수도 포함). 스위치를 누른 턴은 상어 도착 → 0.2초 수문 전환 → 구조정 순으로 보여 주고(동작 줄이기: 도착 시 최종 상태), 수문·스위치 그림은 `BOARD_ART`(SVG, 타일 크기별 캐시)와 실패 시 단순 도형으로 각자의 실제 상태를 그린다. 수문 시설 판은 `setBoardRegion()`이 물·산책로·난간·프레임 색과 배관 장식을 바꾼다(장치 색은 공통).
 - `tryMove(d)`는 결과를 즉시 확정하고, 화면은 `anim`으로 따라간다. 위치는 속도 곡선(GLIDE: 빠른 출발 → 긴 감속, 탈출은 DASH)으로 경로를 보간. 상어가 도착한 뒤 구조정이 0.16초 동안 움직이거나 방향을 바꾼다. reduced-motion이면 추가 연출 없이 상어 도착 시 구조정 상태를 표시한다. 애니메이션 중 입력은 한 개까지 `queued`에 담았다가 두 단계가 끝난 직후 실행.
 - 연출(전부 tile 좌표 파티클): 속도에 따른 몸 늘어남, 정지 시 눌림+스프링(`settle`), 벽 충돌 물보라·파문(화면 흔들림·진동은 없음, 2026-09-30 제거), V자 항적(`wake`), 숭어 빨려 들어가기+냠!+반짝임, 물줄기 통과 번쩍임(`jetFlash`), 그물 톡 튀기(`netPop`), 탈출 시 바다로 사라짐, 물 위 코스틱 빛(타일러블 패턴을 waterPath로 clip). reduced-motion이면 대부분 생략.
 - 애니메이션 5번: 정지 반응은 상어 도착 시점에 실행하며 구조정은 그 뒤 움직인다. 소용돌이는 별도 0.18초 진입/재등장 구간과 통과 이벤트를 사용한다. 그물 회수/그물·부표 접촉, 마지막 숭어 완료 반응을 추가하고 되돌리기·이탈 시 잔상을 정리한다. 저장 규칙과 실제 기기 검증의 경계는 `docs/PLAY-MOTION.md` 참고.
 - 입력: 게임 화면 어디서든 스와이프, 손가락이 `SWIPE`(18px) 움직이는 순간 발동(pointermove). 탭은 판 위에서만(그물). 키보드 동일.
 - 판(카메라 뷰): 캔버스가 HUD와 버튼 사이 영역 전체를 가장자리까지 채운다(.board margin-inline -12px). 수로는 가운데에 최대 크기로(폭이 모자라면 바깥 산책로 열을 `CROP` 30%까지 화면 밖으로), 남는 공간은 판 밖 세계로 채움: 산책로(엔진도 격자 밖을 #로 봄) + 출구 바깥으로 이어지는 바다(`seaCells`, `~`). 그리드 원점은 `OX, OY`(캔버스 data-tile/ox/oy로 노출, tools/shots.js가 탭 좌표에 사용).
 - 햅틱: Capacitor Haptics 플러그인이 있으면 사용, 없으면 navigator.vibrate. 모든 버튼 누름에 tick. 설정 창(톱니바퀴, 제목·게임 화면)에서 소리·진동을 따로 끔(`save.sound`, `save.vibe`).
-- 첫 플레이 안내(`coach`): 수로 1에서 손가락 스와이프, 첫 그물 수로에서 손가락 탭. 한 번 하면 `save.coachSwipe/coachNet`으로 다시 안 뜸. 별도로 부표·구조정·물줄기·그물·모래톱·소용돌이를 처음 만날 때 3.6–7.6초 반복 사용 예시를 표시한다. 재생/일시정지/처음부터 보기와 장치별 전환을 제공하며, 닫을 때 열어 본 장치만 `save.seenDevices`에 기록한다. 동작 줄이기는 정지 경로로 시작하고 직접 재생할 수 있다. `docs/DEVICE-DEMO.md` 참고. 설정의 '장치 안내'는 게임 안에서는 현재 장치, 목록에서는 전체 장치를 보여준다.
+- 첫 플레이 안내(`coach`): 수로 1에서 손가락 스와이프, 첫 그물 수로에서 손가락 탭. 한 번 하면 `save.coachSwipe/coachNet`으로 다시 안 뜸. 별도로 부표·구조정·물줄기·그물·모래톱·소용돌이·스위치·수문을 처음 만날 때 3.6–7.6초 반복 사용 예시를 표시한다. 재생/일시정지/처음부터 보기와 장치별 전환을 제공하며, 닫을 때 열어 본 장치만 `save.seenDevices`에 기록한다. 동작 줄이기는 정지 경로로 시작하고 직접 재생할 수 있다. `docs/DEVICE-DEMO.md` 참고. 설정의 '장치 안내'는 게임 안에서는 현재 장치, 목록에서는 전체 장치를 보여준다.
 - 정적 배경(산책로, 난간, 구경꾼, 나무)은 `buildStatic()`에서 오프스크린 캔버스로 한 번 그림. 물결·물체·상어는 매 프레임. 짧은 화면은 HUD 간격을 줄이고, `ResizeObserver`로 안내 줄바꿈 등의 판 크기 변화에 캔버스와 탭 좌표를 맞춘다.
 - 힌트는 현재 상태에서 `planSearch()`로 최소 이동 해법을 찾고 회수(그물의 원·X 표시) → 설치(반짝이는 빈 그물) → 이동 화살표를 순서대로 안내한다. 그물 탭 중에는 같은 다음 이동의 배치를 유지하고 안내만 갱신한다. 첫 그물 안내는 해법상 설치가 필요한 이동까지 기다려 표시한다.
 - 기본 진행 저장(구조작전 확장은 아래 설명): 진행 상황은 `localStorage['bukang-sea-v1']`에 기존 최고 별·설정·스킨과 `sessions: { story, daily }`, `seenDevices`를 함께 저장한다. 각 모드에 진행 중 수로 하나씩 유지하며, 이동·그물 편집·되돌리기·초기화 때 자동 저장한다. 세션에는 버전·수로 인덱스 또는 날짜·맵/그물 수 서명·상어/숭어/그물/구조정/이동 수·최대 200개 되돌리기 기록을 담는다. 연출 중에는 해당 이동의 전체 숭어를 포함하고, 화면을 나가거나 앱이 비활성화되면 현재 턴을 완료하며 미실행 대기 입력은 버린다. 클리어한 모드의 세션은 삭제하고 날짜가 지난 일일 세션은 이어 하지 않는다. 구조가 잘못되거나 맵이 달라진 세션은 무시하며 기존 별·스킨은 유지한다. 접근 실패해도 동작해야 하므로 try/catch 유지. 상세 동작·검증 범위는 `docs/PROGRESS-AND-GUIDES.md` 참고.

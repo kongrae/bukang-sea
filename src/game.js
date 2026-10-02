@@ -953,10 +953,9 @@ function landShark(a) {
   if (a.landed || a.win) return;
   a.landed = true;
   const [x, y] = a.pts[a.steps];
-  if (a.pressed) {   // stopping on a switch presses it; the linked gates turn right after (gate phase)
-    sfx.press(); haptic('medium'); ring(x, y, 0.9, 0.6);
-    if (!reduceMotion) { jetFlash.set(y * g.w + x, 1); g.gates.forEach(i => jetFlash.set(i, 1)); }
-    sfx.gate();
+  if (a.pressed) {   // stopping on a switch presses it; the linked gates turn right after (gate phase in draw)
+    sfx.press(); sfx.gate(); haptic('medium'); ring(x, y, 0.9, 0.6);
+    g.gates.forEach(i => ring(i % g.w, Math.floor(i / g.w), 0.8, 0.45));
   }
   if (cellAt(g, x, y) === 's') {
     settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
