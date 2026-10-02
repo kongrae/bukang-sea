@@ -89,7 +89,7 @@ public static class SharkIconV2Export {
         if(x==0||y==0||x==size-1||y==size-1) edge++;
       }
       if(outside!=0 || edge!=0) throw new Exception("Foreground exceeds adaptive safe circle.");
-      return "All deliverables: 1024x1024 PNG. Foreground alpha >=16: max radius "+maxR.ToString("F2")+"px; safe radius "+(size*33.0/108.0).ToString("F2")+"px; outside safe circle "+outside+"; opaque edge pixels "+edge+". Background and complete icon are opaque.\n";
+      return "All deliverables: 1024x1024 PNG. Foreground alpha >=16: max radius "+maxR.ToString("F2")+"px; safe radius "+(size*33.0/108.0).ToString("F2")+"px; outside safe circle "+outside+"; opaque edge pixels "+edge+". Background and complete icon are opaque.";
     }
   }
 }
