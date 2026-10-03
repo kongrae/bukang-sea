@@ -202,7 +202,7 @@ function journalTotals() {
   return { visits: stamps.length, operations: stamps.filter(n => n === 2).length };
 }
 normalizeJournal(); // Import only surviving records; old single-puzzle clears never become full operations.
-const unlocked = i => i === 0 || save.best[i - 1] != null;
+const unlocked = i => i === 0 || save.best[i - 1] != null || (i >= 48 && (Array.isArray(save.storyAccess) && save.storyAccess.includes(i) || Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3));
 // chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
 function chapterOf(i) {
   let start = 0;
@@ -218,8 +218,10 @@ function chapterOf(i) {
 const JOURNEY_STORY = [
   { intro: '좁은 북항 수로에 갇힌 상어. 굽은 물길을 하나씩 열어 주세요.', outro: '좁은 수로를 벗어났어요! 이제 공원 안쪽 운하를 따라 나아가요.' },
   { intro: '화단 사이로 이어진 운하. 갈림길을 지나 바다 쪽으로 길을 찾아요.', outro: '공원 운하를 통과했어요! 저 앞에 방파제가 보여요.' },
-  { intro: '방파제 너머로 흐르는 물살. 물줄기와 그물을 이용해 출구를 열어요.', outro: '방파제를 넘어왔어요! 넓은 바다까지 마지막 물길만 남았어요.' },
-  { intro: '모래톱과 소용돌이를 지나면 탁 트인 바다. 마지막 구출을 함께해요.', outro: '마지막 물길이 열렸어요. 상어가 넓은 바다로 돌아갑니다.' },
+  { intro: '방파제 너머로 흐르는 물살. 물줄기와 그물을 이용해 출구를 열어요.', outro: '방파제를 넘어왔어요! 이제 모래톱과 소용돌이가 있는 외항으로 나아가요.' },
+  { intro: '모래톱과 소용돌이를 지나 외항의 물길을 건너요.', outro: '외항을 통과했어요! 새로 열린 북항 바깥길을 따라 수문 시설로 가요.' },
+  { intro: '부두 사이 굽은 물길을 지나 수문 시설 입구까지 가요.', outro: '북항 바깥길을 통과했어요! 이제 스위치로 수문을 여닫아 보세요.' },
+  { intro: '스위치 위에 멈춰 수문을 열고 닫아요. 마지막 갑문 너머가 넓은 바다예요.', outro: '마지막 수문이 열렸어요. 상어가 넓은 바다로 돌아갑니다.' },
 ];
 function storyProgress() {
   let start = 0;
@@ -796,8 +798,37 @@ function storyLevel(i) {
   const legacy = LEGACY_STORY_LEVELS[i], record = save.sessions.story;
   return legacy && record?.id === i && record.layout === levelSignature(legacy) ? legacy : LEVELS[i];
 }
-function storySession(i = save.sessions.story?.id) {
-  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(save.sessions.story, storyLevel(i), i) : null;
+function storyResumeId() { return save.sessions.story?.id ?? save.sessions.importedStory?.id; }
+function storySession(i = storyResumeId()) {
+  const record = save.sessions.story?.id === i ? save.sessions.story : save.sessions.importedStory;
+  return Number.isInteger(i) && LEVELS[i] && unlocked(i) ? restoreSession(record, storyLevel(i), i) : null;
+}
+function migratePilotToStory() {
+  if (save.storyExpansion === 1) return;
+  const validStars = n => Number.isInteger(n) && n >= 1 && n <= 3;
+  const oldBest = save.pilot?.version === 1 ? save.pilot.best : null;
+  const access = new Set();
+  for (let i = 48; i < LEVELS.length; i++) {
+    const id = LEVELS[i].id, stars = oldBest?.[id];
+    if (validStars(stars)) {
+      save.best[i] = Math.max(validStars(save.best[i]) ? save.best[i] : 0, stars);
+      access.add(48); access.add(i);
+    }
+    const oldHint = save.hintUsage['pilot:' + id], newHint = save.hintUsage['story:' + i];
+    if (Number.isSafeInteger(oldHint?.count) && oldHint.count >= 0 && Number.isFinite(oldHint.lastUsed) && oldHint.lastUsed >= 0) {
+      save.hintUsage['story:' + i] = { count: Math.max(Number.isSafeInteger(newHint?.count) && newHint.count >= 0 ? newHint.count : 0, oldHint.count),
+        lastUsed: Math.max(Number.isFinite(newHint?.lastUsed) && newHint.lastUsed >= 0 ? newHint.lastUsed : 0, oldHint.lastUsed) };
+    }
+    const oldSession = save.sessions.pilot;
+    if (restoreSession(oldSession, LEVELS[i], id)) {
+      access.add(48); access.add(i);
+      const migrated = { ...oldSession, id: i };
+      if (Number.isInteger(save.sessions.story?.id) && LEVELS[save.sessions.story.id] && restoreSession(save.sessions.story, storyLevel(save.sessions.story.id), save.sessions.story.id)) save.sessions.importedStory = migrated;
+      else save.sessions.story = migrated;
+    }
+  }
+  // Retain the old records as an archive; import once so clearing/restarting never revives a stale session.
+  save.storyAccess = [...access]; save.storyExpansion = 1; persist();
 }
 function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
 function dailySessionRecord(daily) {
@@ -812,6 +843,7 @@ function checkpoint() {
   if (anim) state.fish = [...new Set([...state.fish, ...anim.eats.map(e => e.fi)])];
   save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : PILOT ? 'pilot' : 'story'] = {
     version: 1, id: FREE ? freeId(FREE) : DAILY ? dailyStageId(DAILY) : PILOT ? PILOT.level.id : LVL, layout: levelSignature(curLevel()), state };
+  if (!FREE && !DAILY && !PILOT && save.sessions.importedStory?.id === LVL) delete save.sessions.importedStory;
   if (DAILY && Number.isInteger(DAILY.stage)) {
     if (!save.sessions.dailyStages) save.sessions.dailyStages = {};
     save.sessions.dailyStages[DAILY.stage] = save.sessions.daily;
@@ -1274,6 +1306,7 @@ function onClear() {
   const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
   delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : PILOT ? 'pilot' : 'story'];
+  if (!FREE && !DAILY && !PILOT && save.sessions.importedStory?.id === LVL) delete save.sessions.importedStory;
   if (DAILY && Number.isInteger(DAILY.stage)) delete save.sessions.dailyStages[DAILY.stage];
   const L = curLevel();
   const allFish = st.fish.length === g.fish.length, inPar = st.moves <= L.par;
@@ -1297,13 +1330,14 @@ function onClear() {
   const story = !DAILY && !FREE && !PILOT, chap = chapterOf(LVL), chapterEnd = story && LVL === chap.end, last = story && LVL === LEVELS.length - 1;
   const journey = story && storyProgress(), rescueComplete = last && journey.complete;
   const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
-  // Pilot: the North Harbor boundary previews the next region; the last canal closes the course. No forced intro sheet.
+  // Region previews now follow the main chapter sequence as well as legacy developer fixtures.
   const regionEnd = PILOT && (PILOT.level.boundary || PILOT.level.finale) ? PILOT.level : null;
   $('clearStory').hidden = !milestone && !regionEnd;
   $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : regionEnd ? (regionEnd.finale ? '수문을 모두 지나 바깥 바다로 나갔어요! 시험 코스를 끝까지 구출했어요.'
     : '북항을 지나왔어요! 다음은 스위치로 수문을 여닫는 수문 시설이에요.') : '';
-  $('clearRegion').hidden = !(regionEnd && regionEnd.boundary);
-  if (regionEnd && regionEnd.boundary) showRegionPreview($('clearRegion'), PILOT_LEVELS[PILOT.index + 1].region, '다음 지역');
+  const nextRegion = story && chapterEnd ? LEVELS[LVL + 1]?.region : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
+  $('clearRegion').hidden = !nextRegion;
+  if (nextRegion) showRegionPreview($('clearRegion'), nextRegion, '다음 지역');
   $('clearTitle').classList.toggle('story-title', !!milestone || !!regionEnd);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
   $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
@@ -1769,7 +1803,7 @@ let boardSurface = null;
 function setBoardRegion(regionId) {
   const region = typeof PILOT_REGIONS !== 'undefined' && regionId ? PILOT_REGIONS.find(r => r.id === regionId) : null, p = region && region.palette;
   boardSurface = { water: p ? p.water : C.water, sea: p ? p.sea : C.sea, land: p ? p.land : ['#f8f8e8', '#dcebdc'], seam: p ? p.seam : C['concrete-2'],
-    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview: !!(PILOT && PILOT.level.boundary) };
+    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview: !!curLevel()?.boundary };
   frameEl.style.setProperty('--board-frame', p ? p.frame : '');
   $('gameScreen').dataset.region = region ? region.id : '';
 }
@@ -2287,11 +2321,6 @@ function pilotTarget() {
   return next >= 0 ? next : PILOT_LEVELS.length - 1;
 }
 const pilotOpen = () => !$('pilotOverlay').hidden;
-function renderPilotLink() {
-  const progress = pilotProgress();
-  $('pilotBtn').innerHTML = `<b>새 물길 시험 코스</b><span>북항 → 수문 시설 · ${progress.count} / ${PILOT_LEVELS.length} ›</span>`;
-  $('pilotBtn').setAttribute('aria-label', `새 물길 시험 코스, 북항에서 수문 시설까지, ${progress.count} / ${PILOT_LEVELS.length} 수로 구출`);
-}
 // Region pictures are introduction art only: never read them as playable tiles. A failed image just hides itself.
 function setRegionArt(img, regionId) {
   img.onerror = () => { img.closest('.region-art, .region-preview')?.classList.add('no-art'); img.hidden = true; };
@@ -2327,7 +2356,7 @@ function openPilot() {
   const current = $('pilotRegions').querySelector('.lv.cur');
   if (current && current.scrollIntoView) current.scrollIntoView({ block: 'nearest' });
 }
-function closePilot() { closeSheet('pilotOverlay', 'pilotBtn'); }
+function closePilot() { closeSheet('pilotOverlay', 'stagePicker'); }
 function startPilot(i) {
   if (!PILOT_LEVELS[i] || !pilotUnlocked(i)) return;
   const keep = pilotSession(i);
@@ -2344,7 +2373,7 @@ function netLevelBadge(nets) {
 }
 let selectedChapter = null;
 function renderLevelGrid(followProgress = false) {
-  const resume = storySession(), target = resume ? save.sessions.story.id : nextLevel();
+  const resume = storySession(), target = resume ? storyResumeId() : nextLevel();
   if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
   const grid = $('levelGrid'), total = totalStars();
   const button = (L, i, k) => {
@@ -2360,8 +2389,10 @@ function renderLevelGrid(followProgress = false) {
     if (ci === selectedChapter) {
       const progress = storyProgress().chapters[ci];
       grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span>★ ${stars} / ${ch.count * 3}</span></div>
+        ${ch.region ? '<div class="region-art"><img alt="" width="720" height="480"></div>' : ''}
         <p class="chapter-story">${progress.complete ? JOURNEY_STORY[ci].outro : JOURNEY_STORY[ci].intro}<br><b>${progress.count} / ${ch.count} 수로 구출 완료</b></p>
         <div class="levels">${idx.map((i, k) => button(LEVELS[i], i, k)).join('')}</div>`;
+      if (ch.region) setRegionArt(grid.querySelector('.region-art img'), ch.region);
     }
     return `<button class="chapter-btn" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
   }).join('');
@@ -2557,7 +2588,7 @@ function show(which, animate = true) {
   el.classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
   resetHero();
-  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderPilotLink(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
+  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
   else requestAnimationFrame(resize);
 }
 function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
@@ -2569,7 +2600,7 @@ $('chapterPicker').addEventListener('click', e => {
   selectedChapter = +b.dataset.chapter; renderLevelGrid();
   $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
 });
-$('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? save.sessions.story.id : nextLevel()); });
+$('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? storyResumeId() : nextLevel()); });
 hero.addEventListener('pointerdown', reactHero, { passive: true });
 $('journeyBtn').addEventListener('click', openJourney);
 $('journeyDone').addEventListener('click', closeJourney);
@@ -2583,7 +2614,6 @@ $('endingDailyBtn').addEventListener('click', endingToDaily);
 $('endingOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEnding(); });
 $('dailyBtn').addEventListener('click', () => { ac(); openDaily(); });
 $('freeBtn').addEventListener('click', () => { ac(); openFree(); });
-$('pilotBtn').addEventListener('click', () => { ac(); openPilot(); });
 $('pilotDone').addEventListener('click', closePilot);
 $('pilotOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closePilot(); });
 $('pilotRegions').addEventListener('click', e => { const b = e.target.closest('[data-pilot]'); if (b && !b.disabled) { ac(); startPilot(+b.dataset.pilot); } });
@@ -2739,6 +2769,7 @@ if (capApp) capApp.addListener('appStateChange', ({ isActive }) => {
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
+  migratePilotToStory();
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
@@ -2752,7 +2783,8 @@ function start(data) {
     if (run && freeId(run) === data.free.id) { openFree(); startFree(run.difficulty); }
   }
   else if (data && Number.isInteger(data.pilot) && data.screen === 'game' && PILOT_LEVELS[data.pilot] && pilotUnlocked(data.pilot)) {
-    show('game', false); requestAnimationFrame(() => loadPilot(data.pilot, pilotSession(data.pilot)));
+    const i = LEVELS.findIndex(l => l.id === PILOT_LEVELS[data.pilot].id);
+    show('game', false); requestAnimationFrame(() => loadLevel(i, storySession(i)));
   }
   else if (data && !data.daily && !Number.isInteger(data.pilot) && data.screen === 'game' && keep && unlocked(data.lvl)) { show('game', false); requestAnimationFrame(() => loadLevel(data.lvl, keep)); }
   else show('title', false);

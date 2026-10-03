@@ -75,7 +75,8 @@ test('test build preserves progression by default and unlocks later stages only 
   for(const rel of ['src/game.js','dist/index.html','dist/artifact.html']) {
     const prod=fs.readFileSync(path.join(root,rel),'utf8');
     assert.ok(prod.includes("const STORE_KEY = 'bukang-sea-v1';"),rel);
-    assert.ok(prod.includes('const unlocked = i => i === 0 || save.best[i - 1] != null;'),rel);
+    assert.ok(prod.includes('const unlocked = i => i === 0 || save.best[i - 1] != null ||'),rel);
+    assert.ok(!prod.includes('const unlocked = i => testAll'),rel);
     assert.ok(prod.includes('const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;'),rel);
   }
 });

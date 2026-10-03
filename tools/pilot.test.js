@@ -357,9 +357,10 @@ test('the switch and gate example preserves real stop, press and pass-through wi
 });
 
 /* ---------- records, sheets and builds ---------- */
-test('course records are separate: stars and sessions never touch story, daily, free, skins or hint keys', () => {
+test('legacy pilot record helpers retain the archived schema before story migration', () => {
   const pilotSource = source.slice(source.indexOf('/* ---------- pilot course:'), source.indexOf('/* ---------- UI wiring'));
   const scene = new Function('stored', `
+    ${read('levels.js')}
     ${read('pilot.js')}
     let written = null; const save = JSON.parse(stored), persist = () => { written = JSON.stringify(save); };
     const restoreSession = (record, level, id) => record && record.id === id ? record.state : null;

@@ -234,7 +234,7 @@ h1 .sea { color: var(--title-alert); }
 .section-label { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
 .section-label h2 { font-size: 13.5px; letter-spacing: .02em; color: var(--muted); margin: 0; font-weight: 500; }
 .section-label span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.chapter-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; flex-shrink: 0; }
+.chapter-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; flex-shrink: 0; }
 .chapter-btn { border: 1px solid var(--harbor-3); border-radius: 12px; padding: 7px 4px; min-height: 52px; cursor: pointer; background: var(--harbor-2); display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .chapter-btn b { font-family: var(--font-display); font-weight: 400; font-size: 19px; line-height: 1.2; }
 .chapter-btn span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -636,10 +636,9 @@ button:disabled:active { transform: none; }
         <small class="home-sr-only" id="skinCount">1 / 9 모았어요</small>
       </button>
       <details class="home-details" id="stagePicker">
-        <summary><span class="home-nav-icon"><span class="menu-art" data-menu-art="map" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></span></span><span><b>수로 선택</b><small id="levelCount">수로 48곳</small></span></summary>
+        <summary><span class="home-nav-icon"><span class="menu-art" data-menu-art="map" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></span></span><span><b>수로 선택</b><small id="levelCount">수로 60곳</small></span></summary>
         <div class="home-details-body">
-          <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
-          <button class="journey-link pilot-link" id="pilotBtn" type="button"><b>새 물길 시험 코스</b><span>북항 → 수문 시설 ›</span></button>
+          <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 60 수로 ›</button>
           <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
           <div class="chapters" id="levelGrid"></div>
         </div>

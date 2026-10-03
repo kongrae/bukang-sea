@@ -46,7 +46,7 @@ function exhaustive(g, { pos = g.start, mask = 0, boats = g.boats, capacity = g.
   return null;
 }
 
-test('all 48 story plans replay legally; balanced star targets remain achievable', () => {
+test('all story plans replay legally; balanced star targets remain achievable', () => {
   for (const l of LEVELS) {
     const g = E.parseLevel(l), before = JSON.stringify(g);
     for (const needAll of [true, false]) {

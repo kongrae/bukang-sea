@@ -1,4 +1,4 @@
-// Pilot course checks (North Harbor → Sluice Works). Separate from the 48 story canals: their results never stand in for these.
+// Extra checks for main stages 49–60 (former pilot): compare against the original 48 and validate gate learning.
 //   node tools/verify-pilot.js   (also run at the end of npm run verify)
 // Per canal: data rules, minimum route = authored route, role-based star target, net need, and a counterfactual gate test:
 // with every switch disabled (gates frozen in their start state) neither escape nor the all-fish goal may be reachable.
@@ -15,11 +15,11 @@ function frozen(level) { const g = E.parseLevel(level); g.switches = []; return 
 function verifyPilot(log = console.log) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
   const { LEVELS, LEVEL_ROLES } = new Function(src + '; return { LEVELS, LEVEL_ROLES };')();
-  const storyShapes = new Map(LEVELS.map((l, i) => [shapeKey(l.map), i + 1]));
+  const storyShapes = new Map(LEVELS.slice(0, 48).map((l, i) => [shapeKey(l.map), i + 1]));
   const regions = new Map(PILOT_REGIONS.map((r, i) => [r.id, i]));
   const shapes = new Map();
   let failed = 0, lastRegion = 0;
-  log(`\n시험 코스 ${PILOT_LEVELS.length}개 (스토리 48개와 별도 검사)`);
+  log(`\n정식 수로 49–60 (${PILOT_LEVELS.length}개): 기존 48개와 배치 중복·수문 규칙 추가 검사`);
   if (PILOT_LEVELS.length !== 12) { failed++; log(`FAIL pilot course must have 12 canals, got ${PILOT_LEVELS.length}`); }
   PILOT_LEVELS.forEach((lvl, i) => {
     const problems = [], role = LEVEL_ROLES[lvl.role || 'regular'];
