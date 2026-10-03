@@ -23,7 +23,7 @@ function scene() {
     const step=dt=>{counts.step++;deltas.push(dt);clock+=dt;},draw=()=>counts.game++;
     const stepHero=dt=>heroTime+=dt,drawHero=()=>counts.hero++,drawEnding=()=>counts.ending++;
     const stepDeviceGuide=dt=>{if(guidePlaying)counts.guide+=dt;guidePaintTime=guideTime;},stepRewardPreviews=()=>{},updateHintButton=()=>{};
-    const flushSheetExits=()=>counts.flush++,pauseGame=()=>{counts.paused++;anim=null;};
+    const resetSheetGesture=()=>{},flushSheetExits=()=>counts.flush++,pauseGame=()=>{counts.paused++;anim=null;};
     const interruptClearPresentation=()=>counts.interrupt++,clearPlayEffects=()=>{},drawSkinPreview=()=>{},updateGuidePlayback=()=>{};
     ${section('let gameNeedsPaint', 'const SWIPE')}
     ${section('/* One bounded frame chain;', 'function step(dt)')}
@@ -40,12 +40,26 @@ function scene() {
 }
 function seconds(ui, count = 1, hz = 240) { for (let i=0;i<count*hz;i++) ui.tick(1000/hz); }
 
-test('high refresh displays stay bounded at 60 active and 30 ambient updates per second', () => {
-  const ui=scene();ui.start();seconds(ui);
-  assert.ok(ui.counts.hero>=28&&ui.counts.hero<=30, String(ui.counts.hero));
+test('interactive motion follows every display frame; ambient work stays at 30Hz without cadence drift', () => {
+  for(const hz of [60,90,120,144,165,240]){
+    const ui=scene();ui.start();seconds(ui,1,hz);
+    assert.ok(ui.counts.hero>=29&&ui.counts.hero<=31, hz+': '+ui.counts.hero);
+    ui.nodes.titleScreen.hidden=true;ui.nodes.gameScreen.hidden=false;ui.move(true);
+    seconds(ui,1,hz);assert.equal(ui.counts.game,hz);
+    assert.ok(ui.deltas.every(dt=>Math.abs(dt-1/hz)<1e-6),'regular display frames stay regular at '+hz);
+    assert.equal(ui.pending(),1);
+  }
+});
+
+test('jitter near 60Hz never drops alternate movement frames; first input does not inherit an ambient wait', () => {
+  const ui=scene();ui.start();ui.tick(16);ui.tick(16);
   ui.nodes.titleScreen.hidden=true;ui.nodes.gameScreen.hidden=false;ui.move(true);
-  seconds(ui);assert.ok(ui.counts.game>=58&&ui.counts.game<=60,String(ui.counts.game));
-  assert.ok(ui.deltas.every(dt=>dt>0&&dt<=.05));assert.equal(ui.pending(),1);
+  for(const ms of [8,16.1,17.2,15.9,16.7,33.4])ui.tick(ms);
+  assert.equal(ui.counts.game,6);assert.equal(ui.deltas[0],.008);
+  assert.ok(Math.abs(ui.deltas.reduce((a,b)=>a+b,0)-.1073)<1e-6);
+  ui.tick(500);assert.equal(ui.deltas.at(-1),.05,'long interruptions remain bounded');
+  ui.move(false);ui.tick(8);ui.move(true);ui.tick(8);
+  assert.equal(ui.deltas.at(-1),.008,'a skipped idle callback still resets the next input origin');
 });
 
 test('obscured and reduced-motion scenes paint once, then only after content invalidation', () => {

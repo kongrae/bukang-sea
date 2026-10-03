@@ -17,6 +17,84 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
 const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
 const sheetExits = new Map(), sheetOrigins = new Map();
+// Every dismissal goes through the menu's own cleanup/return path. Results require an explicit action.
+const sheetDismiss = {
+  journeyOverlay: () => closeJourney(), endingOverlay: () => closeEnding(), dailyOverlay: () => closeDaily(),
+  freeOverlay: () => closeFree(), pilotOverlay: () => closePilot(), journalOverlay: () => closeJournal(),
+  skinsOverlay: () => closeSkins(), settingsOverlay: () => closeSettings(), guideOverlay: () => closeGuide(),
+};
+const sheetDesktop = matchMedia('(min-width: 640px) and (min-height: 640px)');
+const SHEET_DRAG = { slop: 10, ratio: 0.25, min: 80, max: 160, flick: 0.65, flickMin: 32, sampleMs: 100, returnMs: 180 };
+let sheetDrag = null, sheetReturn = null, sheetClickBlock = null;
+function clearSheetDragStyle(el) {
+  el.classList.remove('sheet-dragging', 'sheet-returning');
+  el.style.removeProperty('--sheet-y'); el.style.removeProperty('--sheet-shade');
+}
+function releaseSheetPointer(drag) {
+  try { if (drag.header.hasPointerCapture(drag.pointerId)) drag.header.releasePointerCapture(drag.pointerId); } catch (_) {}
+}
+function resetSheetGesture() {
+  const drag = sheetDrag; sheetDrag = null;
+  if (drag) {
+    if (drag.started) sheetClickBlock = { pointerId: drag.pointerId, until: performance.now() + 400 };
+    releaseSheetPointer(drag); clearSheetDragStyle(drag.el);
+  }
+  if (sheetReturn) { clearTimeout(sheetReturn.timer); clearSheetDragStyle(sheetReturn.el); sheetReturn = null; }
+}
+function sheetPointerDown(e) {
+  if (sheetDrag) { if (e.pointerId !== sheetDrag.pointerId) sheetPointerEnd(e, true); return; }
+  sheetClickBlock = null;
+  if (e.isPrimary === false || e.button !== 0 || sheetDesktop.matches || sheetExits.size || sheetReturn) return;
+  const header = e.target.closest('[data-sheet-drag]');
+  if (!header || e.target.closest('button, input, a, select, textarea, [role="button"]')) return;
+  const el = header.closest('.overlay');
+  if (!el || el.hidden || el.inert || !sheetDismiss[el.id]) return;
+  const card = header.closest('.card'), rect = card.getBoundingClientRect();
+  sheetDrag = { el, card, header, id: el.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY,
+    top: rect.top, height: rect.height, dy: 0, started: false, samples: [{ y: e.clientY, t: e.timeStamp }] };
+  try { header.setPointerCapture(e.pointerId); } catch (_) {}
+}
+function sheetPointerMove(e) {
+  const drag = sheetDrag; if (!drag || e.pointerId !== drag.pointerId) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.started) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SHEET_DRAG.slop) return;
+    if (dy <= 0 || dy < Math.abs(dx) * 1.2) { resetSheetGesture(); return; }
+    drag.started = true; drag.el.classList.add('sheet-opened', 'sheet-dragging');
+  }
+  if (e.cancelable) e.preventDefault();
+  drag.dy = Math.max(0, Math.min(drag.height, dy));
+  drag.samples.push({ y: e.clientY, t: e.timeStamp });
+  while (drag.samples.length > 1 && drag.samples[0].t < e.timeStamp - SHEET_DRAG.sampleMs) drag.samples.shift();
+  drag.el.style.setProperty('--sheet-y', drag.dy + 'px');
+  drag.el.style.setProperty('--sheet-shade', 0.65 * (1 - Math.min(1, drag.dy / drag.height)));
+}
+function sheetPointerEnd(e, cancelled = false) {
+  const drag = sheetDrag; if (!drag || (!cancelled && e.pointerId !== drag.pointerId)) return;
+  if (!cancelled) sheetPointerMove(e);
+  if (sheetDrag !== drag) return;
+  if (!drag.started) { resetSheetGesture(); return; }
+  const sample = drag.samples[0], age = e.timeStamp - sample.t;
+  const speed = age > 0 && age <= SHEET_DRAG.sampleMs ? (e.clientY - sample.y) / age : 0;
+  const distance = Math.min(SHEET_DRAG.max, Math.max(SHEET_DRAG.min, drag.height * SHEET_DRAG.ratio));
+  if (!cancelled && (drag.dy >= distance || (drag.dy >= SHEET_DRAG.flickMin && speed >= SHEET_DRAG.flick))) {
+    sheetDismiss[drag.id](); return;
+  }
+  sheetClickBlock = { pointerId: drag.pointerId, until: performance.now() + 400 };
+  sheetDrag = null; releaseSheetPointer(drag);
+  if (reduceMotion || document.hidden) { clearSheetDragStyle(drag.el); return; }
+  drag.el.classList.replace('sheet-dragging', 'sheet-returning');
+  drag.el.style.setProperty('--sheet-y', '0px'); drag.el.style.setProperty('--sheet-shade', '0.65');
+  sheetReturn = { ...drag, timer: setTimeout(() => { clearSheetDragStyle(drag.el); sheetReturn = null; }, SHEET_DRAG.returnMs) };
+}
+function sheetClick(e) {
+  if (sheetClickBlock && e.detail > 0 && performance.now() <= sheetClickBlock.until &&
+      (e.pointerId == null || e.pointerId === sheetClickBlock.pointerId)) {
+    sheetClickBlock = null; e.preventDefault(); e.stopImmediatePropagation(); return;
+  }
+  const close = e.target.closest('[data-sheet-close]');
+  if (close && !sheetExits.size) sheetDismiss[close.dataset.sheetClose]?.();
+}
 function syncSheetInput() {
   $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
   invalidateScenes();
@@ -25,19 +103,29 @@ function finishSheetExit(id, restore = true) {
   const exit = sheetExits.get(id); if (!exit) return;
   clearTimeout(exit.timer); sheetExits.delete(id);
   const el = $(id); el.classList.remove('sheet-leaving'); el.inert = false; el.removeAttribute('aria-hidden');
+  el.style.removeProperty('--sheet-exit-start'); el.style.removeProperty('--sheet-exit-end'); el.style.removeProperty('--sheet-shade');
   syncSheetInput();
   if (restore && !document.hidden && !$('app').inert && exit.target?.isConnected && !exit.target.closest('[hidden]')) exit.target.focus({ preventScroll: true });
 }
-function flushSheetExits() { for (const id of [...sheetExits.keys()]) finishSheetExit(id, false); }
+function flushSheetExits() { resetSheetGesture(); for (const id of [...sheetExits.keys()]) finishSheetExit(id, false); }
 function openSheet(id) {
   flushSheetExits();
   const el = $(id);
+  el.classList.remove('sheet-opened');
   if (el.hidden) sheetOrigins.set(id, document.activeElement);
   el.hidden = false; el.inert = false; el.removeAttribute('aria-hidden');
   gest = null; queued = null; syncSheetInput();
 }
 function closeSheet(id, returnId = null, animate = true) {
   const el = $(id); if (el.hidden) return;
+  const drag = sheetDrag?.id === id ? sheetDrag : sheetReturn?.id === id ? sheetReturn : null;
+  const offset = drag?.started ? Math.max(0, drag.card.getBoundingClientRect().top - drag.top) : 0;
+  resetSheetGesture();
+  if (offset > 0) {
+    el.style.setProperty('--sheet-exit-start', offset + 'px');
+    el.style.setProperty('--sheet-exit-end', drag.height + 20 + 'px');
+    el.style.setProperty('--sheet-shade', 0.65 * (1 - Math.min(1, offset / drag.height)));
+  }
   const target = returnId ? $(returnId) : sheetOrigins.get(id);
   el.hidden = true;
   const exit = { target, timer: null }; sheetExits.set(id, exit);
@@ -1783,11 +1871,12 @@ function buildStatic() {
 }
 
 /* One bounded frame chain; frozen scenes repaint only when their content changes. */
-let lastT = performance.now(), frameId = null, appActive = true, pageHidden = false;
+let lastT = performance.now(), lastRafT = lastT, ambientT = lastT, frameActive = false;
+let frameId = null, appActive = true, pageHidden = false;
 const renderSuspended = () => document.hidden || !appActive || pageHidden;
 function startFrames() {
   if (frameId !== null || renderSuspended()) return;
-  lastT = performance.now(); frameId = requestAnimationFrame(frame);
+  lastT = lastRafT = ambientT = performance.now(); frameActive = false; frameId = requestAnimationFrame(frame);
 }
 function suspendPresentation() {
   if (frameId !== null) cancelAnimationFrame(frameId);
@@ -1805,6 +1894,7 @@ function resumePresentation() {
 }
 function changeMotionPreference(e) {
   if (reduceMotion === e.matches) return;
+  resetSheetGesture();
   reduceMotion = e.matches;
   if (reduceMotion) {
     flushSheetExits(); pauseGame(); clearPlayEffects();
@@ -1822,9 +1912,15 @@ function frame(now) {
   frameId = null;
   if (renderSuspended()) return;
   const active = (!$('app').inert && (anim || bump || settle || pop)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
-  const interval = 1000 / (active ? 60 : 30);
-  if (now - lastT < interval - 0.5) { frameId = requestAnimationFrame(frame); return; }
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  // Short, interactive motion follows the display. A 60Hz gate quantised 90/144Hz displays to 45/48 updates.
+  // Ambient scenes retain a 30Hz budget with the remainder preserved instead of drifting at each skip.
+  const rafDelta = Math.max(0, now - lastRafT); lastRafT = now;
+  const wasActive = frameActive; frameActive = !!active;
+  const interval = 1000 / 30;
+  if (!active && now - ambientT < interval - 0.5) { frameId = requestAnimationFrame(frame); return; }
+  const dt = Math.min(0.05, Math.max(0, active && !wasActive ? rafDelta : now - lastT) / 1000);
+  lastT = now;
+  ambientT = active ? now : ambientT + Math.max(1, Math.floor((now - ambientT + 0.5) / interval)) * interval;
   if (!$('gameScreen').hidden && g && staticLayer) {
     const moving = !$('app').inert && (!reduceMotion || !!anim);
     if (moving) step(dt);
@@ -1876,7 +1972,12 @@ function step(dt) {
       sfx.exit(); haptic('success');
     }
     const swimming = a.t < a.dur && !a.warps.has(i + 1);
-    if (swimming && a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
+    // Keep trail density bounded when interactive drawing follows a high-refresh display.
+    a.wakeTime = (a.wakeTime || 0) + dt;
+    if (swimming && a.speed > 2 && !reduceMotion && a.wakeTime >= 1 / 60) {
+      a.wakeTime %= 1 / 60;
+      wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
+    }
     if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
     if (a.t >= a.dur) landShark(a);
     if (a.t >= a.dur + a.gateDur + a.boatDur) finishAnim();
@@ -2520,6 +2621,13 @@ $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; per
 // light tick on every enabled button press, like native controls
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
 document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('pointerdown', sheetPointerDown, true);
+document.addEventListener('pointermove', sheetPointerMove, { passive: false });
+document.addEventListener('pointerup', e => sheetPointerEnd(e));
+document.addEventListener('pointercancel', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
+document.addEventListener('lostpointercapture', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
+document.addEventListener('click', sheetClick, true);
+sheetDesktop.addEventListener('change', resetSheetGesture);
 
 // swipe anywhere on the game screen (fires as soon as the finger has travelled SWIPE px), tap on the board for nets
 const gameScreen = $('gameScreen');
@@ -2567,7 +2675,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'h' || e.key === 'H') showHint();
   else if (e.key === 'Escape') show('title');
 });
-window.addEventListener('resize', () => { resize(); heroW = 0; });
+window.addEventListener('resize', () => { resetSheetGesture(); resize(); heroW = 0; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) suspendPresentation(); else resumePresentation(); });
 window.addEventListener('pagehide', () => { pageHidden = true; suspendPresentation(); });
 window.addEventListener('pageshow', () => { pageHidden = false; resumePresentation(); });

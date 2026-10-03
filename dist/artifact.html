@@ -152,8 +152,6 @@ h1 .sea { color: var(--title-alert); }
 .free-actions .btn:disabled { opacity: .55; cursor: default; }
 .card.free-dialog { overflow: hidden; }
 .free-dialog > .operation-status { flex-shrink: 0; }
-.free-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-.free-heading .icon-btn { color: var(--text); font-size: 24px; }
 .free-scroll { display: grid; gap: 14px; overflow-y: auto; min-height: 0; padding: 2px 3px 8px; }
 .card.free-dialog .free-actions .btn { min-height: 44px; }
 .operation-stamp { color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; font: 21px var(--font-display); }
@@ -376,7 +374,7 @@ h1 .sea { color: var(--title-alert); }
 
 /* ----- Clear sheet ----- */
 .overlay {
-  position: fixed; inset: 0; background: rgba(4, 18, 24, .62); display: flex; align-items: flex-end; justify-content: center;
+  position: fixed; inset: 0; background: rgba(4, 18, 24, var(--sheet-shade, .62)); display: flex; align-items: flex-end; justify-content: center;
   z-index: 10; animation: fade .22s ease-out;
 }
 .card {
@@ -385,16 +383,28 @@ h1 .sea { color: var(--title-alert); }
   display: flex; flex-direction: column; gap: 14px; text-align: center; animation: sheet-up .28s var(--ease-sheet);
   box-shadow: 0 -10px 40px rgba(0,0,0,.3);
 }
-.card::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: #b9ad95; margin: 0 auto 4px; }
+.sheet-header { position: sticky; top: -10px; z-index: 2; flex-shrink: 0; margin: -10px -22px 0; padding: 0 22px 8px; background: var(--concrete); touch-action: none; }
+.sheet-handle { height: 44px; display: grid; place-items: center; cursor: grab; }
+.sheet-handle::before { content: ""; width: 40px; height: 5px; border-radius: 3px; background: #b9ad95; }
+.sheet-heading { display: flex; align-items: center; gap: 10px; text-align: left; }
+.card .sheet-heading h3 { flex: 1; min-width: 0; margin: 0; font-size: clamp(24px, 7vw, 30px); line-height: 1.25; }
+.sheet-heading .icon-btn { flex-shrink: 0; width: 44px; height: 44px; color: var(--ink); font-size: 24px; }
+.sheet-dragging, .sheet-returning { animation: none; }
+.overlay.sheet-opened:not(.sheet-leaving) .card { animation: none; }
+.sheet-dragging .card, .sheet-returning .card { animation: none; transform: translateY(var(--sheet-y, 0px)); }
+.sheet-dragging .sheet-handle { cursor: grabbing; }
+.sheet-returning { transition: background-color .16s ease-out; }
+.sheet-returning .card { transition: transform .16s var(--ease-sheet); }
 @keyframes sheet-up { from { transform: translateY(24px); opacity: .5; } }
 .overlay.sheet-leaving[hidden] { display: flex !important; pointer-events: none; animation: sheet-fade-out .16s ease-in both; }
 .sheet-leaving .card { animation: sheet-down .16s ease-in both; }
 @keyframes sheet-fade-out { to { opacity: 0; } }
-@keyframes sheet-down { to { transform: translateY(16px); opacity: .5; } }
+@keyframes sheet-down { from { transform: translateY(var(--sheet-exit-start, 0px)); } to { transform: translateY(var(--sheet-exit-end, 16px)); opacity: .5; } }
 @media (min-width: 640px) and (min-height: 640px) {
   .overlay { align-items: center; }
   .card { border-radius: 28px; padding-bottom: 22px; animation-name: pop; }
-  .card::before { display: none; }
+  .sheet-handle { display: none; }
+  .sheet-header { padding-top: 10px; touch-action: auto; }
   .sheet-leaving .card { animation-name: card-out; }
 }
 @keyframes card-out { to { transform: scale(.97); opacity: .5; } }
@@ -454,9 +464,7 @@ h1 .sea { color: var(--title-alert); }
 .switch input:focus-visible + .track { outline: 2px solid var(--buoy-deep); outline-offset: 2px; }
 .settings .btn { margin-top: 10px; }
 .card.guide { max-height: 92dvh; overflow: hidden; gap: 12px; }
-.guide-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
 .card.guide h3 { font-size: clamp(24px, 7vw, 30px); text-align: left; }
-.guide-header .icon-btn { color: var(--text); font-size: 24px; }
 .guide > .btn { flex-shrink: 0; }
 .guide-body { display: grid; grid-auto-rows: max-content; align-content: start; gap: 12px; text-align: left; min-height: 0; overflow-y: auto; padding: 2px 3px 8px; }
 .guide-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -658,7 +666,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="journeyOverlay" hidden>
   <div class="card journey" id="journeyCard" role="dialog" aria-modal="true" aria-labelledby="journeyTitle">
-    <h3 id="journeyTitle" tabindex="-1">바다로 가는 여정</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="journeyTitle" tabindex="-1">바다로 가는 여정</h3><button class="icon-btn" type="button" data-sheet-close="journeyOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <p class="sub" id="journeyCount"></p>
     <p class="sub">한 수로씩 길을 열면 바다에 가까워져요.<br>별 하나만 얻어도 여정은 이어져요.</p>
     <ol class="journey-route" id="journeyChapters"></ol>
@@ -669,7 +679,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="endingOverlay" hidden>
   <div class="card ending" id="endingCard" role="dialog" aria-modal="true" aria-labelledby="endingTitle">
-    <h3 id="endingTitle" tabindex="-1">상어야, 바다에서 만나!</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="endingTitle" tabindex="-1">상어야, 바다에서 만나!</h3><button class="icon-btn" type="button" data-sheet-close="endingOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <canvas class="ending-scene" id="endingScene" role="img" aria-label="좁은 수로를 벗어나 넓은 바다로 헤엄치는 상어"></canvas>
     <div class="ending-stamp">구출 성공!</div>
     <p class="ending-copy">좁은 수로에서 시작한 작은 구조작전.<br>함께 열어 준 물길 끝에 넓은 바다가 있어요.<br>상어가 마음껏 헤엄칠 수 있게 되었어요.</p>
@@ -683,7 +695,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="dailyOverlay" hidden>
   <div class="card operation" role="dialog" aria-modal="true" aria-labelledby="operationTitle">
-    <h3 id="operationTitle">오늘의 구조작전</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="operationTitle">오늘의 구조작전</h3><button class="icon-btn" type="button" data-sheet-close="dailyOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <p class="sub" id="operationDate"></p>
     <div class="operation-stages" id="dailyStages"></div>
     <p class="operation-note" id="operationNote"></p>
@@ -696,7 +710,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="freeOverlay" hidden>
   <div class="card operation free-dialog" role="dialog" aria-modal="true" aria-labelledby="freeTitle">
-    <div class="free-heading"><h3 id="freeTitle">자유 수로</h3><button class="icon-btn" id="freeDone" type="button" aria-label="닫기">✕</button></div>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="freeTitle">자유 수로</h3><button class="icon-btn" id="freeDone" type="button" aria-label="닫기">✕</button></div>
+    </div>
     <p class="operation-status" id="freeStatus" role="status" aria-live="polite"></p>
     <div class="free-scroll">
       <p class="sub">원하는 난이도로, 한 판 더!</p>
@@ -709,7 +725,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="pilotOverlay" hidden>
   <div class="card pilot" id="pilotCard" role="dialog" aria-modal="true" aria-labelledby="pilotTitle">
-    <h3 id="pilotTitle" tabindex="-1">새 물길 시험 코스</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="pilotTitle" tabindex="-1">새 물길 시험 코스</h3><button class="icon-btn" type="button" data-sheet-close="pilotOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <p class="sub" id="pilotSummary"></p>
     <div class="pilot-regions" id="pilotRegions"></div>
     <button class="btn primary" id="pilotDone" type="button">닫기</button>
@@ -718,7 +736,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="journalOverlay" hidden>
   <div class="card journal" id="journalCard" role="dialog" aria-modal="true" aria-labelledby="journalTitle">
-    <h3 id="journalTitle" tabindex="-1">구조일지</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="journalTitle" tabindex="-1">구조일지</h3><button class="icon-btn" type="button" data-sheet-close="journalOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <p class="sub" id="journalTotals"></p>
     <p class="journal-goal" id="journalGoal"></p>
     <p class="journal-legend">● 한 수로 이상 참여 · ✓ 세 수로 완료<br>쉬어 가도 누적 기록과 보상은 남아요.</p>
@@ -739,7 +759,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="skinsOverlay" hidden>
   <div class="card skins" role="dialog" aria-modal="true" aria-labelledby="skinsTitle">
-    <h3 id="skinsTitle">내 상어</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="skinsTitle">내 상어</h3><button class="icon-btn" type="button" data-sheet-close="skinsOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <p class="sub" id="skinsSub">별을 모으면 새 상어가 열려요.</p>
     <div class="skin-grid" id="skinGrid"></div>
     <button class="btn primary" id="skinsDone" type="button">닫기</button>
@@ -748,7 +770,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="settingsOverlay" hidden>
   <div class="card settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-    <h3 id="settingsTitle">설정</h3>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="settingsTitle">설정</h3><button class="icon-btn" type="button" data-sheet-close="settingsOverlay" aria-label="닫기">✕</button></div>
+    </div>
     <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
@@ -778,7 +802,9 @@ button:disabled:active { transform: none; }
 
 <div class="overlay" id="guideOverlay" hidden>
   <div class="card guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
-    <div class="guide-header"><h3 id="guideTitle">장치 안내</h3><button class="icon-btn" id="guideClose" type="button" aria-label="장치 안내 닫기">✕</button></div>
+    <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-heading"><h3 id="guideTitle">장치 안내</h3><button class="icon-btn" id="guideClose" type="button" aria-label="장치 안내 닫기">✕</button></div>
+    </div>
     <div class="guide-body" id="guideBody">
       <div class="guide-tabs" id="guideTabs" role="group" aria-label="장치 선택"></div>
       <div class="guide-device-heading"><h4 id="guideName"></h4><span id="guideCounter"></span></div>
@@ -879,9 +905,13 @@ body { background: radial-gradient(ellipse at 50% 0, #f3ffff, #c6f3f4 48%, #81cd
 .controls { padding-top: 3px; padding-bottom: 3px; }
 .ctrl:last-child { background: linear-gradient(#fff5cb, #ffe19b); border-color: #dfba6a; }
 .ctrl[disabled] { opacity: .65; box-shadow: none; }
-.overlay { background: #073c59a6; }
+.overlay { background: rgba(7, 60, 89, var(--sheet-shade, .65)); }
 .card { background: linear-gradient(#fffcf1, #f4faf5); border: 3px solid var(--aqua-edge); border-bottom: 0; box-shadow: inset 0 3px #e6ffff, 0 -6px 32px #093f6633; max-height: 94dvh; overflow-y: auto; padding-inline: 18px; }
-.card::before { background: #a2d7d9; flex-shrink: 0; }
+.sheet-header { margin-inline: -18px; padding-inline: 18px; background: #fffcf1; border-radius: 24px 24px 0 0; }
+.sheet-handle::before { background: #77bfc5; }
+.card { overscroll-behavior-y: contain; }
+.card > * { flex-shrink: 0; }
+.card > .free-scroll, .card > .guide-body, .card > .clear-body { flex-shrink: 1; overscroll-behavior-y: contain; }
 .card h3 { color: #155b70; }
 .card .btn { background: linear-gradient(#ffffff, #dcefeb); border: 1px solid #a7d3d5; min-height: 48px; }
 .card .btn, .card .row { flex-shrink: 0; }
@@ -907,7 +937,6 @@ body { background: radial-gradient(ellipse at 50% 0, #f3ffff, #c6f3f4 48%, #81cd
 .guide-tabs button[aria-pressed="true"] { color: #fff; background: #247d96; border-color: #1c627b; }
 .guide-movie { background: #d7f2f0; border: 2px solid #9cdbdc; }
 .guide-caption { color: #23687c; }
-.guide-header .icon-btn, .free-heading .icon-btn { color: var(--ink); }
 .journey-number { background: #dcefeb; color: #346779; }
 .journey-stop > div { border-color: #a4cdcf; }
 .ending-scene { border: 3px solid #87d6dc; }
@@ -937,6 +966,7 @@ body { background: radial-gradient(ellipse at 50% 0, #f3ffff, #c6f3f4 48%, #81cd
   .home-mode { padding: 10px; }
   .mode-top svg { width: 29px; height: 29px; }
   .card { gap: 10px; padding-inline: 14px; }
+  .sheet-header { margin-inline: -14px; padding-inline: 14px; }
   .clear-mascot { width: 78px; height: 78px; margin-bottom: -10px; }
   .topbar { padding: 0; }
   .chip { padding-block: 3px; }
@@ -4116,6 +4146,84 @@ const SWIPE = 18;   // px of finger travel that commits a swipe (fires during th
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
 const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
 const sheetExits = new Map(), sheetOrigins = new Map();
+// Every dismissal goes through the menu's own cleanup/return path. Results require an explicit action.
+const sheetDismiss = {
+  journeyOverlay: () => closeJourney(), endingOverlay: () => closeEnding(), dailyOverlay: () => closeDaily(),
+  freeOverlay: () => closeFree(), pilotOverlay: () => closePilot(), journalOverlay: () => closeJournal(),
+  skinsOverlay: () => closeSkins(), settingsOverlay: () => closeSettings(), guideOverlay: () => closeGuide(),
+};
+const sheetDesktop = matchMedia('(min-width: 640px) and (min-height: 640px)');
+const SHEET_DRAG = { slop: 10, ratio: 0.25, min: 80, max: 160, flick: 0.65, flickMin: 32, sampleMs: 100, returnMs: 180 };
+let sheetDrag = null, sheetReturn = null, sheetClickBlock = null;
+function clearSheetDragStyle(el) {
+  el.classList.remove('sheet-dragging', 'sheet-returning');
+  el.style.removeProperty('--sheet-y'); el.style.removeProperty('--sheet-shade');
+}
+function releaseSheetPointer(drag) {
+  try { if (drag.header.hasPointerCapture(drag.pointerId)) drag.header.releasePointerCapture(drag.pointerId); } catch (_) {}
+}
+function resetSheetGesture() {
+  const drag = sheetDrag; sheetDrag = null;
+  if (drag) {
+    if (drag.started) sheetClickBlock = { pointerId: drag.pointerId, until: performance.now() + 400 };
+    releaseSheetPointer(drag); clearSheetDragStyle(drag.el);
+  }
+  if (sheetReturn) { clearTimeout(sheetReturn.timer); clearSheetDragStyle(sheetReturn.el); sheetReturn = null; }
+}
+function sheetPointerDown(e) {
+  if (sheetDrag) { if (e.pointerId !== sheetDrag.pointerId) sheetPointerEnd(e, true); return; }
+  sheetClickBlock = null;
+  if (e.isPrimary === false || e.button !== 0 || sheetDesktop.matches || sheetExits.size || sheetReturn) return;
+  const header = e.target.closest('[data-sheet-drag]');
+  if (!header || e.target.closest('button, input, a, select, textarea, [role="button"]')) return;
+  const el = header.closest('.overlay');
+  if (!el || el.hidden || el.inert || !sheetDismiss[el.id]) return;
+  const card = header.closest('.card'), rect = card.getBoundingClientRect();
+  sheetDrag = { el, card, header, id: el.id, pointerId: e.pointerId, x: e.clientX, y: e.clientY,
+    top: rect.top, height: rect.height, dy: 0, started: false, samples: [{ y: e.clientY, t: e.timeStamp }] };
+  try { header.setPointerCapture(e.pointerId); } catch (_) {}
+}
+function sheetPointerMove(e) {
+  const drag = sheetDrag; if (!drag || e.pointerId !== drag.pointerId) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.started) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SHEET_DRAG.slop) return;
+    if (dy <= 0 || dy < Math.abs(dx) * 1.2) { resetSheetGesture(); return; }
+    drag.started = true; drag.el.classList.add('sheet-opened', 'sheet-dragging');
+  }
+  if (e.cancelable) e.preventDefault();
+  drag.dy = Math.max(0, Math.min(drag.height, dy));
+  drag.samples.push({ y: e.clientY, t: e.timeStamp });
+  while (drag.samples.length > 1 && drag.samples[0].t < e.timeStamp - SHEET_DRAG.sampleMs) drag.samples.shift();
+  drag.el.style.setProperty('--sheet-y', drag.dy + 'px');
+  drag.el.style.setProperty('--sheet-shade', 0.65 * (1 - Math.min(1, drag.dy / drag.height)));
+}
+function sheetPointerEnd(e, cancelled = false) {
+  const drag = sheetDrag; if (!drag || (!cancelled && e.pointerId !== drag.pointerId)) return;
+  if (!cancelled) sheetPointerMove(e);
+  if (sheetDrag !== drag) return;
+  if (!drag.started) { resetSheetGesture(); return; }
+  const sample = drag.samples[0], age = e.timeStamp - sample.t;
+  const speed = age > 0 && age <= SHEET_DRAG.sampleMs ? (e.clientY - sample.y) / age : 0;
+  const distance = Math.min(SHEET_DRAG.max, Math.max(SHEET_DRAG.min, drag.height * SHEET_DRAG.ratio));
+  if (!cancelled && (drag.dy >= distance || (drag.dy >= SHEET_DRAG.flickMin && speed >= SHEET_DRAG.flick))) {
+    sheetDismiss[drag.id](); return;
+  }
+  sheetClickBlock = { pointerId: drag.pointerId, until: performance.now() + 400 };
+  sheetDrag = null; releaseSheetPointer(drag);
+  if (reduceMotion || document.hidden) { clearSheetDragStyle(drag.el); return; }
+  drag.el.classList.replace('sheet-dragging', 'sheet-returning');
+  drag.el.style.setProperty('--sheet-y', '0px'); drag.el.style.setProperty('--sheet-shade', '0.65');
+  sheetReturn = { ...drag, timer: setTimeout(() => { clearSheetDragStyle(drag.el); sheetReturn = null; }, SHEET_DRAG.returnMs) };
+}
+function sheetClick(e) {
+  if (sheetClickBlock && e.detail > 0 && performance.now() <= sheetClickBlock.until &&
+      (e.pointerId == null || e.pointerId === sheetClickBlock.pointerId)) {
+    sheetClickBlock = null; e.preventDefault(); e.stopImmediatePropagation(); return;
+  }
+  const close = e.target.closest('[data-sheet-close]');
+  if (close && !sheetExits.size) sheetDismiss[close.dataset.sheetClose]?.();
+}
 function syncSheetInput() {
   $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
   invalidateScenes();
@@ -4124,19 +4232,29 @@ function finishSheetExit(id, restore = true) {
   const exit = sheetExits.get(id); if (!exit) return;
   clearTimeout(exit.timer); sheetExits.delete(id);
   const el = $(id); el.classList.remove('sheet-leaving'); el.inert = false; el.removeAttribute('aria-hidden');
+  el.style.removeProperty('--sheet-exit-start'); el.style.removeProperty('--sheet-exit-end'); el.style.removeProperty('--sheet-shade');
   syncSheetInput();
   if (restore && !document.hidden && !$('app').inert && exit.target?.isConnected && !exit.target.closest('[hidden]')) exit.target.focus({ preventScroll: true });
 }
-function flushSheetExits() { for (const id of [...sheetExits.keys()]) finishSheetExit(id, false); }
+function flushSheetExits() { resetSheetGesture(); for (const id of [...sheetExits.keys()]) finishSheetExit(id, false); }
 function openSheet(id) {
   flushSheetExits();
   const el = $(id);
+  el.classList.remove('sheet-opened');
   if (el.hidden) sheetOrigins.set(id, document.activeElement);
   el.hidden = false; el.inert = false; el.removeAttribute('aria-hidden');
   gest = null; queued = null; syncSheetInput();
 }
 function closeSheet(id, returnId = null, animate = true) {
   const el = $(id); if (el.hidden) return;
+  const drag = sheetDrag?.id === id ? sheetDrag : sheetReturn?.id === id ? sheetReturn : null;
+  const offset = drag?.started ? Math.max(0, drag.card.getBoundingClientRect().top - drag.top) : 0;
+  resetSheetGesture();
+  if (offset > 0) {
+    el.style.setProperty('--sheet-exit-start', offset + 'px');
+    el.style.setProperty('--sheet-exit-end', drag.height + 20 + 'px');
+    el.style.setProperty('--sheet-shade', 0.65 * (1 - Math.min(1, offset / drag.height)));
+  }
   const target = returnId ? $(returnId) : sheetOrigins.get(id);
   el.hidden = true;
   const exit = { target, timer: null }; sheetExits.set(id, exit);
@@ -5882,11 +6000,12 @@ function buildStatic() {
 }
 
 /* One bounded frame chain; frozen scenes repaint only when their content changes. */
-let lastT = performance.now(), frameId = null, appActive = true, pageHidden = false;
+let lastT = performance.now(), lastRafT = lastT, ambientT = lastT, frameActive = false;
+let frameId = null, appActive = true, pageHidden = false;
 const renderSuspended = () => document.hidden || !appActive || pageHidden;
 function startFrames() {
   if (frameId !== null || renderSuspended()) return;
-  lastT = performance.now(); frameId = requestAnimationFrame(frame);
+  lastT = lastRafT = ambientT = performance.now(); frameActive = false; frameId = requestAnimationFrame(frame);
 }
 function suspendPresentation() {
   if (frameId !== null) cancelAnimationFrame(frameId);
@@ -5904,6 +6023,7 @@ function resumePresentation() {
 }
 function changeMotionPreference(e) {
   if (reduceMotion === e.matches) return;
+  resetSheetGesture();
   reduceMotion = e.matches;
   if (reduceMotion) {
     flushSheetExits(); pauseGame(); clearPlayEffects();
@@ -5921,9 +6041,15 @@ function frame(now) {
   frameId = null;
   if (renderSuspended()) return;
   const active = (!$('app').inert && (anim || bump || settle || pop)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
-  const interval = 1000 / (active ? 60 : 30);
-  if (now - lastT < interval - 0.5) { frameId = requestAnimationFrame(frame); return; }
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  // Short, interactive motion follows the display. A 60Hz gate quantised 90/144Hz displays to 45/48 updates.
+  // Ambient scenes retain a 30Hz budget with the remainder preserved instead of drifting at each skip.
+  const rafDelta = Math.max(0, now - lastRafT); lastRafT = now;
+  const wasActive = frameActive; frameActive = !!active;
+  const interval = 1000 / 30;
+  if (!active && now - ambientT < interval - 0.5) { frameId = requestAnimationFrame(frame); return; }
+  const dt = Math.min(0.05, Math.max(0, active && !wasActive ? rafDelta : now - lastT) / 1000);
+  lastT = now;
+  ambientT = active ? now : ambientT + Math.max(1, Math.floor((now - ambientT + 0.5) / interval)) * interval;
   if (!$('gameScreen').hidden && g && staticLayer) {
     const moving = !$('app').inert && (!reduceMotion || !!anim);
     if (moving) step(dt);
@@ -5975,7 +6101,12 @@ function step(dt) {
       sfx.exit(); haptic('success');
     }
     const swimming = a.t < a.dur && !a.warps.has(i + 1);
-    if (swimming && a.speed > 2 && !reduceMotion) wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
+    // Keep trail density bounded when interactive drawing follows a high-refresh display.
+    a.wakeTime = (a.wakeTime || 0) + dt;
+    if (swimming && a.speed > 2 && !reduceMotion && a.wakeTime >= 1 / 60) {
+      a.wakeTime %= 1 / 60;
+      wake.push({ x: view.x, y: view.y, ang: ANG[a.dirs[i + 1]], age: 0, sp: Math.min(1, a.speed / 14) });
+    }
     if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
     if (a.t >= a.dur) landShark(a);
     if (a.t >= a.dur + a.gateDur + a.boatDur) finishAnim();
@@ -6619,6 +6750,13 @@ $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; per
 // light tick on every enabled button press, like native controls
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
 document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('pointerdown', sheetPointerDown, true);
+document.addEventListener('pointermove', sheetPointerMove, { passive: false });
+document.addEventListener('pointerup', e => sheetPointerEnd(e));
+document.addEventListener('pointercancel', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
+document.addEventListener('lostpointercapture', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
+document.addEventListener('click', sheetClick, true);
+sheetDesktop.addEventListener('change', resetSheetGesture);
 
 // swipe anywhere on the game screen (fires as soon as the finger has travelled SWIPE px), tap on the board for nets
 const gameScreen = $('gameScreen');
@@ -6666,7 +6804,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'h' || e.key === 'H') showHint();
   else if (e.key === 'Escape') show('title');
 });
-window.addEventListener('resize', () => { resize(); heroW = 0; });
+window.addEventListener('resize', () => { resetSheetGesture(); resize(); heroW = 0; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) suspendPresentation(); else resumePresentation(); });
 window.addEventListener('pagehide', () => { pageHidden = true; suspendPresentation(); });
 window.addEventListener('pageshow', () => { pageHidden = false; resumePresentation(); });

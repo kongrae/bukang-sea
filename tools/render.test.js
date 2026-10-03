@@ -64,6 +64,21 @@ function finishTurn(scene) {
   assert.equal(scene.state().animating, false, 'animation failed to finish');
 }
 
+test('display rates and coarse frames preserve arrival, fish events and bounded wake density', () => {
+  const level={par:2,map:['#######E#','#S....f.#','#########']};
+  for(const hz of [20,60,90,144,240]){
+    const scene=game({level});scene.move('R');let elapsed=0,maxWake=0;
+    while(scene.state().animating&&elapsed<3){scene.tick(1/hz);elapsed+=1/hz;maxWake=Math.max(maxWake,scene.effects().wake.length);}
+    assert.deepEqual(scene.state().pos,[7,1]);assert.deepEqual(scene.state().fish,[0]);assert.equal(scene.state().moves,1);
+    assert.deepEqual(scene.state().view,[7,1]);
+    assert.equal(scene.sounds().filter(s=>s.name==='eat').length,1);
+    assert.ok(maxWake<=Math.ceil(elapsed*60)+1,'trail generation stays time-based at '+hz);
+    scene.move('U');for(let t=0;t<3&&scene.state().animating;t+=1/hz)scene.tick(1/hz);
+    assert.equal(scene.state().cleared,true);assert.equal(scene.state().moves,2);
+    assert.equal(scene.sounds().filter(s=>s.name==='exit').length,1);
+  }
+});
+
 test('boats remain still during the swim, then glide after the shark arrives', () => {
   const scene = game();
   scene.move('U');
