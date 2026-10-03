@@ -14,7 +14,7 @@ function functionSource(name) {
 function scene(stored = {}, reduced = false) {
   const story = source.slice(source.indexOf('/* ---------- story journey:'), source.indexOf('/* ---------- shark skins:'));
   const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
-  const functions = ['chapterOf','persist','onClear','renderLevelGrid','nextLevel'].map(functionSource).join('\n');
+  const functions = ['chapterOf','persist','onClear','renderLevelGrid','netLevelBadge','nextLevel'].map(functionSource).join('\n');
   return new Function('stored','reduceMotion', `
     ${engine}
     ${levels}

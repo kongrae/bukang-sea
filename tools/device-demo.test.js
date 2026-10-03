@@ -5,10 +5,15 @@ const path = require('node:path');
 const E = require('../src/engine');
 const D = require('../src/device-demo');
 
-test('every short demo uses legal taps and actual slide/boat outcomes without mutating its source', () => {
+test('every reader-paced demo uses legal taps and actual slide/boat outcomes without mutating its source', () => {
   for (const key of Object.keys(D.DEVICE_DEMOS)) {
     const demo = D.createDeviceDemo(key), before = JSON.stringify(demo), grid = demo.grid;
-    assert.ok(demo.duration >= 3 && demo.duration <= 8, `${key}: ${demo.duration}s`);
+    assert.equal(demo.steps[0].start, 0);
+    assert.equal(demo.steps.at(-1).end, demo.duration);
+    for (const step of demo.steps) {
+      assert.ok(step.end - step.start >= 4 - 1e-8, `${key}: caption must remain for at least four seconds`);
+      for (const time of [step.start, step.end - .001]) assert.equal(D.sampleDeviceDemo(demo, time).text, step.text);
+    }
     for (const phase of demo.phases) {
       if (phase.kind === 'move') {
         const r = E.slide(grid, phase.from.pos, phase.from.dir, new Set(phase.from.nets), phase.from.boats, phase.from.gate);
@@ -68,17 +73,41 @@ function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={})
     let persisted=null;const persist=()=>{persisted=JSON.stringify(save);},elements=new Map();
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:id==='guideOverlay'||id==='gameScreen'&&title,textContent:'',innerHTML:'',focus(){},setAttribute(){},getBoundingClientRect:()=>({width:0,height:0})});return elements.get(id);};
     ${guideSource}
-    return {show:showDeviceGuide,close:closeGuide,next:advanceGuide,select:selectGuideDevice,toggle:toggleGuidePlayback,replay:replayGuide,step:stepDeviceGuide,
+    return {show:showDeviceGuide,close:closeGuide,next:advanceGuide,select:selectGuideDevice,change:changeGuideStep,toggle:toggleGuidePlayback,replay:replayGuide,step:stepDeviceGuide,
       state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted};
   `)(E,D,reduced,seen,level,title);
 }
-test('first encounter auto-plays; pause, replay and closing are isolated from gameplay records', () => {
-  const scene=guide();scene.show(true);assert.equal(scene.state().playing,true);
+test('first encounter waits for the reader; optional playback and closing are isolated from gameplay records', () => {
+  const scene=guide();scene.show(true);assert.equal(scene.state().playing,false);
+  scene.step(20);assert.equal(scene.state().time,0);scene.toggle();
   scene.step(.4);assert.equal(scene.state().time,.4);scene.toggle();scene.step(.4);assert.equal(scene.state().time,.4);
   scene.replay();assert.equal(scene.state().time,0);assert.equal(scene.state().playing,true);
   assert.deepEqual(scene.state().seen,[]);scene.close();assert.deepEqual(scene.state().seen,['boat']);assert.equal(scene.state().demo,null);
   const saved=JSON.parse(scene.saved());assert.deepEqual(saved.best,{0:3});assert.deepEqual(saved.sessions,{story:{moves:4}});assert.deepEqual(saved.hintUsage,{'story:0':{count:2}});
   scene.show(true);assert.equal(scene.element('guideOverlay').hidden,true);scene.show();assert.equal(scene.element('guideOverlay').hidden,false);
+});
+test('manual steps hold their completed action, can go back, and playback stops at the summary without looping', () => {
+  const scene=guide({level:D.DEVICE_DEMOS.net});scene.show(false,'net');
+  assert.equal(scene.element('guidePrev').disabled,true);
+  const {demo}=scene.state();
+  for(let i=1;i<demo.steps.length;i++) {
+    scene.change(1);const time=scene.state().time;
+    assert.equal(scene.element('guideCaption').textContent,demo.steps[i].text);
+    scene.step(30);assert.equal(scene.state().time,time);
+    assert.equal(D.sampleDeviceDemo(demo,time).phase.kind,'hold');
+  }
+  assert.equal(scene.element('guideNext').disabled,true);
+  scene.change(-1);assert.equal(scene.element('guideCaption').textContent,demo.steps.at(-2).text);
+  scene.replay();scene.step(demo.duration+10);
+  assert.equal(scene.state().time,demo.duration);assert.equal(scene.state().playing,false);
+  assert.equal(scene.element('guideCaption').textContent,D.DEVICE_DEMOS.net.summary);
+  scene.step(20);assert.equal(scene.state().time,demo.duration);
+  scene.select(0);assert.equal(scene.state().time,0);assert.equal(scene.state().playing,false);
+});
+test('net status shortcut opens the net page in a mixed level without marking other devices seen', () => {
+  const scene=guide({level:{...D.DEVICE_DEMOS.boat,nets:2}});scene.show(false,'net');
+  assert.deepEqual(scene.state().keys,['boat','net']);assert.equal(scene.state().index,1);
+  scene.close();assert.deepEqual(scene.state().seen,['net']);
 });
 test('a mixed first encounter records only pages actually opened; skipped devices can still introduce themselves', () => {
   const level={map:['#######','#..w..#','#S.o..#','#wb.s.#','#######'],nets:1},scene=guide({level});

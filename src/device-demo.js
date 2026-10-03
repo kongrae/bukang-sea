@@ -1,4 +1,4 @@
-/* ---------- Small, isolated device examples replayed with the real movement rules ---------- */
+/* ---------- Isolated, reader-paced device examples using the real movement rules ---------- */
 const DEMO_ENGINE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, pressSwitch };
 const DEVICE_DEMOS = {
   move: { map: ['#######','#.....#','#S....#','#.....#','#######'], actions: [
@@ -76,7 +76,28 @@ function createDeviceDemo(key) {
     }
   }
   add('hold', 1.1, definition.summary, state);
-  return { key, grid, phases, duration };
+  // Keep the action speed natural; give each distinct caption its own reading hold.
+  // The same boundaries drive manual stepping and optional one-pass playback.
+  const groups = [];
+  for (const phase of phases) {
+    if (groups.at(-1)?.text !== phase.text) groups.push({ text: phase.text, phases: [] });
+    groups.at(-1).phases.push(phase);
+  }
+  duration = 0;
+  const steps = [], readablePhases = [];
+  for (const group of groups) {
+    const start = duration, seconds = group.phases.reduce((sum, p) => sum + p.duration, 0);
+    const readingTime = Math.max(4, group.text.length * .12 + 1);
+    if (seconds < readingTime) {
+      const end = group.phases.at(-1).to;
+      group.phases.push({ kind: 'hold', duration: readingTime - seconds, text: group.text, from: demoTurn(end), to: demoTurn(end) });
+    }
+    for (const phase of group.phases) {
+      phase.start = duration; duration += phase.duration; readablePhases.push(phase);
+    }
+    steps.push({ start, end: duration, text: group.text });
+  }
+  return { key, grid, phases: readablePhases, steps, duration };
 }
 // Sampling never touches live puzzle state. A warp jumps between its endpoints, never across intervening walls.
 function sampleDeviceDemo(demo, time) {

@@ -936,7 +936,7 @@ function enter(level, keep, label) {
   setTip(level.tip);
   closeSheet('clearOverlay', null, false);
   hudLast = { moves: -1, fish: -1 };
-  resize(); updateHud(); updateHintButton();
+  updateHud(); resize(); updateHintButton();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
@@ -972,12 +972,20 @@ function updateHud() {
   const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
   parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료' : '숭어 모으기' : '목표'}</span><b>${g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '바다로 탈출'}</b></span></span>`);
   parts.push(`<span class="chip move${st.moves > L.par ? ' over' : ''}"><span class="hud-stack"><span class="count">이동 <b>${st.moves}</b></span><span class="k">기준 ${L.par}회</span></span></span>`);
-  if (g.nets) parts.push(`<span class="chip net"><span class="hud-stack"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span></span>`);
+  updateNetStatus();
   $('stats').innerHTML = parts.join('');
   if (hudLast.moves >= 0 && st.moves !== hudLast.moves) $('stats').querySelector('.move b').classList.add('bump');
   if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
   hudLast = { moves: st.moves, fish: st.fish.length };
   $('undoBtn').disabled = !st.history.length;
+}
+function updateNetStatus() {
+  const available = g.nets - st.nets.length, active = g.nets > 0;
+  $('netStatus').classList.toggle('has-nets', active);
+  $('netStatus').disabled = !active;
+  $('netTitle').textContent = active ? `그물 수로 · 남음 ${available} / ${g.nets}` : '그물 없는 수로';
+  $('netHelp').textContent = active ? (st.nets.length ? `설치 ${st.nets.length}개 · 누르면 회수해요` : '빈 물 칸을 톡! 그물을 설치해요') : '화면을 밀어서 길을 찾아요';
+  $('netGuideLabel').hidden = !active;
 }
 function pushHistory() {
   st.history.push(copyTurn(st));
@@ -2335,7 +2343,7 @@ function renderPilot() {
       <p>${open ? region.goal : '북항의 마지막 수로를 통과하면 열려요.'}</p>
       <div class="levels">${indices.map((i, k) => {
         const level = PILOT_LEVELS[i], stars = pilotStars(i), ok = pilotUnlocked(i), resume = level.id === resumeId;
-        return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-pilot="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="시험 ${i + 1} ${level.name}${ok ? `, 별 ${stars}개${resume ? ', 이어하기' : ''}` : ', 잠김'}"><span class="n">${i + 1}</span><span class="nm">${ok ? level.name : '잠김'}</span><span class="st">${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></span></button>`;
+        return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-pilot="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="시험 ${i + 1} ${level.name}${ok ? `, 별 ${stars}개, ${level.nets ? `그물 ${level.nets}개` : '그물 없음'}${resume ? ', 이어하기' : ''}` : ', 잠김'}"><span class="n">${i + 1}</span><span class="nm">${ok ? level.name : '잠김'}</span>${ok ? netLevelBadge(level.nets) : ''}<span class="st">${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></span></button>`;
       }).join('')}</div></section>`;
   }).join('');
   $('pilotRegions').querySelectorAll('[data-region-art]').forEach(img => setRegionArt(img, img.dataset.regionArt));
@@ -2359,6 +2367,9 @@ function continuePilot() {
 }
 
 /* ---------- UI wiring ---------- */
+function netLevelBadge(nets) {
+  return `<span class="level-net${nets ? ' available' : ''}">${nets ? `그물 ${nets}개` : '그물 없음'}</span>`;
+}
 let selectedChapter = null;
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? save.sessions.story.id : nextLevel();
@@ -2367,8 +2378,8 @@ function renderLevelGrid(followProgress = false) {
   const button = (L, i, k) => {
     const b = save.best[i] || 0; const ok = unlocked(i);
     const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
-    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
-      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span><span class="st">${stars}</span></button>`;
+    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개, ${L.nets ? `그물 ${L.nets}개` : '그물 없음'}` : ', 잠김'}">
+      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span>${ok ? netLevelBadge(L.nets) : ''}<span class="st">${stars}</span></button>`;
   };
   let start = 0;
   $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
@@ -2430,20 +2441,21 @@ const DEVICE_GUIDES = [
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
   { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
 ];
-let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1;
+let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
 const guideOpen = () => !$('guideOverlay').hidden;
-function showDeviceGuide(firstOnly = false) {
+function showDeviceGuide(firstOnly = false, requestedKey = null) {
   const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
-  guideIndex = 0; guideViewed = new Set(); guidePlaying = !reduceMotion;
+  guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
+  guideReturnFocus = requestedKey === 'net' ? 'netStatus' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
   openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
 }
 function renderGuideDevice() {
   const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
   if (key !== 'move') guideViewed.add(key);
-  guideDemo = createDeviceDemo(key); guideTime = guidePlaying ? 0 : guideDemo.duration; guidePaintTime = -1;
+  guideDemo = createDeviceDemo(key); guideTime = 0; guidePlaying = false; guidePaintTime = -1;
   $('guideName').textContent = device.name;
   $('guideCounter').textContent = `${guideIndex + 1} / ${guideKeys.length}`;
   $('guideItems').innerHTML = `<p>${device.text}</p>`;
@@ -2462,14 +2474,33 @@ function advanceGuide() {
   if (guideIndex < guideKeys.length - 1) selectGuideDevice(guideIndex + 1); else closeGuide();
 }
 function updateGuidePlayback() {
-  $('guideToggle').textContent = guidePlaying ? '일시정지' : '재생';
-  $('guideMode').textContent = guidePlaying ? '짧은 예시 · 자동 반복' : reduceMotion ? '동작 줄이기 · 눌러서 재생' : '일시정지';
+  if (!guideDemo) return;
+  const index = guideStepIndex();
+  $('guideToggle').textContent = guidePlaying ? '일시정지' : '예시 재생';
+  $('guideMode').textContent = guidePlaying ? '천천히 한 번 재생해요' : guideTime >= guideDemo.duration ? '예시 끝 · 다시 읽어 보세요' : '직접 넘기며 읽어 보세요';
+  $('guideStepCount').textContent = `설명 ${index + 1} / ${guideDemo.steps.length}`;
+  $('guidePrev').disabled = index === 0;
+  $('guideNext').disabled = index === guideDemo.steps.length - 1;
+  $('guideCaption').setAttribute('aria-live', guidePlaying ? 'off' : 'polite');
+  const text = guideDemo.steps[index].text;
+  if ($('guideCaption').textContent !== text) $('guideCaption').textContent = text;
+}
+function guideStepIndex() {
+  const index = guideDemo.steps.findIndex(step => guideTime < step.end);
+  return index < 0 ? guideDemo.steps.length - 1 : index;
+}
+function changeGuideStep(direction) {
+  if (!guideDemo) return;
+  const index = Math.max(0, Math.min(guideDemo.steps.length - 1, guideStepIndex() + direction));
+  // Show the completed action so the still frame explains the caption too.
+  guideTime = guideDemo.steps[index].end - .001; guidePlaying = false; guidePaintTime = -1;
+  updateGuidePlayback(); drawDeviceDemo();
 }
 function toggleGuidePlayback() {
   if (!guideDemo) return;
   guidePlaying = !guidePlaying;
   guidePaintTime = -1;
-  if (guidePlaying && guideTime >= guideDemo.duration) guideTime = 0;
+  if (guidePlaying) guideTime = guideTime >= guideDemo.duration ? 0 : guideDemo.steps[guideStepIndex()].start;
   updateGuidePlayback();
 }
 function replayGuide() {
@@ -2478,7 +2509,12 @@ function replayGuide() {
 }
 function stepDeviceGuide(dt) {
   if (!guideDemo) return;
-  if (guidePlaying) guideTime = (guideTime + dt) % guideDemo.duration;
+  if (guidePlaying) {
+    const previous = guideStepIndex();
+    guideTime = Math.min(guideTime + dt, guideDemo.duration);
+    if (guideTime >= guideDemo.duration) guidePlaying = false;
+    if (guideStepIndex() !== previous || !guidePlaying) updateGuidePlayback();
+  }
   drawDeviceDemo();
 }
 function drawDeviceDemo() {
@@ -2535,7 +2571,7 @@ function drawDeviceDemo() {
 function closeGuide() {
   save.seenDevices = [...new Set([...save.seenDevices, ...guideViewed])]; persist();
   guideKeys = []; guideViewed = new Set(); guideDemo = null; guidePlaying = false;
-  closeSheet('guideOverlay', $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn');
+  closeSheet('guideOverlay', guideReturnFocus);
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
@@ -2623,6 +2659,9 @@ $('guideDone').addEventListener('click', advanceGuide);
 $('guideClose').addEventListener('click', closeGuide);
 $('guideToggle').addEventListener('click', toggleGuidePlayback);
 $('guideReplay').addEventListener('click', replayGuide);
+$('guidePrev').addEventListener('click', () => changeGuideStep(-1));
+$('guideNext').addEventListener('click', () => changeGuideStep(1));
+$('netStatus').addEventListener('click', () => { if (g.nets) showDeviceGuide(false, 'net'); });
 $('guideTabs').addEventListener('click', e => {
   const b = e.target.closest('[data-guide]'); if (!b) return;
   selectGuideDevice(+b.dataset.guide);

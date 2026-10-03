@@ -16,7 +16,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     return found[0];
   };
   const easing = source.slice(source.indexOf('function easeTable('), source.indexOf('/* ---------- drawing primitives'));
-  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw'].map(functionSource).join('\n');
+  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw', 'updateNetStatus'].map(functionSource).join('\n');
   const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
   return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', `
@@ -27,8 +27,9 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const ctx = new Proxy({}, {get: (target, key) => key in target ? target[key] : noop});
     const C = {}, T = 40, dpr = 1, OX = 0, OY = 0, CW = 360, CH = 640;
     const staticLayer = {}, waterPath = {}, caustic = {}, causticPat = {};
-    const $ = () => ({hidden: false, classList: {contains: () => false}});
-    const haptic = noop, updateHud = noop, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
+    const elements = new Map();
+    const $ = id => { if (!elements.has(id)) elements.set(id, {hidden: false, classList: {contains: () => false, toggle: noop}}); return elements.get(id); };
+    const haptic = noop, updateHud = updateNetStatus, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
     const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawFish = noop, css = {getPropertyValue: () => 'sans-serif'};
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null, PILOT = null;
@@ -45,10 +46,12 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const packet = save.sessions[DAILY ? 'daily' : 'story'];
     const resumed = restoreSession(packet, level, DAILY ? dailyStageId(DAILY) : LVL);
     if (resumed) st = resumed;
+    updateNetStatus();
     const view = {x: st.pos[0], y: st.pos[1], ang: ANG.U, target: ANG.U};
     return {
       move: tryMove, tick: step, undo, tap: tapTile, pause: pauseGame, checkpoint,
       stored: () => written,
+      netStatus: () => ({title: $('netTitle').textContent, help: $('netHelp').textContent, disabled: $('netStatus').disabled, guideHidden: $('netGuideLabel').hidden}),
       restore: (record, otherLevel = level, id = LVL) => restoreSession(record, otherLevel, id),
       render: () => {boatsDrawn = []; netsDrawn = []; draw(0); return boatsDrawn;},
       sounds: () => sounds.slice(), shark: () => sharkDrawn, nets: () => netsDrawn,
@@ -149,6 +152,24 @@ test('reload during a swim keeps the committed position, all fish on its path an
   for (const key of ['pos', 'boats', 'fish', 'moves']) assert.deepEqual(resumed.state()[key], scene.state()[key], 'undo ' + key);
 });
 
+test('net reminder follows placement, exhaustion, undo, reload and levels without nets', () => {
+  const level = {par: 8, nets: 2, map: ['###E###','#.....#','#S....#','#.....#','#######']};
+  const scene = game({level});
+  assert.equal(scene.netStatus().title, '그물 수로 · 남음 2 / 2');
+  scene.tap(3, 2); scene.tap(4, 2);
+  assert.equal(scene.netStatus().title, '그물 수로 · 남음 0 / 2');
+  assert.equal(scene.netStatus().help, '설치 2개 · 누르면 회수해요');
+  assert.equal(scene.netStatus().disabled, false, 'exhausted nets can still be recalled and explained');
+  assert.equal(scene.state().moves, 0);
+  const resumed = game({level, stored:scene.stored()});
+  assert.deepEqual(resumed.netStatus(), scene.netStatus());
+  resumed.tap(3, 2); assert.equal(resumed.netStatus().title, '그물 수로 · 남음 1 / 2');
+  resumed.undo(); assert.equal(resumed.netStatus().title, '그물 수로 · 남음 0 / 2');
+  const plain = game({index:0});
+  assert.equal(plain.netStatus().title, '그물 없는 수로');
+  assert.equal(plain.netStatus().disabled, true); assert.equal(plain.netStatus().guideHidden, true);
+});
+
 test('installed and removed nets, and their undo history, survive a reload', () => {
   const scene = game({index: 11});
   scene.tap(3, 8);
@@ -237,7 +258,7 @@ test('first-encounter device rules are recorded only on confirmation and can be 
   const guideSource = source.slice(source.indexOf('const DEVICE_GUIDES = ['), source.indexOf('// screen change with a native-style push'));
   const {parseLevel, JET} = require('../src/engine.js');
   const {createDeviceDemo} = require('../src/device-demo');
-  const elements = Object.fromEntries(['app', 'guideOverlay', 'guideTitle', 'guideItems', 'guideDone', 'gameScreen', 'settingsBtn', 'guideName', 'guideCounter', 'guideDemo', 'guideTabs', 'guideBody', 'guideToggle', 'guideMode'].map(id => [id, {hidden: id === 'guideOverlay', focus: () => {}, setAttribute: () => {}, getBoundingClientRect: () => ({width:0,height:0})}]));
+  const elements = Object.fromEntries(['app', 'guideOverlay', 'guideTitle', 'guideItems', 'guideDone', 'gameScreen', 'settingsBtn', 'guideName', 'guideCounter', 'guideDemo', 'guideTabs', 'guideBody', 'guideToggle', 'guideMode', 'guideStepCount', 'guidePrev', 'guideNext', 'guideCaption'].map(id => [id, {hidden: id === 'guideOverlay', focus: () => {}, setAttribute: () => {}, getBoundingClientRect: () => ({width:0,height:0})}]));
   const run = new Function('JET', 'g', '$', 'createDeviceDemo', `
     // Device-record checks omit presentation timing; sheet-motion.test.js covers actual exits.
     const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};

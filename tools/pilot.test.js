@@ -344,9 +344,9 @@ test('hints search from the current gate state and never spend allowance on a ca
 });
 
 /* ---------- device example uses the real engine ---------- */
-test('the switch and gate example replays the real stop, press and pass-through within the guide length', () => {
+test('the switch and gate example preserves real stop, press and pass-through with readable captions', () => {
   const demo = D.createDeviceDemo('gate'), moves = demo.phases.filter(p => p.kind === 'move'), gate = demo.phases.find(p => p.kind === 'gate');
-  assert.ok(demo.duration >= 3 && demo.duration <= 8);
+  assert.ok(demo.steps.every(step => step.end - step.start >= 4 - 1e-8));
   assert.deepEqual(moves[0].to.pos, [3, 2], 'stops on the switch in front of the closed gate');
   assert.deepEqual([gate.from.gate, gate.to.gate], [0, 1]);
   assert.ok(gate.start >= moves[0].start + moves[0].duration, 'gates turn after the shark arrives');
@@ -402,6 +402,7 @@ test('course results: the North Harbor boundary previews the sluice works, the f
     const curLevel = () => PILOT.level, dailySessionKey = () => 'daily';
     const loadLevel = noop, openDaily = noop, continueDaily = noop, openFree = noop, startFree = noop, currentSkin = () => ({});
     ${fn('chapterOf')}
+    ${fn('netLevelBadge')}
     ${fn('persist')}
     ${rewardSource}
     ${fn('onClear')}

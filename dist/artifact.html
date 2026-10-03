@@ -343,9 +343,17 @@ h1 .sea { color: var(--title-alert); }
 .chip .k { color: var(--muted); }
 .chip.over b { color: var(--buoy); }
 .chip.done b { color: var(--star); }
-.chip.net { flex: .75; }
-.chip.net .k { font-size: 13px; white-space: nowrap; }
-.chip.net b { font-size: 18px; }
+.net-status { flex-shrink: 0; display: flex; align-items: center; gap: 9px; width: 100%; min-height: 54px; padding: 7px 11px; border: 1px solid #b5d6d6; border-radius: 14px; background: #e1f1ee; color: #456a72; text-align: left; font: inherit; }
+.net-status > svg { display: none; width: 32px; height: 32px; flex-shrink: 0; }
+.net-status > span { display: grid; gap: 3px; flex: 1; }
+.net-status b { font-size: 14px; line-height: 1.2; }
+.net-status small { font-size: 12px; line-height: 1.3; }
+.net-status.has-nets { background: linear-gradient(110deg, #fff1b5, #ffdda0); color: #714211; border: 2px solid #da9b42; box-shadow: inset 0 2px #fff9de, 0 2px #d2ad6e; cursor: pointer; }
+.net-status.has-nets > svg { display: block; }
+.net-status.has-nets:focus-visible { outline: 3px solid #08748b; outline-offset: 2px; }
+.net-guide-label { flex-shrink: 0; font-weight: 700; }
+.level-net { font: 11px/1.3 var(--font-body); border-radius: 6px; padding: 2px 5px; background: #e2eeec; color: #456a72; }
+.level-net.available { background: #ffe5a4; color: #714211; box-shadow: inset 0 0 0 1px #dba349; }
 .tip { font-size: 14px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.3; margin: 0; text-wrap: balance; display: flex; align-items: center; justify-content: center; }
 .tip.hint { color: var(--star); }
 .tip.flash { animation: tip-in .3s var(--ease-out); }
@@ -467,7 +475,8 @@ h1 .sea { color: var(--title-alert); }
 .card.guide h3 { font-size: clamp(24px, 7vw, 30px); text-align: left; }
 .guide > .btn { flex-shrink: 0; }
 .guide-body { display: grid; grid-auto-rows: max-content; align-content: start; gap: 12px; text-align: left; min-height: 0; overflow-y: auto; padding: 2px 3px 8px; }
-.guide-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.guide-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; }
+.guide-tabs button { flex-shrink: 0; }
 .guide-tabs button { padding: 6px; min-height: 44px; border-radius: 10px; border: 1px solid #a9a08d; background: #f7f1e5; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
 .guide-tabs button[aria-pressed="true"] { background: var(--harbor); color: var(--text); border-color: var(--harbor); }
 .guide-tabs button:focus-visible { outline: 3px solid var(--buoy-deep); outline-offset: 1px; }
@@ -478,7 +487,17 @@ h1 .sea { color: var(--title-alert); }
 .guide-movie canvas { display: block; width: 100%; aspect-ratio: 7 / 5; max-height: 220px; }
 .guide-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; padding: 8px 10px; font-size: 11px; }
 .guide-movie progress { display: block; width: 100%; height: 4px; border: 0; accent-color: var(--buoy); }
-.guide-caption { margin: 0; min-height: 44px; display: flex; align-items: center; font-size: 15px; line-height: 1.5; font-weight: 700; color: #225240; }
+.guide-caption { margin: 0; min-height: 56px; display: flex; align-items: center; font-size: 16px; line-height: 1.65; font-weight: 700; color: #225240; word-break: keep-all; overflow-wrap: anywhere; }
+.guide-reading { display: grid; gap: 8px; text-align: left; flex-shrink: 0; padding: 0 3px; border-top: 1px solid #c4ded8; }
+.guide-step-controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+.guide-step-controls span { font-size: 12px; font-variant-numeric: tabular-nums; }
+.card.guide .guide-step-controls .btn { min-height: 44px; padding: 8px; font-size: 13px; }
+.guide-step-controls .btn:disabled { opacity: .45; cursor: default; }
+@media (max-height: 700px) {
+  .guide-movie canvas { max-height: 110px; }
+  .guide-body, .card.guide { gap: 8px; }
+  .guide .sheet-handle { height: 28px; }
+}
 .guide-controls { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; }
 .card.guide .guide-controls .btn { min-height: 44px; padding: 9px 8px; font-size: 13px; }
 .guide-items p { margin: 0; font-size: 14px; line-height: 1.6; color: #3d4d4f; }
@@ -650,6 +669,10 @@ button:disabled:active { transform: none; }
       <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
     </div>
     <div class="stats" id="stats"></div>
+    <button class="net-status" id="netStatus" type="button" disabled>
+      <svg viewBox="0 0 36 36" aria-hidden="true"><rect x="5" y="6" width="26" height="24" rx="4" fill="#fff6d8" stroke="#a66928" stroke-width="2"/><path d="M7 13h22M7 21h22M13 8v20M22 8v20" fill="none" stroke="#c48b46" stroke-width="2"/><circle cx="6" cy="7" r="4" fill="#f69145" stroke="#fff6d8" stroke-width="2"/><circle cx="30" cy="7" r="4" fill="#f69145" stroke="#fff6d8" stroke-width="2"/></svg>
+      <span><b id="netTitle">그물 없는 수로</b><small id="netHelp">화면을 밀어서 길을 찾아요</small></span><small class="net-guide-label" id="netGuideLabel" hidden>사용법 ›</small>
+    </button>
     <p class="tip" id="tip"></p>
     <div class="board" id="board"><div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div></div>
     <div class="controls">
@@ -816,9 +839,12 @@ button:disabled:active { transform: none; }
         <div class="guide-meta"><span id="guideMode"></span><span id="guideStats"></span></div>
         <progress id="guideProgress" max="1" value="0" aria-hidden="true"></progress>
       </div>
-      <p class="guide-caption" id="guideCaption"></p>
-      <div class="guide-controls"><button class="btn" id="guideToggle" type="button">일시정지</button><button class="btn" id="guideReplay" type="button">처음부터 보기</button></div>
+      <div class="guide-controls"><button class="btn" id="guideToggle" type="button">예시 재생</button><button class="btn" id="guideReplay" type="button">처음부터 재생</button></div>
       <div class="guide-items" id="guideItems"></div>
+    </div>
+    <div class="guide-reading">
+      <p class="guide-caption" id="guideCaption" aria-live="polite" aria-atomic="true"></p>
+      <div class="guide-step-controls" role="group" aria-label="설명 넘기기"><button class="btn" id="guidePrev" type="button">이전 설명</button><span id="guideStepCount"></span><button class="btn" id="guideNext" type="button">다음 설명</button></div>
     </div>
     <button class="btn primary" id="guideDone" type="button">확인</button>
   </div>
@@ -4017,7 +4043,7 @@ function makeFree(seed, difficulty, version = FREE_VERSION) {
 }
 if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_TIERS, FREE_LEGACY_TIERS, freeId, makeFreeSearch, makeFree };
 
-/* ---------- Small, isolated device examples replayed with the real movement rules ---------- */
+/* ---------- Isolated, reader-paced device examples using the real movement rules ---------- */
 const DEMO_ENGINE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, pressSwitch };
 const DEVICE_DEMOS = {
   move: { map: ['#######','#.....#','#S....#','#.....#','#######'], actions: [
@@ -4095,7 +4121,28 @@ function createDeviceDemo(key) {
     }
   }
   add('hold', 1.1, definition.summary, state);
-  return { key, grid, phases, duration };
+  // Keep the action speed natural; give each distinct caption its own reading hold.
+  // The same boundaries drive manual stepping and optional one-pass playback.
+  const groups = [];
+  for (const phase of phases) {
+    if (groups.at(-1)?.text !== phase.text) groups.push({ text: phase.text, phases: [] });
+    groups.at(-1).phases.push(phase);
+  }
+  duration = 0;
+  const steps = [], readablePhases = [];
+  for (const group of groups) {
+    const start = duration, seconds = group.phases.reduce((sum, p) => sum + p.duration, 0);
+    const readingTime = Math.max(4, group.text.length * .12 + 1);
+    if (seconds < readingTime) {
+      const end = group.phases.at(-1).to;
+      group.phases.push({ kind: 'hold', duration: readingTime - seconds, text: group.text, from: demoTurn(end), to: demoTurn(end) });
+    }
+    for (const phase of group.phases) {
+      phase.start = duration; duration += phase.duration; readablePhases.push(phase);
+    }
+    steps.push({ start, end: duration, text: group.text });
+  }
+  return { key, grid, phases: readablePhases, steps, duration };
 }
 // Sampling never touches live puzzle state. A warp jumps between its endpoints, never across intervening walls.
 function sampleDeviceDemo(demo, time) {
@@ -5168,7 +5215,7 @@ function enter(level, keep, label) {
   setTip(level.tip);
   closeSheet('clearOverlay', null, false);
   hudLast = { moves: -1, fish: -1 };
-  resize(); updateHud(); updateHintButton();
+  updateHud(); resize(); updateHintButton();
   frameEl.classList.remove('enter'); void frameEl.offsetWidth; frameEl.classList.add('enter');
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
@@ -5204,12 +5251,20 @@ function updateHud() {
   const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
   parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료' : '숭어 모으기' : '목표'}</span><b>${g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '바다로 탈출'}</b></span></span>`);
   parts.push(`<span class="chip move${st.moves > L.par ? ' over' : ''}"><span class="hud-stack"><span class="count">이동 <b>${st.moves}</b></span><span class="k">기준 ${L.par}회</span></span></span>`);
-  if (g.nets) parts.push(`<span class="chip net"><span class="hud-stack"><span class="k">남은 그물</span><b>${g.nets - st.nets.length}</b></span></span>`);
+  updateNetStatus();
   $('stats').innerHTML = parts.join('');
   if (hudLast.moves >= 0 && st.moves !== hudLast.moves) $('stats').querySelector('.move b').classList.add('bump');
   if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
   hudLast = { moves: st.moves, fish: st.fish.length };
   $('undoBtn').disabled = !st.history.length;
+}
+function updateNetStatus() {
+  const available = g.nets - st.nets.length, active = g.nets > 0;
+  $('netStatus').classList.toggle('has-nets', active);
+  $('netStatus').disabled = !active;
+  $('netTitle').textContent = active ? `그물 수로 · 남음 ${available} / ${g.nets}` : '그물 없는 수로';
+  $('netHelp').textContent = active ? (st.nets.length ? `설치 ${st.nets.length}개 · 누르면 회수해요` : '빈 물 칸을 톡! 그물을 설치해요') : '화면을 밀어서 길을 찾아요';
+  $('netGuideLabel').hidden = !active;
 }
 function pushHistory() {
   st.history.push(copyTurn(st));
@@ -6567,7 +6622,7 @@ function renderPilot() {
       <p>${open ? region.goal : '북항의 마지막 수로를 통과하면 열려요.'}</p>
       <div class="levels">${indices.map((i, k) => {
         const level = PILOT_LEVELS[i], stars = pilotStars(i), ok = pilotUnlocked(i), resume = level.id === resumeId;
-        return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-pilot="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="시험 ${i + 1} ${level.name}${ok ? `, 별 ${stars}개${resume ? ', 이어하기' : ''}` : ', 잠김'}"><span class="n">${i + 1}</span><span class="nm">${ok ? level.name : '잠김'}</span><span class="st">${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></span></button>`;
+        return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-pilot="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="시험 ${i + 1} ${level.name}${ok ? `, 별 ${stars}개, ${level.nets ? `그물 ${level.nets}개` : '그물 없음'}${resume ? ', 이어하기' : ''}` : ', 잠김'}"><span class="n">${i + 1}</span><span class="nm">${ok ? level.name : '잠김'}</span>${ok ? netLevelBadge(level.nets) : ''}<span class="st">${'★'.repeat(stars)}<i>${'★'.repeat(3 - stars)}</i></span></button>`;
       }).join('')}</div></section>`;
   }).join('');
   $('pilotRegions').querySelectorAll('[data-region-art]').forEach(img => setRegionArt(img, img.dataset.regionArt));
@@ -6591,6 +6646,9 @@ function continuePilot() {
 }
 
 /* ---------- UI wiring ---------- */
+function netLevelBadge(nets) {
+  return `<span class="level-net${nets ? ' available' : ''}">${nets ? `그물 ${nets}개` : '그물 없음'}</span>`;
+}
 let selectedChapter = null;
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? save.sessions.story.id : nextLevel();
@@ -6599,8 +6657,8 @@ function renderLevelGrid(followProgress = false) {
   const button = (L, i, k) => {
     const b = save.best[i] || 0; const ok = unlocked(i);
     const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
-    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개` : ', 잠김'}">
-      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span><span class="st">${stars}</span></button>`;
+    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개, ${L.nets ? `그물 ${L.nets}개` : '그물 없음'}` : ', 잠김'}">
+      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span>${ok ? netLevelBadge(L.nets) : ''}<span class="st">${stars}</span></button>`;
   };
   let start = 0;
   $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
@@ -6662,20 +6720,21 @@ const DEVICE_GUIDES = [
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
   { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
 ];
-let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1;
+let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
 const guideOpen = () => !$('guideOverlay').hidden;
-function showDeviceGuide(firstOnly = false) {
+function showDeviceGuide(firstOnly = false, requestedKey = null) {
   const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
-  guideIndex = 0; guideViewed = new Set(); guidePlaying = !reduceMotion;
+  guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
+  guideReturnFocus = requestedKey === 'net' ? 'netStatus' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
   openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
 }
 function renderGuideDevice() {
   const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
   if (key !== 'move') guideViewed.add(key);
-  guideDemo = createDeviceDemo(key); guideTime = guidePlaying ? 0 : guideDemo.duration; guidePaintTime = -1;
+  guideDemo = createDeviceDemo(key); guideTime = 0; guidePlaying = false; guidePaintTime = -1;
   $('guideName').textContent = device.name;
   $('guideCounter').textContent = `${guideIndex + 1} / ${guideKeys.length}`;
   $('guideItems').innerHTML = `<p>${device.text}</p>`;
@@ -6694,14 +6753,33 @@ function advanceGuide() {
   if (guideIndex < guideKeys.length - 1) selectGuideDevice(guideIndex + 1); else closeGuide();
 }
 function updateGuidePlayback() {
-  $('guideToggle').textContent = guidePlaying ? '일시정지' : '재생';
-  $('guideMode').textContent = guidePlaying ? '짧은 예시 · 자동 반복' : reduceMotion ? '동작 줄이기 · 눌러서 재생' : '일시정지';
+  if (!guideDemo) return;
+  const index = guideStepIndex();
+  $('guideToggle').textContent = guidePlaying ? '일시정지' : '예시 재생';
+  $('guideMode').textContent = guidePlaying ? '천천히 한 번 재생해요' : guideTime >= guideDemo.duration ? '예시 끝 · 다시 읽어 보세요' : '직접 넘기며 읽어 보세요';
+  $('guideStepCount').textContent = `설명 ${index + 1} / ${guideDemo.steps.length}`;
+  $('guidePrev').disabled = index === 0;
+  $('guideNext').disabled = index === guideDemo.steps.length - 1;
+  $('guideCaption').setAttribute('aria-live', guidePlaying ? 'off' : 'polite');
+  const text = guideDemo.steps[index].text;
+  if ($('guideCaption').textContent !== text) $('guideCaption').textContent = text;
+}
+function guideStepIndex() {
+  const index = guideDemo.steps.findIndex(step => guideTime < step.end);
+  return index < 0 ? guideDemo.steps.length - 1 : index;
+}
+function changeGuideStep(direction) {
+  if (!guideDemo) return;
+  const index = Math.max(0, Math.min(guideDemo.steps.length - 1, guideStepIndex() + direction));
+  // Show the completed action so the still frame explains the caption too.
+  guideTime = guideDemo.steps[index].end - .001; guidePlaying = false; guidePaintTime = -1;
+  updateGuidePlayback(); drawDeviceDemo();
 }
 function toggleGuidePlayback() {
   if (!guideDemo) return;
   guidePlaying = !guidePlaying;
   guidePaintTime = -1;
-  if (guidePlaying && guideTime >= guideDemo.duration) guideTime = 0;
+  if (guidePlaying) guideTime = guideTime >= guideDemo.duration ? 0 : guideDemo.steps[guideStepIndex()].start;
   updateGuidePlayback();
 }
 function replayGuide() {
@@ -6710,7 +6788,12 @@ function replayGuide() {
 }
 function stepDeviceGuide(dt) {
   if (!guideDemo) return;
-  if (guidePlaying) guideTime = (guideTime + dt) % guideDemo.duration;
+  if (guidePlaying) {
+    const previous = guideStepIndex();
+    guideTime = Math.min(guideTime + dt, guideDemo.duration);
+    if (guideTime >= guideDemo.duration) guidePlaying = false;
+    if (guideStepIndex() !== previous || !guidePlaying) updateGuidePlayback();
+  }
   drawDeviceDemo();
 }
 function drawDeviceDemo() {
@@ -6767,7 +6850,7 @@ function drawDeviceDemo() {
 function closeGuide() {
   save.seenDevices = [...new Set([...save.seenDevices, ...guideViewed])]; persist();
   guideKeys = []; guideViewed = new Set(); guideDemo = null; guidePlaying = false;
-  closeSheet('guideOverlay', $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn');
+  closeSheet('guideOverlay', guideReturnFocus);
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
@@ -6855,6 +6938,9 @@ $('guideDone').addEventListener('click', advanceGuide);
 $('guideClose').addEventListener('click', closeGuide);
 $('guideToggle').addEventListener('click', toggleGuidePlayback);
 $('guideReplay').addEventListener('click', replayGuide);
+$('guidePrev').addEventListener('click', () => changeGuideStep(-1));
+$('guideNext').addEventListener('click', () => changeGuideStep(1));
+$('netStatus').addEventListener('click', () => { if (g.nets) showDeviceGuide(false, 'net'); });
 $('guideTabs').addEventListener('click', e => {
   const b = e.target.closest('[data-guide]'); if (!b) return;
   selectGuideDevice(+b.dataset.guide);
