@@ -58,7 +58,7 @@ function scene({ stored={}, reduced=false }={}) {
     ${section('/* ---------- story journey:', '/* ---------- shark skins:')}
     ${section('/* ---------- reward presentation:', '/* ---------- daily canal: record')}
     ${section('/* ---------- daily canal: record', '/* ---------- free canals:')}
-    const sfx={win:()=>sounds.push(['win',now]),star:k=>sounds.push([k,now]),equip:()=>sounds.push(['equip',now])};
+    const sfx={win:()=>sounds.push(['win',now]),star:k=>sounds.push([k,now]),equip:()=>sounds.push(['equip',now]),cancelReward:noop,token:()=>0,unlockReward:()=>sounds.push(['unlock',now])};
     const haptic=v=>vibrations.push(v),renderLevelGrid=noop,storySession=()=>null;
     const curLevel=()=>DAILY?DAILY.level:LEVELS[LVL],dailySessionKey=()=> 'daily';
     const show=noop,loadLevel=noop;
@@ -135,6 +135,16 @@ test('reduced motion retains all rewards and buttons with a single completion cu
   assert.deepEqual(game.sounds(),[['win',50]]);game.advance(2000);assert.equal(game.sounds().length,1);assert.equal(game.timers(),0);
   const hidden=scene({reduced:true});hidden.finish(0);hidden.hidden(true);hidden.advance(2000);
   assert.deepEqual(hidden.sounds(),[]);assert.equal(hidden.save().best[0],3);
+});
+test('a new skin sounds after the star sequence and early departure cancels it',()=>{
+  const best=Object.fromEntries(Array.from({length:11},(_,i)=>[i,i<3?3:1]));
+  for(const leave of [false,true]){
+    const game=scene({stored:{best,owned:['basic'],skin:'basic'}});game.finish(11);game.advance(650+950);
+    assert.equal(game.sounds().filter(s=>s[0]==='unlock').length,0);
+    if(leave)game.cancel();game.advance(20);
+    assert.equal(game.sounds().filter(s=>s[0]==='unlock').length,leave?0:1);
+    assert.ok(game.save().owned.includes('sakura'),'audio cancellation cannot cancel ownership');
+  }
 });
 
 test('backgrounding before or during rewards preserves the result and discards all delayed cues',()=>{

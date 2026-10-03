@@ -32,7 +32,7 @@ function scene(stored = {}, reduced = false) {
     };
     const STORE_KEY='bukang-sea-v1',localStorage={setItem:(key,value)=>written=value};
     const unlocked=i=>i===0||save.best[i-1]!=null,totalStars=()=>Object.values(save.best).reduce((sum,n)=>sum+n,0);
-    const earnedJournalRewards=()=>[],refreshSkins=()=>[],sfx={win:noop,star:noop},haptic=noop,setTimeout=cb=>cb();
+    const earnedJournalRewards=()=>[],refreshSkins=()=>[],sfx={win:noop,star:noop,cancelReward:noop,token:()=>0,unlockReward:noop},haptic=noop,setTimeout=cb=>cb();
     const storySession=()=>null,curLevel=()=>LEVELS[LVL];
     const dailyProgress=()=>({count:1,stars:[0,0,0]}),dailyStreak=()=>1,journalTotals=()=>({visits:1,operations:0}),recordDailyStage=noop,dailySessionKey=()=> 'daily';
     const dailyDate=()=> '2026-10-01',openDaily=()=>{dailyOpened++;$('app').inert=true;},continueDaily=()=>dailyContinued++;

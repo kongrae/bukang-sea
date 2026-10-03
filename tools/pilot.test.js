@@ -394,7 +394,7 @@ test('course results: the North Harbor boundary previews the sluice works, the f
     const $ = id => { if (!elements.has(id)) elements.set(id, {id, hidden: true, textContent: '', innerHTML: '', scrollTop: 0,
       classList: {toggle: noop, remove: noop, add: noop}, setAttribute: noop, focus: noop, querySelector: () => ({}), querySelectorAll: () => []}); return elements.get(id); };
     let DAILY = null, FREE = null, PILOT = null, LVL = 0, g, st, cleared = false, loaded = null, shown = null;
-    const reduceMotion = true, sfx = {win: noop, star: noop}, haptic = noop, setTimeout = cb => cb();
+    const reduceMotion = true, sfx = {win: noop, star: noop, cancelReward: noop, token:()=>0, unlockReward:noop}, haptic = noop, setTimeout = cb => cb();
     const openSheet = id => { $(id).hidden = false; }, closeSheet = id => { $(id).hidden = true; };
     const document = {hidden: false}, renderSuspended = () => false, REGION_ART = {};
     const refreshSkins = () => [], earnedJournalRewards = () => [], renderLevelGrid = noop, unlocked = () => true, totalStars = () => 0;

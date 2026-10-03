@@ -88,8 +88,10 @@ test('boats remain still during the swim, then glide after the shark arrives', (
   assert.deepEqual(scene.state().boats[0], [46, 'R'], 'engine already committed next turn');
   assert.deepEqual(scene.render(), [[3, 6]], 'old boat position at swipe start');
   scene.tick(0.05); scene.tick(0.05);
+  assert.equal(scene.sounds().filter(s=>s.name==='boat').length,0,'boat cue waits for its own phase');
   assert.deepEqual(scene.render(), [[3, 6]], 'boat must not slide alongside the shark');
   scene.tick(0.05);
+  assert.equal(scene.sounds().filter(s=>s.name==='boat').length,1);
   const [x, y] = scene.render()[0];
   assert.ok(x > 3 && x < 4, 'boat glides between its tiles');
   assert.equal(y, 6);
@@ -150,6 +152,16 @@ test('reload during a swim keeps the committed position, all fish on its path an
   assert.equal(resumed.state().animating, false);
   resumed.undo(); scene.undo();
   for (const key of ['pos', 'boats', 'fish', 'moves']) assert.deepEqual(resumed.state()[key], scene.state()[key], 'undo ' + key);
+});
+
+test('pickup pitch index resets each move; net install and retrieval report only successful edits', () => {
+  const level={par:5,nets:1,map:['#######E#','#S.ff...#','#.......#','#########']},scene=game({level});
+  scene.tap(3,1);assert.equal(scene.sounds().filter(s=>s.name==='net').length,0,'fish blocks installation');
+  scene.tap(3,2);scene.tap(4,2);scene.tap(3,2);
+  assert.deepEqual(scene.sounds().filter(s=>s.name==='net').map(s=>s.args[0]),[undefined,true]);
+  scene.move('R');finishTurn(scene);
+  assert.deepEqual(scene.sounds().filter(s=>s.name==='eat').map(s=>s.args),[[false,0],[true,1]]);
+  const move=scene.sounds().find(s=>s.name==='move');assert.equal(move.args[0],6);assert.ok(move.args[1]>0&&move.args[1]<=.62);
 });
 
 test('net reminder follows placement, exhaustion, undo, reload and levels without nets', () => {

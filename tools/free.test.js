@@ -31,7 +31,7 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     const crypto={getRandomValues:a=>{a[0]=seeds.shift()??42;return a;}},globalThis={crypto};
     const setTimeout=cb=>{if(hook){const once=hook;hook=null;once();}cb();};
     ${storage}
-    const reduceMotion=true,sfx={win:noop},haptic=noop,renderLevelGrid=noop,refreshSkins=()=>[],earnedJournalRewards=()=>[];
+    const reduceMotion=true,sfx={win:noop,cancelReward:noop,token:()=>0,unlockReward:noop},haptic=noop,renderLevelGrid=noop,refreshSkins=()=>[],earnedJournalRewards=()=>[];
     const chapterOf=()=>({end:11,ci:0}),LEVELS=Array(48),curLevel=()=>FREE.level;
     const show=which=>{$('gameScreen').hidden=which!=='game';if(which==='title'){cleared=false;$('clearOverlay').hidden=true;}};
     const enter=(level,keep,label)=>{g=parseLevel(level);st=keep||freshState(level);cleared=false;$('lvNum').textContent=label;checkpoint();};

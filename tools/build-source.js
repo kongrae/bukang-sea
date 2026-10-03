@@ -15,7 +15,7 @@ const ART = [
 function gameBody() {
   const read = file => fs.readFileSync(path.join(root, 'src', file), 'utf8');
   let body = [read('shell.html'), '<style>', read('art-theme.css'), '</style>', '<script>',
-    ...['engine.js', 'levels.js', 'pilot.js', 'variety.js', 'variety-reserves.js', 'daily.js', 'free.js', 'device-demo.js', 'art.js', 'game.js'].map(read), '</script>'].join('\n');
+    ...['engine.js', 'levels.js', 'pilot.js', 'variety.js', 'variety-reserves.js', 'daily.js', 'free.js', 'device-demo.js', 'art.js', 'sound.js', 'game.js'].map(read), '</script>'].join('\n');
   for (const [token, file] of ART) {
     const data = fs.readFileSync(path.join(root, 'assets', file)), type = file.endsWith('.svg') ? 'image/svg+xml' : 'image/webp';
     body = body.replaceAll(`@@ART_${token}@@`, `data:${type};base64,` + data.toString('base64'));

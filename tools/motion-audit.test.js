@@ -14,6 +14,7 @@ function scene() {
     let guidePlaying=false,guidePaintTime=0,guideTime=0,heroWake=0,heroTime=0,heroW=300,heroVisible=true,endingElapsed=0;
     let clearReveal=null;
     const document={hidden:false},performance={now:()=>now},callbacks=new Map(),skinPreviewMotion=new Map(),heroRipples=[];
+    const sound={suspend:()=>{},activate:()=>{}};
     const g={},staticLayer={},counts={game:0,hero:0,ending:0,step:0,paused:0,interrupt:0,guide:0,flush:0},deltas=[];
     const nodes={app:{inert:false},gameScreen:{hidden:true},titleScreen:{hidden:false},guideOverlay:{hidden:true},endingOverlay:{hidden:true}};
     const $=id=>nodes[id];

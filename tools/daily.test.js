@@ -38,7 +38,7 @@ function operation(stored = null) {
     const localStorage = {getItem:()=>written,setItem:(key,value)=>{written=value;}};
     ${storage}
     ${skins}
-    const noop = () => {}, sfx = {win:noop}, haptic = noop;
+    const noop = () => {}, sfx = {win:noop,cancelReward:noop,token:()=>0,unlockReward:noop}, haptic = noop;
     const renderLevelGrid = noop, chapterOf = () => ({end:47,name:'외항'}), LEVELS = Array(48);
     const reduceMotion = true, setTimeout = cb => {if(tickHook){const hook=tickHook;tickHook=null;hook();}cb();};
     let DAILY = null, FREE = null, PILOT = null, LVL = 0, g, st, anim = null, cleared = false, deco = 0;

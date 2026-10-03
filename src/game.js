@@ -112,12 +112,13 @@ function openSheet(id) {
   flushSheetExits();
   const el = $(id);
   el.classList.remove('sheet-opened');
-  if (el.hidden) sheetOrigins.set(id, document.activeElement);
+  if (el.hidden) { sheetOrigins.set(id, document.activeElement); if (id !== 'clearOverlay') sfx.sheet(true); }
   el.hidden = false; el.inert = false; el.removeAttribute('aria-hidden');
   gest = null; queued = null; syncSheetInput();
 }
 function closeSheet(id, returnId = null, animate = true) {
   const el = $(id); if (el.hidden) return;
+  if (animate && id !== 'clearOverlay') sfx.sheet(false);
   const drag = sheetDrag?.id === id ? sheetDrag : sheetReturn?.id === id ? sheetReturn : null;
   const offset = drag?.started ? Math.max(0, drag.card.getBoundingClientRect().top - drag.top) : 0;
   resetSheetGesture();
@@ -412,46 +413,9 @@ function haptic(kind) {
 }
 
 /* ---------- sound ---------- */
-let actx = null;
-function ac() {
-  if (!save.sound) return null;
-  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return null; }
-  return actx;
-}
-function tone(freq, dur, type = 'sine', vol = 0.12, slide = 0, delay = 0) {
-  const a = ac(); if (!a) return;
-  const t0 = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
-  o.type = type; o.frequency.setValueAtTime(freq, t0);
-  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
-  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
-}
-// filtered noise burst: water swooshes and splashes
-function noise(len, vol, f0, f1, q = 0.8, type = 'bandpass') {
-  const a = ac(); if (!a) return;
-  const buf = a.createBuffer(1, Math.floor(a.sampleRate * len), a.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(Math.sin(Math.PI * i / d.length), 1.5);
-  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-  f.type = type; f.frequency.setValueAtTime(f0, a.currentTime); f.frequency.exponentialRampToValueAtTime(f1, a.currentTime + len); f.Q.value = q;
-  g.gain.value = vol; src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start();
-}
-const sfx = {
-  move: () => noise(0.26, 0.15, 500, 1400),
-  stop: (amp = 0.5) => { noise(0.2, 0.07 + amp * 0.08, 1400, 350, 0.7, 'lowpass'); tone(150, 0.1, 'sine', 0.04 + amp * 0.05, -60); },
-  bump: () => tone(110, 0.14, 'triangle', 0.16, -40),
-  eat: (complete = false) => { tone(complete ? 880 : 660, 0.08, 'square', 0.05); tone(complete ? 1320 : 990, 0.1, 'square', 0.05, 0, 0.06); },
-  net: () => tone(330, 0.12, 'triangle', 0.1, 120),
-  jet: () => tone(480, 0.1, 'sine', 0.06, 320),
-  undo: () => tone(520, 0.09, 'sine', 0.06, -200),
-  exit: () => { noise(0.5, 0.2, 400, 2400, 0.6); tone(330, 0.3, 'sine', 0.05, 330); },
-  warp: () => { noise(0.35, 0.14, 1800, 250, 1.2); tone(620, 0.3, 'sine', 0.05, -420); },
-  sand: () => noise(0.16, 0.1, 700, 200, 0.6, 'lowpass'),
-  press: () => { tone(420, 0.06, 'square', 0.05); tone(300, 0.12, 'triangle', 0.08, -60, 0.05); },
-  gate: () => { noise(0.28, 0.1, 900, 260, 0.7, 'lowpass'); tone(180, 0.18, 'triangle', 0.06, 50, 0.06); },
-  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.1, 0, i * 0.09)),
-  star: k => tone([523, 659, 784][k], 0.2, 'triangle', 0.09),
-  equip: () => { tone(660, 0.12, 'sine', 0.07); tone(880, 0.16, 'sine', 0.07, 0, 0.08); },
-};
+const sound = createGameAudio({ enabled: () => save.sound, active: () => !renderSuspended() });
+const sfx = sound.effects;
+function ac() { return sound.unlock(); }
 
 /* ---------- easing ---------- */
 // position curve built from a velocity profile: quick push-off, long glide that settles into the stop
@@ -923,6 +887,7 @@ function loadPilot(i, keep) {
 }
 const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : PILOT ? loadPilot(PILOT.index) : loadLevel(LVL, null, STORY);
 function enter(level, keep, label) {
+  sfx.clear();
   cancelClearPresentation();
   hintRequest++;
   st = keep || freshState(level);
@@ -941,6 +906,7 @@ function enter(level, keep, label) {
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
   checkpoint();
+  sfx.start();
   showDeviceGuide(true);
 }
 // shown once: a finger swiping the first move of 수로 1, and a finger tapping the net tile on the first net level
@@ -1030,13 +996,13 @@ function tryMove(d) {
   prepareSwim(anim);
   bump = null; settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
+  sfx.move(steps, anim.dur / (reduceMotion ? 2 : 1)); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
 }
 function eatFish(fi) {
   anim.eaten.add(fi);
   if (!st.fish.includes(fi)) st.fish.push(fi);
   const complete = st.fish.length === g.fish.length;
-  sfx.eat(complete); haptic('light');
+  sfx.eat(complete, anim.eaten.size - 1); haptic('light');
   const [fx, fy] = g.fish[fi];
   if (!reduceMotion) {
     // Keep a pickup near its own tile even if the shark has already entered a portal or the next move.
@@ -1104,7 +1070,7 @@ function tapTile(gx, gy) {
   if (at >= 0) {
     hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
     contactPulse.delete(idx); if (!reduceMotion) netRetract.set(idx, clock);
-    sfx.net(); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
+    sfx.net(true); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
     if (hint) refreshHint(); else setTip(curLevel().tip);
     return;
   }
@@ -1206,6 +1172,7 @@ const REWARD_TIMING = { first: 240, gap: 220 };
 const rewardPending = { stars: new Set(), levels: new Set(), chapters: new Set(), journey: new Set(), daily: new Map(), stamps: new Set(), badges: new Set(), skins: new Set() };
 let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false, clearReveal = null;
 function cancelClearPresentation() {
+  sfx.cancelReward();
   clearPresentation++;
   clearReveal = null;
   clearTimers.forEach(clearTimeout); clearTimers.clear();
@@ -1304,7 +1271,7 @@ function showClearSkinRewards(skins) {
 
 function onClear() {
   cancelClearPresentation();
-  const token = clearPresentation, before = rewardSnapshot();
+  const token = clearPresentation, audioToken = sfx.token(), before = rewardSnapshot();
   const previousRewards = new Set(earnedJournalRewards().map(r => r.id));
   cleared = true;
   delete save.sessions[FREE ? 'free' + FREE.difficulty : DAILY ? dailySessionKey(DAILY) : PILOT ? 'pilot' : 'story'];
@@ -1365,13 +1332,13 @@ function onClear() {
     openSheet('clearOverlay'); if (!renderSuspended()) $('nextBtn').focus({ preventScroll: true });
     $('clearBody').scrollTop = 0;
     $('clearOverlay').classList.toggle('clear-celebrating', celebrate && !reduceMotion);
-    if (celebrate && reduceMotion) { sfx.win(); haptic('success'); }
-    else if (celebrate) earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
+    if (celebrate && reduceMotion) { sfx.win(audioToken); haptic('success'); }
+    else if (celebrate) earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k, audioToken); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
     $('clearUnlocks').querySelectorAll('[data-new-skin]').forEach(canvas => {
       const skin = SKINS.find(s => s.id === canvas.dataset.newSkin);
       if (celebrate) animateSkinPreview(canvas, skin); else drawSkinPreview(canvas, skin);
     });
-    if (celebrate && freshSkins.length && !reduceMotion) clearLater(() => haptic('success'), 960, token);
+    if (celebrate && freshSkins.length) clearLater(() => { sfx.unlockReward(audioToken); if (!reduceMotion) haptic('success'); }, 960, token);
   };
   clearLater(() => { if (!renderSuspended()) clearReveal?.(); }, reduceMotion ? 50 : 650, token, false);
   renderLevelGrid();
@@ -1893,6 +1860,7 @@ function startFrames() {
   lastT = lastRafT = ambientT = performance.now(); frameActive = false; frameId = requestAnimationFrame(frame);
 }
 function suspendPresentation() {
+  sound.suspend();
   if (frameId !== null) cancelAnimationFrame(frameId);
   frameId = null;
   flushSheetExits(); pauseGame();
@@ -1903,6 +1871,7 @@ function suspendPresentation() {
 }
 function resumePresentation() {
   if (renderSuspended()) return;
+  sound.activate();
   if (clearReveal) clearReveal(false);
   invalidateScenes(); startFrames();
 }
@@ -1994,6 +1963,10 @@ function step(dt) {
     }
     if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
     if (a.t >= a.dur) landShark(a);
+    if (!a.boatSound && !a.win && a.t >= a.dur + a.gateDur) {
+      a.boatSound = true;
+      if (a.boatsFrom.some((b, k) => b[0] !== st.boats[k][0])) sfx.boat();
+    }
     if (a.t >= a.dur + a.gateDur + a.boatDur) finishAnim();
   }
   let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
@@ -2575,6 +2548,7 @@ function closeGuide() {
 }
 // screen change with a native-style push (into a level) or pop (back to the list)
 function show(which, animate = true) {
+  sfx.clear();
   flushSheetExits();
   if (which === 'title') cancelClearPresentation();
   if (which === 'title') { pauseGame(); closeSheet('guideOverlay', null, false); guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
@@ -2668,7 +2642,7 @@ $('guideTabs').addEventListener('click', e => {
   $('guideTabs').querySelector(`[data-guide="${guideIndex}"]`).focus({ preventScroll: true });
 });
 $('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
-$('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); if (save.sound) sfx.eat(); });
+$('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); sound.syncEnabled(); if (save.sound) { ac(); sfx.ui(); } });
 $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });
 // light tick on every enabled button press, like native controls
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button:not([disabled])')) haptic('tick'); });
@@ -2679,6 +2653,18 @@ document.addEventListener('pointerup', e => sheetPointerEnd(e));
 document.addEventListener('pointercancel', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
 document.addEventListener('lostpointercapture', e => { if (sheetDrag?.pointerId === e.pointerId) sheetPointerEnd(e, true); });
 document.addEventListener('click', sheetClick, true);
+// Unlock only from input. Bubble feedback follows the action; semantic sounds suppress a second tap.
+let silentUiTarget = null;
+document.addEventListener('click', e => {
+  if (e.isTrusted) ac();
+  const button = e.target.closest('button');
+  silentUiTarget = button && (button.disabled || button.getAttribute('aria-pressed') === 'true' || button.closest('#skinGrid')) ? button : null;
+}, true);
+document.addEventListener('click', e => {
+  const button = e.target.closest('button, summary');
+  if (button && button !== silentUiTarget && !button.disabled && !e.defaultPrevented) sfx.ui();
+});
+document.addEventListener('keydown', e => { if (e.isTrusted && !e.repeat) ac(); }, true);
 sheetDesktop.addEventListener('change', resetSheetGesture);
 
 // swipe anywhere on the game screen (fires as soon as the finger has travelled SWIPE px), tap on the board for nets

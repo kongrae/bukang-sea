@@ -8,7 +8,8 @@ const sheets = source.slice(source.indexOf('const SHEET_IDS'), source.indexOf('/
 function scene(reduced = false) {
   return new Function('reduceMotion', `
     let now=0,sequence=0,gest={drag:true},queued='R',desktop=false;
-    const performance={now:()=>now},calls=[];
+    const performance={now:()=>now},calls=[],sounds=[];
+    const sfx={sheet:opening=>sounds.push(opening)};
     const matchMedia=()=>({get matches(){return desktop;}});
     const closeJourney=()=>dismiss('journeyOverlay'),closeEnding=()=>dismiss('endingOverlay'),closeDaily=()=>dismiss('dailyOverlay');
     const closeFree=()=>dismiss('freeOverlay'),closePilot=()=>dismiss('pilotOverlay'),closeJournal=()=>dismiss('journalOverlay');
@@ -49,7 +50,7 @@ function scene(reduced = false) {
     return {element:$,open:openSheet,close:closeSheet,flush:flushSheetExits,keys:sheetKeydown,advance,
       focus:id=>$(id).focus(),active:()=>document.activeElement?.id,timers:()=>timers.size,
       hidden:v=>document.hidden=v,input:()=>({gest,queued}),closing:()=>sheetExits.size,
-      down:sheetPointerDown,move:sheetPointerMove,up:sheetPointerEnd,click:sheetClick,pointer,header,calls,
+      down:sheetPointerDown,move:sheetPointerMove,up:sheetPointerEnd,click:sheetClick,pointer,header,calls,sounds,
       desktop:v=>desktop=v,reset:resetSheetGesture,drag:()=>sheetDrag,returning:()=>!!sheetReturn};
   `)(reduced);
 }
@@ -73,7 +74,9 @@ test('drag uses the menu dismissal once and exits from the finger position; the 
   const ui=scene();ui.open('settingsOverlay');
   ui.down(ui.pointer('settingsOverlay',100,400));ui.advance(150);ui.move(ui.pointer('settingsOverlay',102,525));
   assert.equal(ui.element('settingsOverlay').style.getPropertyValue('--sheet-y'),'125px');
+  assert.deepEqual(ui.sounds,[true],'dragging is silent');
   ui.up(ui.pointer('settingsOverlay',102,525));
+  assert.deepEqual(ui.sounds,[true,false],'only committed open and dismissal sound');
   assert.deepEqual(ui.calls,['settingsOverlay']);assert.equal(ui.closing(),1);
   assert.equal(ui.element('settingsOverlay').style.getPropertyValue('--sheet-exit-start'),'125px');
   let blocked=0;ui.click({target:ui.header('settingsOverlay'),detail:1,pointerId:1,preventDefault(){blocked++;},stopImmediatePropagation(){blocked++;}});

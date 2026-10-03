@@ -1,0 +1,17 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>상어 SOS · 사운드 비교실</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#d3f3f0;color:#174e61;font:15px/1.6 system-ui,sans-serif}main{max-width:950px;margin:auto;padding:28px 20px}h1{margin:0;font-size:30px}h2{font-size:20px;margin:0 0 12px}p{margin:8px 0 18px}.tag{display:inline-block;background:#ffe6b1;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:bold}.card{background:#fffdf3;border:1px solid #9ccdcc;border-radius:20px;padding:20px;margin:18px 0}button,a.download{cursor:pointer;border:1px solid #9bbfbc;border-radius:10px;padding:11px 14px;background:#e4f3ef;color:#15485b;font:600 14px system-ui;min-height:44px}button.new{background:#ffdaa0;border-color:#dda04d}button:disabled{opacity:.4;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #077c9a}nav{display:flex;gap:8px;flex-wrap:wrap}.effects{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:10px}.effect{border:1px solid #d6e3d9;border-radius:14px;padding:10px}.effect b{display:block;margin-bottom:7px}.effect button{margin-right:8px;padding:8px 12px}pre{white-space:pre-wrap;font-size:12px;max-height:220px;overflow:auto}small{color:#50757c}audio{display:block;width:100%;margin:10px 0}#renders a{margin-right:10px}progress{width:100%}a{color:#126982}code{overflow-wrap:anywhere}
+</style><main>
+<span class="tag">개발 전용 · 출시 게임에는 포함되지 않음</span>
+<h1>상어 SOS 사운드 비교실</h1>
+<p>같은 행동으로 이전 소리와 새로운 물방울·토이 소리를 비교하세요. 출력 볼륨을 낮춰 시작해 보세요.</p>
+<small>이전 기준: <code>BASELINE_COMMIT</code> · 외부 오디오 자산 없음 · 청취 평가는 사용자가 확인</small>
+<section class="card"><h2>같은 순서로 비교</h2><p>이동 → 정지 → 막힘 → 연속 숭어 → 그물 설치·회수 → 장치 → 탈출·별·스킨 해금</p>
+<nav><button id="beforeSequence">이전 세트 재생</button><button id="afterSequence" class="new">개선 세트 재생</button><button id="stop">모두 정지</button><button id="mute">음소거 켜기</button><button id="background">백그라운드 전환 모의</button></nav>
+<p id="status" role="status">준비 · 버튼을 누른 뒤에만 오디오를 시작합니다.</p><pre id="live"></pre>
+</section>
+<section class="card"><h2>행동별 미리듣기</h2><div class="effects" id="effects"></div></section>
+<section class="card"><h2>파형과 출력 검사</h2><p>실제 브라우저의 OfflineAudioContext로 두 세트를 렌더링합니다. 피크·RMS·인접 샘플 차이·마지막 무음 구간을 측정합니다. 수치 검사는 귀로 듣는 평가를 대신하지 않습니다.</p><nav><button id="render">전후 WAV 만들기 및 검사</button><button id="stressRender">밀집 재생·음소거 파형 검사</button></nav><pre id="metrics">아직 렌더링하지 않음</pre><div id="renders"></div></section>
+<section class="card"><h2>실제 게임 연결 검사</h2><p>기록을 분리한 게임에서 동일한 수로를 실행합니다. ‘5분 자동 플레이’는 실제 이동·그물·장치·구출 규칙을 반복합니다. 주관적인 5분 청취 검증은 별도로 필요합니다.</p><nav><a href="game-before.html">변경 전 게임</a><a href="game-after.html">개선 게임 · 5분 검사</a></nav></section>
+</main><!-- sound-code --></html>
