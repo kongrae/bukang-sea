@@ -35,6 +35,37 @@ test('loaded sprites reuse skin bitmaps and notify frozen scenes to repaint', ()
   assert.equal(api.draw(ctx, 'swim', 0, 0, 48, skin), true);
   assert.notEqual(api.get('portrait', skin), first);
 });
+
+test('authored skins decode lazily once, keep both views separate, and supersede the tint fallback', () => {
+  const { api, pending } = art(); api.load(); pending.slice().forEach(image => image.onload());
+  assert.equal(pending.length, 3, 'startup only decodes the base mascot');
+  const skin = { id: 'sakura', body: '#ef9dca' };
+  const fallback = api.get('swim', skin);
+  for (let i = 0; i < 100; i++) api.get('swim', skin);
+  assert.equal(pending.length, 4, 'no per-frame allocations or duplicate loads');
+  assert.equal(api.hasSkin('swim', skin), false);
+  pending[3].onload();
+  assert.equal(api.hasSkin('swim', skin), true);
+  assert.equal(api.get('swim', skin), pending[3]);
+  assert.notEqual(api.get('swim', skin), fallback);
+  api.get('portrait', skin); assert.equal(pending.length, 5);
+  pending[4].onerror();
+  assert.equal(api.hasSkin('portrait', skin), false);
+  assert.ok(api.get('portrait', skin), 'failed themed portrait retains the previous drawn fallback');
+  assert.equal(pending.length, 5, 'failed assets do not retry on every draw');
+});
+
+test('a decoded skin stays visible even if the base art fails; baked details are not drawn twice', () => {
+  const { api, pending, ctx } = art(); api.load(); pending.slice().forEach(image => image.onerror());
+  let overlays = 0;
+  const skin = { id: 'wave', body: '#52cbd6', pattern: () => overlays++, deco: () => overlays++ };
+  api.get('swim', skin); pending[3].onload();
+  const fn = game.slice(game.indexOf('function drawShark('), game.indexOf('function drawFish('));
+  const draw = new Function('SHARK_ART', 'C', 'reduceMotion', fn + ';return drawShark;')(api, {}, true);
+  draw(ctx, 0, 0, 0, 48, 0, false, 1, 1, skin);
+  assert.equal(overlays, 0);
+  assert.equal(api.get('swim', skin), pending[3]);
+});
 test('all builds embed complete WebP assets without machine-local references', () => {
   const body = require('./build-source').gameBody();
   assert.ok(!body.includes('@@ART_'));
@@ -45,4 +76,11 @@ test('all builds embed complete WebP assets without machine-local references', (
   }
   assert.ok(body.includes('const SHARK_ART'));
   assert.ok(!body.includes('C:/Users/'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/art/skins-v2/manifest.json')));
+  assert.equal(Object.keys(manifest.skins).length, 8);
+  for (const skin of Object.values(manifest.skins)) for (const view of Object.values(skin.views)) {
+    const bytes = fs.readFileSync(path.join(root, 'assets/art/skins-v2', view.file));
+    assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'), view.sha256);
+    assert.ok(body.includes('data:image/webp;base64,' + bytes.toString('base64')), view.file + ' is embedded');
+  }
 });

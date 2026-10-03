@@ -40,7 +40,7 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 src/
   shell.html   마크업 + CSS (디자인 토큰은 :root 변수)
   art-theme.css 신규 아이콘 기반 밝은 아쿠아 테마. 기본 스타일 뒤에서 토큰·패널·상태 적용
-  art.js       투명 상어 WebP 로딩·외형 캐시. 실패 시 game.js의 Canvas 대체 그림
+  art.js       투명 상어 WebP 로딩·외형 캐시. skins-v2의 8종/16뷰는 필요 시 로드, 실패 시 이전 색상/Canvas 대체 그림
   engine.js    이동 규칙(slide)과 풀이기(bfsFrom, plan). 브라우저와 node 양쪽에서 쓰는 순수 함수
   levels.js    LEVELS 배열 (48개 수로) + CHAPTERS (장 이름, 레벨 수) + LEVEL_ROLES (연습/일반/도전)
   pilot.js     시험 코스 PILOT_LEVELS(p01–p12, 지역·학습 의도·역할·검증 경로) + PILOT_REGIONS(북항/수문 시설, 판 표면 팔레트)
@@ -72,7 +72,7 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 상어 WebP 3개, 수문·스위치 SVG 4개, 지역 카드 WebP 2개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART` 목록, 토큰은 src에 한 번씩).
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 기본 상어 WebP 3개와 스킨 WebP 16개, 수문·스위치 SVG 4개, 지역 카드 WebP 2개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART` 목록, 토큰은 src에 한 번씩). 2026-10-03 스킨별 입체 디테일과 납품/검증 기준은 `assets/art/skins-v2/README.md`를 따른다. 스킨 ID·해금 조건은 유지한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)

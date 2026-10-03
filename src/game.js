@@ -482,8 +482,11 @@ function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin 
     ctx.save(); ctx.translate(-size * .23, 0); ctx.rotate(wag);
     ctx.drawImage(sprite, 0, 0, cut + 2, sh, -size * .27, -size / 2, size * (cut + 2) / sw, size); ctx.restore();
     ctx.drawImage(sprite, cut, 0, sw - cut, sh, -size * .23, -size / 2, size * (sw - cut) / sw, size);
-    if (skin.pattern) { ctx.save(); ctx.beginPath(); ctx.ellipse(T * .12, 0, T * .28, T * .18, 0, 0, Math.PI * 2); ctx.clip(); skin.pattern(ctx, T * .8, T * .4, T, t); ctx.restore(); }
-    if (skin.deco) { ctx.save(); skin.deco(ctx, T * .8, T * .4, T, t); ctx.restore(); }
+    // Authored skins already contain perspective-correct details; only decorate the legacy fallback.
+    if (!SHARK_ART.hasSkin('swim', skin)) {
+      if (skin.pattern) { ctx.save(); ctx.beginPath(); ctx.ellipse(T * .12, 0, T * .28, T * .18, 0, 0, Math.PI * 2); ctx.clip(); skin.pattern(ctx, T * .8, T * .4, T, t); ctx.restore(); }
+      if (skin.deco) { ctx.save(); skin.deco(ctx, T * .8, T * .4, T, t); ctx.restore(); }
+    }
     ctx.restore(); return;
   }
   const fin = skin.fin || C['shark-2'], body = skin.body || C.shark;
@@ -1589,12 +1592,15 @@ function drawSkinPreview(canvas, skin, progress = null) {
   const w = Math.round(r.width * d), h = Math.round(r.height * d);
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   const x = canvas.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0);
-  x.fillStyle = C.water; x.fillRect(0, 0, r.width, r.height);
-  x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = 1.5;
+  const backgrounds = { basic: '#d4eff6', sakura: '#fae1eb', wave: '#c7eeed', maple: '#f9e5cd', snow: '#e0edf6',
+    gold: '#f5e7bc', lighthouse: '#dae9f0', coral: '#fae0d4', starsea: '#e4def7' };
+  x.fillStyle = backgrounds[skin.id] || '#d4eff6'; x.fillRect(0, 0, r.width, r.height);
+  x.fillStyle = 'rgba(255,255,255,.48)'; x.beginPath(); x.ellipse(r.width * .55, r.height * .48, r.width * .37, r.height * .43, -.2, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = 'rgba(255,255,255,.65)'; x.lineWidth = 1.5;
   for (const yy of [0.25, 0.8]) { x.beginPath(); for (let px = 0; px <= r.width; px += 6) { const py = r.height * yy + Math.sin(px * 0.12) * 2; px ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
   const glide = progress == null ? 0 : Math.sin(progress * Math.PI);
   if (typeof SHARK_ART !== 'undefined' && SHARK_ART.draw(x, 'portrait', r.width * (.5 + glide * .04), r.height * .48, Math.min(r.width * .94, r.height * 1.46), skin)) {
-    if (skin.deco || skin.pattern) {
+    if (!SHARK_ART.hasSkin('portrait', skin) && (skin.deco || skin.pattern)) {
       x.save(); x.translate(r.width * .48, r.height * .47);
       x.beginPath(); x.ellipse(0, 0, r.width * .18, r.height * .16, 0, 0, Math.PI * 2); x.clip();
       if (skin.pattern) skin.pattern(x, r.width * .45, r.height * .3, r.width * .6, 0);
@@ -1622,7 +1628,7 @@ function renderSkinGrid(equipped = null) {
   $('skinGrid').innerHTML = SKINS.map(skin => {
     const has = owned.has(skin.id), sel = skin.id === cur;
     return `<button class="skin${sel ? ' sel' : ''}" type="button" data-id="${skin.id}" ${has ? '' : 'disabled'} aria-pressed="${sel}">
-      <canvas aria-hidden="true"></canvas><span class="skin-name">${skin.name}</span>
+      <span class="skin-art"><canvas aria-hidden="true"></canvas>${has ? '' : '<span class="skin-lock">잠김</span>'}</span><span class="skin-name">${skin.name}</span>
       <span class="skin-need">${has ? (sel ? '사용 중' : '고르기') : skinNeedText(skin)}</span></button>`;
   }).join('');
   $('skinsSub').textContent = `${owned.size} / ${SKINS.length} 모음 · 별과 구조일지 기록으로 새 상어가 열려요.`;
@@ -2732,6 +2738,10 @@ if (typeof SHARK_ART !== 'undefined') {
     if (skinsOpen()) $('skinGrid').querySelectorAll('.skin').forEach(b => {
       const skin = SKINS.find(s => s.id === b.dataset.id);
       if (skin) drawSkinPreview(b.querySelector('canvas'), skin);
+    });
+    if (!$('clearOverlay').hidden) $('clearUnlocks').querySelectorAll('canvas[data-new-skin]').forEach(canvas => {
+      const skin = SKINS.find(s => s.id === canvas.dataset.newSkin);
+      if (skin) drawSkinPreview(canvas, skin);
     });
   };
   SHARK_ART.load();

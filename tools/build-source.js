@@ -5,6 +5,8 @@ const root = path.join(__dirname, '..');
 // offline apps, and participate in build hashes (the PWA cache name changes with them). Each token appears once in src/.
 const ART = [
   ...['hero', 'portrait', 'swim'].map(name => [name.toUpperCase(), `art/shark-${name}.webp`]),
+  ...['sakura', 'wave', 'maple', 'snow', 'gold', 'lighthouse', 'coral', 'starsea'].flatMap(id =>
+    ['portrait', 'swim'].map(view => [`SKIN_${id.toUpperCase()}_${view.toUpperCase()}`, `art/skins-v2/${id}-${view}.webp`])),
   ['GATE_OPEN', 'art/content-refresh-v1/gate-open.svg'], ['GATE_CLOSED', 'art/content-refresh-v1/gate-closed.svg'],
   ['SWITCH_ON', 'art/content-refresh-v1/switch-on.svg'], ['SWITCH_OFF', 'art/content-refresh-v1/switch-off.svg'],
   ['REGION_NORTH', 'art/regions/north-harbor.webp'], ['REGION_SLUICE', 'art/regions/sluice-works.webp'],

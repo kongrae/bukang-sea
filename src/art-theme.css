@@ -102,7 +102,7 @@ body { background: radial-gradient(ellipse at 50% 0, #f3ffff, #c6f3f4 48%, #81cd
 .journal-reward.earned { background: #e4f5e8; border-color: #87bca0; }
 .skin { background: #e6f4f0; }
 .skin.sel { background: #fff1d2; border-color: #cf7b2d; }
-.skin[disabled] canvas { filter: grayscale(.65); opacity: .65; }
+.skin[disabled] canvas { filter: none; opacity: 1; }
 .skin[disabled] .skin-name { opacity: 1; color: #526b75; }
 .skin canvas { border: 1px solid #a1d6de; }
 .skin-need { color: #465f6a; }

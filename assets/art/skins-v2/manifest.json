@@ -1,0 +1,254 @@
+{
+  "version": 2,
+  "generator": "built-in ImageGen",
+  "skins": {
+    "sakura": {
+      "source": "source/sakura.png",
+      "sourceSha256": "6d065fdc930a10bd3e65ba2d5ad449fcbc232d66de789ebc9d44291f11ca286f",
+      "seam": 893,
+      "views": {
+        "portrait": {
+          "file": "sakura-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 25,
+            "top": 174,
+            "width": 868,
+            "height": 548
+          },
+          "bytes": 20492,
+          "sha256": "56de3f1b95c0d02e9afa99f4262d8b6e48ef3d4af253115ca60bf5f7c4e1f97c"
+        },
+        "swim": {
+          "file": "sakura-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 909,
+            "top": 172,
+            "width": 848,
+            "height": 582
+          },
+          "bytes": 12334,
+          "sha256": "c70735daf9dcd628ce5996ce95710258f59d8c8ffc72a676d6e051a58266941d"
+        }
+      }
+    },
+    "wave": {
+      "source": "source/wave.png",
+      "sourceSha256": "c7f9dd16756cb50a5a70399c7c208123e869fa5baa2a1097b6e0dd21f6a645ab",
+      "seam": 914,
+      "views": {
+        "portrait": {
+          "file": "wave-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 19,
+            "top": 170,
+            "width": 895,
+            "height": 562
+          },
+          "bytes": 23458,
+          "sha256": "961d7e9ac1016b850d1bb27f26c5e8c1eedb8a280138ace7074f0d1bbf3d84b5"
+        },
+        "swim": {
+          "file": "wave-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 914,
+            "top": 136,
+            "width": 854,
+            "height": 620
+          },
+          "bytes": 13850,
+          "sha256": "910a10ee3efa3e24fe1d9e5a96402b5e0d871846c543d6c9e0383ddc11965c16"
+        }
+      }
+    },
+    "maple": {
+      "source": "source/maple.png",
+      "sourceSha256": "7ae6eb759d4f5909aaf82541fcaaf6f2da590885c3dd79b13edfc1653dd226fa",
+      "seam": 925,
+      "views": {
+        "portrait": {
+          "file": "maple-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 23,
+            "top": 162,
+            "width": 902,
+            "height": 555
+          },
+          "bytes": 23200,
+          "sha256": "3ffa5d29ca3c0b312a688ea517baa237ab9b97bfc158b15bd400e835858e635a"
+        },
+        "swim": {
+          "file": "maple-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 957,
+            "top": 155,
+            "width": 801,
+            "height": 578
+          },
+          "bytes": 14358,
+          "sha256": "4bfd19fc2b13827cb760a2cf7419ca4227807e0f5a0bdc3dc9593645dd03ff8f"
+        }
+      }
+    },
+    "snow": {
+      "source": "source/snow.png",
+      "sourceSha256": "422c32f35b62b2b66168a25bc4e276571d47b8dae87d26d40481d5eed295277b",
+      "seam": 906,
+      "views": {
+        "portrait": {
+          "file": "snow-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 23,
+            "top": 158,
+            "width": 883,
+            "height": 575
+          },
+          "bytes": 25506,
+          "sha256": "aa09880f39590bf1cea6f3093003a7a60e2ae432d9f012bbd5ce0f39c59d1369"
+        },
+        "swim": {
+          "file": "snow-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 906,
+            "top": 160,
+            "width": 851,
+            "height": 594
+          },
+          "bytes": 13800,
+          "sha256": "115b3350d695f9675e998163c6d609e8ffddd6787d1800390693238b33d685b3"
+        }
+      }
+    },
+    "gold": {
+      "source": "source/gold.png",
+      "sourceSha256": "ef732e6c68f78af82263ca8ae2131a2daff82bc0729e7d52bbbc5f7ffbc8e471",
+      "seam": 887,
+      "views": {
+        "portrait": {
+          "file": "gold-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 22,
+            "top": 181,
+            "width": 861,
+            "height": 547
+          },
+          "bytes": 24262,
+          "sha256": "5a9b3dc3740cd45963fc9c3706fbf1818eb796750a07eed52ba9f18bbed8d86d"
+        },
+        "swim": {
+          "file": "gold-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 923,
+            "top": 162,
+            "width": 835,
+            "height": 589
+          },
+          "bytes": 13956,
+          "sha256": "39a80a78dacdb5ab714f78a5178eb80c832016cd5b8422eee6ca7b3310766fe2"
+        }
+      }
+    },
+    "lighthouse": {
+      "source": "source/lighthouse.png",
+      "sourceSha256": "60d5ced2813df5074ca49e33406d44721ba5a860aeda01cd29972283967be338",
+      "seam": 898,
+      "views": {
+        "portrait": {
+          "file": "lighthouse-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 31,
+            "top": 173,
+            "width": 867,
+            "height": 537
+          },
+          "bytes": 21560,
+          "sha256": "bf5f7588589b4570676a6d833b09e5345ffcc710044d149fe331890b7beb51df"
+        },
+        "swim": {
+          "file": "lighthouse-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 898,
+            "top": 165,
+            "width": 849,
+            "height": 574
+          },
+          "bytes": 11882,
+          "sha256": "be51e359553e7a2d5c4acea4f753f0b4f6142f372f227f74449a8da060c5e4f6"
+        }
+      }
+    },
+    "coral": {
+      "source": "source/coral.png",
+      "sourceSha256": "52a1f8a2857cf816832f89aba47af04dcbc83357f2f5c6c0ae77e4860e75a121",
+      "seam": 889,
+      "views": {
+        "portrait": {
+          "file": "coral-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 31,
+            "top": 178,
+            "width": 858,
+            "height": 537
+          },
+          "bytes": 23892,
+          "sha256": "cb27ab7b38165cded74f10d500124ffa93560a629115147cb6eaef28184192cb"
+        },
+        "swim": {
+          "file": "coral-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 889,
+            "top": 159,
+            "width": 869,
+            "height": 590
+          },
+          "bytes": 12980,
+          "sha256": "b856975001ad83b9ca5e58bab15a03a7e2bb34eb20caf4d0be250e0f4191a0a3"
+        }
+      }
+    },
+    "starsea": {
+      "source": "source/starsea.png",
+      "sourceSha256": "350e2c28f606f9b114a7f0120f9f4c7dabe39cbd99efed5fd5b8d7220978239e",
+      "seam": 922,
+      "views": {
+        "portrait": {
+          "file": "starsea-portrait.webp",
+          "size": 384,
+          "crop": {
+            "left": 29,
+            "top": 177,
+            "width": 893,
+            "height": 548
+          },
+          "bytes": 23686,
+          "sha256": "6deadecf2966f77a4acf40e7eb9ef23772a9ea226c72bb24b44f35b3056b7d7c"
+        },
+        "swim": {
+          "file": "starsea-swim.webp",
+          "size": 256,
+          "crop": {
+            "left": 942,
+            "top": 160,
+            "width": 828,
+            "height": 599
+          },
+          "bytes": 14810,
+          "sha256": "5cfc2287e6849927ac952e36a376e86e256d6648b833e5b7b41e94a6c2dcf03f"
+        }
+      }
+    }
+  }
+}
