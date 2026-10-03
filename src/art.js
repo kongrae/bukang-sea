@@ -104,4 +104,8 @@ const BOARD_ART = (() => {
   };
   return api;
 })();
-const REGION_ART = { 'north-harbor': '@@ART_REGION_NORTH@@', 'sluice-works': '@@ART_REGION_SLUICE@@' };
+const REGION_ART = {
+  'harbor-canals': '@@ART_REGION_HARBOR_CANALS@@', 'waterside-park': '@@ART_REGION_WATERSIDE_PARK@@',
+  'beyond-breakwater': '@@ART_REGION_BEYOND_BREAKWATER@@', 'outer-harbor': '@@ART_REGION_OUTER_HARBOR@@',
+  'north-harbor': '@@ART_REGION_NORTH@@', 'sluice-works': '@@ART_REGION_SLUICE@@',
+};

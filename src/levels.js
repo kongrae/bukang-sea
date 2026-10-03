@@ -815,10 +815,10 @@ LEVELS.push(...STORY_EXTENSION_LEVELS);
 
 /* ---------- Chapters: consecutive runs of LEVELS (count 합계 = LEVELS.length) ---------- */
 const CHAPTERS = [
-  { name: '북항 수로', count: 12 },
-  { name: '친수공원 운하', count: 12 },
-  { name: '방파제 너머', count: 12 },
-  { name: '외항 물길', count: 12 },
+  { name: '북항 수로', count: 12, region: 'harbor-canals' },
+  { name: '친수공원 운하', count: 12, region: 'waterside-park' },
+  { name: '방파제 너머', count: 12, region: 'beyond-breakwater' },
+  { name: '외항 물길', count: 12, region: 'outer-harbor' },
   { name: '북항 바깥길', count: 4, region: 'north-harbor' },
   { name: '수문 시설', count: 8, region: 'sluice-works' },
 ];
