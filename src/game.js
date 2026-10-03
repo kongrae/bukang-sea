@@ -2230,16 +2230,23 @@ function sizeHero() {
   const r = hero.getBoundingClientRect(); const d = Math.min(window.devicePixelRatio || 1, 2.5);
   heroW = r.width; heroH = r.height; hero.width = Math.round(r.width * d); hero.height = Math.round(r.height * d);
   hctx.setTransform(d, 0, 0, d, 0, 0);
-  heroFill = hctx.createLinearGradient(0, 0, r.width, r.height);
-  heroFill.addColorStop(0, '#84eee3'); heroFill.addColorStop(.45, '#31bdd4'); heroFill.addColorStop(1, '#157aaa');
+  heroFill = hctx.createRadialGradient(r.width * .5, r.height * .5, 0, r.width * .5, r.height * .5, Math.min(r.width, r.height) * .5);
+  heroFill.addColorStop(0, 'rgba(18,158,187,.3)'); heroFill.addColorStop(.65, 'rgba(40,184,202,.14)'); heroFill.addColorStop(1, 'rgba(40,184,202,0)');
 }
 function drawHero(t) {
   if (!heroW) sizeHero();
   if (reduceMotion) t = 0;
   const W = heroW, H = heroH, T = Math.min(76, H * 0.62, W / 4.3);
+  hctx.clearRect(0, 0, W, H);
   hctx.fillStyle = heroFill; hctx.fillRect(0, 0, W, H);
-  hctx.strokeStyle = 'rgba(225,255,246,.13)'; hctx.lineWidth = 1.5;
-  for (let r = 0; r < 4; r++) { hctx.beginPath(); for (let x = 0; x <= W; x += 8) { const y = 12 + r * H / 4 + Math.sin(x * 0.025 + t * (0.7 + r * .15) + r) * 4; x ? hctx.lineTo(x, y) : hctx.moveTo(x, y); } hctx.stroke(); }
+  // Soft water rings belong to the full lobby scene, without a rectangular picture frame.
+  hctx.fillStyle = 'rgba(18,124,154,.12)';
+  hctx.beginPath(); hctx.ellipse(W * .5, H * .79, W * .29, H * .075, 0, 0, Math.PI * 2); hctx.fill();
+  hctx.strokeStyle = 'rgba(244,255,240,.55)'; hctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    const drift = reduceMotion ? 0 : Math.sin(t * .8 + i) * 3;
+    hctx.beginPath(); hctx.ellipse(W * .5, H * .79, W * (.29 + i * .075) + drift, H * (.09 + i * .033), -.03, .12 + i * .5, Math.PI * 1.8 + i * .2); hctx.stroke();
+  }
   hctx.save(); hctx.beginPath(); hctx.rect(0, 0, W, H); hctx.clip();
   const phase = t * 0.4, sx = W * (0.45 + Math.sin(phase) * 0.22), sy = H * (0.52 + Math.cos(phase) * 0.07);
   const ang = Math.atan2(-H * 0.07 * Math.sin(phase), W * 0.22 * Math.cos(phase));
@@ -2257,12 +2264,12 @@ function drawHero(t) {
       hctx.beginPath(); hctx.ellipse(ripple.x, ripple.y, 5 + (1 - ripple.life) * 24, 3 + (1 - ripple.life) * 12, 0, 0, Math.PI * 2); hctx.stroke();
     }
   }
-  const bob = reduceMotion ? 0 : Math.sin(t * 1.6) * 2;
-  if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, 'hero', W * .5, H * .5 + bob, H * .98)) {
+  const bob = reduceMotion ? 0 : Math.sin(t * 1.6) * 3;
+  if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, 'hero', W * .5, H * .49 + bob, Math.min(W * .82, H * .98))) {
     drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * .04);
   }
-  drawBuoy(hctx, W * .17, H * .66, Math.min(70, H * .53), t);
-  drawFish(hctx, W * .82, H * .31, T * .63, t, .1);
+  drawBuoy(hctx, W * .13, H * .65, Math.min(58, H * .3), t);
+  drawFish(hctx, W * .86, H * .43, T * .5, t, .1);
   hctx.restore();
 }
 

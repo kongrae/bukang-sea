@@ -581,7 +581,10 @@ button:disabled:active { transform: none; }
   <section class="screen title-screen" id="titleScreen">
     <div class="hero">
       <!-- playtest-label -->
-      <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+      <div class="lobby-hud">
+        <span class="lobby-stars" id="starTotal" aria-label="모은 별">★ 0</span>
+        <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+      </div>
       <div class="hero-text">
         <h1>상어 <span class="sea">SOS</span></h1>
         <p class="hero-subtitle">바다로 보내줘!</p>
@@ -590,44 +593,44 @@ button:disabled:active { transform: none; }
       <div class="cta-bar home-start">
         <p class="journey-label" id="journeyLabel"></p>
         <button class="btn primary big" id="playBtn" type="button">구출 시작!</button>
-        <p class="lede">화면을 밀어 상어를 <b>바다</b>로 보내 주세요.</p>
+        <p class="lede">밀어서 헤엄치고, 바다로 탈출!</p>
       </div>
     </div>
     <div class="home-modes" role="group" aria-label="더 많은 수로에 도전">
       <button class="home-mode daily" id="dailyBtn" type="button">
         <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1c5-5 9 5 14 0v10c-5 5-9-5-14 0"/></svg><span class="mode-tag" id="dailyDate">오늘</span></span>
         <span class="mode-name">오늘의 도전</span>
-        <span class="mode-desc" id="dailyMeta">매일 새로운 수로 3개</span>
+        <span class="home-sr-only" id="dailyMeta">매일 새로운 수로 3개</span>
         <span class="mode-footer" id="dailyState"><b>0 / 3</b><span>도전</span></span>
       </button>
       <button class="home-mode free-mode" id="freeBtn" type="button">
-        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6c3-4 7 4 10 0s7 4 10 0M2 12c3-4 7 4 10 0s7 4 10 0M2 18c3-4 7 4 10 0s7 4 10 0"/></svg><span class="mode-tag">원하는 만큼</span></span>
+        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6c3-4 7 4 10 0s7 4 10 0M2 12c3-4 7 4 10 0s7 4 10 0M2 18c3-4 7 4 10 0s7 4 10 0"/></svg><span class="mode-tag">무한 도전</span></span>
         <span class="mode-name">자유 수로</span>
-        <span class="mode-desc">난이도 골라서 놀아요</span>
+        <span class="home-sr-only">난이도 골라서 놀아요</span>
         <span class="mode-footer"><b id="freeSummary">계속 도전!</b><span>시작</span></span>
       </button>
     </div>
-    <div class="home-collection" role="group" aria-label="나의 상어와 기록">
+    <div class="home-navigation home-collection" role="group" aria-label="상어와 수로, 기록">
       <button class="myshark" id="skinBtn" type="button">
-        <span class="collection-top"><b>내 상어</b><canvas id="skinPreview" aria-hidden="true"></canvas></span>
+        <span class="collection-top"><canvas id="skinPreview" aria-hidden="true"></canvas><b>내 상어</b></span>
         <span class="myshark-name" id="skinName">무태상어</span>
-        <small id="skinCount">1 / 9 모았어요</small>
+        <small class="home-sr-only" id="skinCount">1 / 9 모았어요</small>
       </button>
+      <details class="home-details" id="stagePicker">
+        <summary><span class="home-nav-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></span><span><b>수로 선택</b><small id="levelCount">수로 48곳</small></span></summary>
+        <div class="home-details-body">
+          <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
+          <button class="journey-link pilot-link" id="pilotBtn" type="button"><b>새 물길 시험 코스</b><span>북항 → 수문 시설 ›</span></button>
+          <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
+          <div class="chapters" id="levelGrid"></div>
+        </div>
+      </details>
       <button class="home-journal" id="journalBtn" type="button">
-        <span class="collection-top"><b>구조일지</b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5zM9 8h6M9 13l2 2 4-4"/></svg></span>
-        <small>도장 모으고 상어 받기</small>
-        <small id="journalSummary">참여 0일 · 완료 0일</small>
+        <span class="collection-top"><span class="home-nav-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h13v18H6a2 2 0 01-2-2V5a2 2 0 012-2zM4 17h15M9 8l2 2 4-4"/></svg></span><b>구조일지</b></span>
+        <small>도장 모으기</small>
+        <small class="home-sr-only" id="journalSummary">참여 0일 · 완료 0일</small>
       </button>
     </div>
-    <details class="home-details" id="stagePicker">
-      <summary><span><b>수로 골라 하기</b><small><span id="levelCount">수로 48곳</span><span id="starTotal">★ 0</span></small></span></summary>
-      <div class="home-details-body">
-        <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
-        <button class="journey-link pilot-link" id="pilotBtn" type="button"><b>새 물길 시험 코스</b><span>북항 → 수문 시설 ›</span></button>
-        <nav class="chapter-picker" id="chapterPicker" aria-label="챕터 선택"></nav>
-        <div class="chapters" id="levelGrid"></div>
-      </div>
-    </details>
     <button class="btn" id="endingBtn" type="button" hidden>구출 엔딩 다시 보기</button>
     <details class="home-details home-help">
       <summary><b>게임 방법</b></summary>
