@@ -1,3 +1,21 @@
+/* Menu objects are native images: browsers share decoded assets, including the two settings buttons.
+   Keep the existing SVG until decoding succeeds, so failed art never leaves an unlabeled gear. */
+const MENU_ART = (() => {
+  const urls = { challenge: '@@ART_UI_CHALLENGE@@', free: '@@ART_UI_FREE@@', map: '@@ART_UI_MAP@@', journal: '@@ART_UI_JOURNAL@@', settings: '@@ART_UI_SETTINGS@@' };
+  return {
+    load(root = document) {
+      root.querySelectorAll('[data-menu-art]').forEach(slot => {
+        const src = urls[slot.dataset.menuArt];
+        if (!src || slot.querySelector('img')) return;
+        const img = new Image();
+        img.alt = ''; img.decoding = 'async'; img.draggable = false;
+        img.onload = () => slot.classList.add('art-ready');
+        img.onerror = () => { slot.classList.remove('art-ready'); img.hidden = true; };
+        slot.appendChild(img); img.src = src;
+      });
+    },
+  };
+})();
 /* Shared, optional art. Gameplay never waits for a network image or changes on load failure. */
 const SHARK_ART = (() => {
   const images = {}, tinted = new Map(), requested = new Set();

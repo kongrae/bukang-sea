@@ -2758,5 +2758,6 @@ if (typeof BOARD_ART !== 'undefined') {
   BOARD_ART.load();
 }
 $('clearMascot').addEventListener('error', e => { e.currentTarget.hidden = true; });
+if (typeof MENU_ART !== 'undefined') MENU_ART.load();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
 })();

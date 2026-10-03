@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "generator": "built-in ImageGen",
+  "icons": {
+    "challenge": {
+      "source": "source/challenge.png",
+      "sourceSha256": "a8ec48197366bacfcb88198bd4bbd53c992f62dfc2153d528b7e9e20381d897f",
+      "file": "challenge.webp",
+      "size": 192,
+      "crop": {
+        "left": 144,
+        "top": 99,
+        "width": 1038,
+        "height": 1056
+      },
+      "bytes": 9338,
+      "sha256": "43951106915ef0b8cf8d677d85f2103bd4c2ed0db4640f13a48ff791d8d01301"
+    },
+    "free": {
+      "source": "source/free.png",
+      "sourceSha256": "41acd218ccc9ab1929db3aece1354cc2a6bf2dd2745004c1bb4b0c5e6376c119",
+      "file": "free.webp",
+      "size": 192,
+      "crop": {
+        "left": 126,
+        "top": 128,
+        "width": 1013,
+        "height": 1000
+      },
+      "bytes": 9010,
+      "sha256": "90e33d38287e61f8bbc577003b3da46028b4490659e525946283fcf004cf6dfb"
+    },
+    "map": {
+      "source": "source/map.png",
+      "sourceSha256": "1d521b2b055d957eb17cb5b66362a3fdf6c3e96b028e4edc529f16cd9ca8fc0e",
+      "file": "map.webp",
+      "size": 192,
+      "crop": {
+        "left": 100,
+        "top": 185,
+        "width": 1073,
+        "height": 896
+      },
+      "bytes": 8564,
+      "sha256": "9e7dbd23dbcb016fe676e660ef1746e66a7a1ac0f6d2d33e2523a537e59917d1"
+    },
+    "journal": {
+      "source": "source/journal.png",
+      "sourceSha256": "f8a5604b45b534e764290b4b47f80fe33d9081480d4f4bd28e8997da62673307",
+      "file": "journal.webp",
+      "size": 192,
+      "crop": {
+        "left": 189,
+        "top": 129,
+        "width": 913,
+        "height": 1005
+      },
+      "bytes": 10960,
+      "sha256": "d0ad5fc99d889b7e79a9b4367875fa14970ecce9c8582a02fa2c9152b5d0f74c"
+    },
+    "settings": {
+      "source": "source/settings.png",
+      "sourceSha256": "c811dcd8a568878fad25b3d70444e954c2ecd5d7d53a0e47ef3ef76b377e11b9",
+      "file": "settings.webp",
+      "size": 192,
+      "crop": {
+        "left": 89,
+        "top": 94,
+        "width": 1076,
+        "height": 1057
+      },
+      "bytes": 10040,
+      "sha256": "8c697406c0a5f16b4beddc339c73066781bc0c9b55ba5cbe2f34982d36f4df66"
+    }
+  }
+}

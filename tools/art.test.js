@@ -83,4 +83,34 @@ test('all builds embed complete WebP assets without machine-local references', (
     assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'), view.sha256);
     assert.ok(body.includes('data:image/webp;base64,' + bytes.toString('base64')), view.file + ' is embedded');
   }
+  const menu = JSON.parse(fs.readFileSync(path.join(root, 'assets/art/ui-v1/manifest.json')));
+  assert.equal(Object.keys(menu.icons).length, 5);
+  for (const icon of Object.values(menu.icons)) {
+    const bytes = fs.readFileSync(path.join(root, 'assets/art/ui-v1', icon.file));
+    assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'), icon.sha256);
+    assert.ok(body.includes('data:image/webp;base64,' + bytes.toString('base64')), icon.file + ' is embedded');
+  }
+});
+
+test('menu art loads once per slot, upgrades on success, and retains the fallback on failure', () => {
+  const slots = ['settings', 'settings', 'map'].map(menuArt => {
+    const classes = new Set();
+    return { dataset: { menuArt }, image: null, querySelector() { return this.image; },
+      appendChild(img) { this.image = img; }, classList: { add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name) } };
+  });
+  let allocations = 0;
+  const Image = function () { allocations++; };
+  const api = new Function('Image', source + '; return MENU_ART;')(Image);
+  const root = { querySelectorAll: () => slots };
+  api.load(root); api.load(root);
+  assert.equal(allocations, 3, 'remounting must not allocate or reload icons');
+  assert.equal(slots[0].image.src, slots[1].image.src, 'settings buttons share the same cached image URL');
+  assert.equal(slots[0].image.alt, '', 'decorative images do not duplicate accessible button names');
+  assert.equal(slots[0].classList.contains('art-ready'), false, 'fallback stays until the image loads');
+  slots[0].image.onload();
+  assert.equal(slots[0].classList.contains('art-ready'), true);
+  slots[2].image.onerror();
+  assert.equal(slots[2].classList.contains('art-ready'), false);
+  assert.equal(slots[2].image.hidden, true, 'hide broken images while leaving the original SVG');
+  api.load(root); assert.equal(allocations, 3, 'failed assets must not retry indefinitely');
 });

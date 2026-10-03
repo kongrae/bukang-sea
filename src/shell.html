@@ -583,7 +583,7 @@ button:disabled:active { transform: none; }
       <!-- playtest-label -->
       <div class="lobby-hud">
         <span class="lobby-stars" id="starTotal" aria-label="모은 별">★ 0</span>
-        <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+        <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
       </div>
       <div class="hero-text">
         <h1>상어 <span class="sea">SOS</span></h1>
@@ -598,13 +598,13 @@ button:disabled:active { transform: none; }
     </div>
     <div class="home-modes" role="group" aria-label="더 많은 수로에 도전">
       <button class="home-mode daily" id="dailyBtn" type="button">
-        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1c5-5 9 5 14 0v10c-5 5-9-5-14 0"/></svg><span class="mode-tag" id="dailyDate">오늘</span></span>
+        <span class="mode-top"><span class="menu-art" data-menu-art="challenge" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1c5-5 9 5 14 0v10c-5 5-9-5-14 0"/></svg></span><span class="mode-tag" id="dailyDate">오늘</span></span>
         <span class="mode-name">오늘의 도전</span>
         <span class="home-sr-only" id="dailyMeta">매일 새로운 수로 3개</span>
         <span class="mode-footer" id="dailyState"><b>0 / 3</b><span>도전</span></span>
       </button>
       <button class="home-mode free-mode" id="freeBtn" type="button">
-        <span class="mode-top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6c3-4 7 4 10 0s7 4 10 0M2 12c3-4 7 4 10 0s7 4 10 0M2 18c3-4 7 4 10 0s7 4 10 0"/></svg><span class="mode-tag">무한 도전</span></span>
+        <span class="mode-top"><span class="menu-art" data-menu-art="free" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6c3-4 7 4 10 0s7 4 10 0M2 12c3-4 7 4 10 0s7 4 10 0M2 18c3-4 7 4 10 0s7 4 10 0"/></svg></span><span class="mode-tag">무한 도전</span></span>
         <span class="mode-name">자유 수로</span>
         <span class="home-sr-only">난이도 골라서 놀아요</span>
         <span class="mode-footer"><b id="freeSummary">계속 도전!</b><span>시작</span></span>
@@ -617,7 +617,7 @@ button:disabled:active { transform: none; }
         <small class="home-sr-only" id="skinCount">1 / 9 모았어요</small>
       </button>
       <details class="home-details" id="stagePicker">
-        <summary><span class="home-nav-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></span><span><b>수로 선택</b><small id="levelCount">수로 48곳</small></span></summary>
+        <summary><span class="home-nav-icon"><span class="menu-art" data-menu-art="map" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16"/></svg></span></span><span><b>수로 선택</b><small id="levelCount">수로 48곳</small></span></summary>
         <div class="home-details-body">
           <button class="journey-link" id="journeyBtn" type="button">구출 여정 · 0 / 48 수로 ›</button>
           <button class="journey-link pilot-link" id="pilotBtn" type="button"><b>새 물길 시험 코스</b><span>북항 → 수문 시설 ›</span></button>
@@ -626,7 +626,7 @@ button:disabled:active { transform: none; }
         </div>
       </details>
       <button class="home-journal" id="journalBtn" type="button">
-        <span class="collection-top"><span class="home-nav-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h13v18H6a2 2 0 01-2-2V5a2 2 0 012-2zM4 17h15M9 8l2 2 4-4"/></svg></span><b>구조일지</b></span>
+        <span class="collection-top"><span class="home-nav-icon"><span class="menu-art" data-menu-art="journal" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h13v18H6a2 2 0 01-2-2V5a2 2 0 012-2zM4 17h15M9 8l2 2 4-4"/></svg></span></span><b>구조일지</b></span>
         <small>도장 모으기</small>
         <small class="home-sr-only" id="journalSummary">참여 0일 · 완료 0일</small>
       </button>
@@ -647,7 +647,7 @@ button:disabled:active { transform: none; }
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="lvl-title"><div class="num" id="lvNum">1장 · 수로 1</div><div class="name" id="lvName">첫 굽이</div></div>
-      <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></button>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
     </div>
     <div class="stats" id="stats"></div>
     <p class="tip" id="tip"></p>
