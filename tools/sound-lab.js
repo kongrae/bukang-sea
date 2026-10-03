@@ -41,7 +41,9 @@ for(const [label,name,args] of cases) {
   const heading=document.createElement('b');heading.textContent=label;row.append(heading);
   for(const version of ['before','after']) {
     const button=document.createElement('button');button.textContent=label+' · '+(version==='before'?'이전':'개선');button.className=version==='after'?'new':'';
-    const absent=['boat','unlockReward','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent;
+    const removed=['move','stop'].includes(name)&&version==='after';
+    const absent=['boat','unlockReward','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
+    if(removed)button.textContent=label+' · 제거됨';
     button.onclick=()=>{stopLab();if(!muted&&!suspended)getEffects(version)[name]?.(...args);$lab('status').textContent=label+' · '+version;};row.append(button);
   }
   $lab('effects').append(row);

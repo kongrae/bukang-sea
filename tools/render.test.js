@@ -161,7 +161,7 @@ test('pickup pitch index resets each move; net install and retrieval report only
   assert.deepEqual(scene.sounds().filter(s=>s.name==='net').map(s=>s.args[0]),[undefined,true]);
   scene.move('R');finishTurn(scene);
   assert.deepEqual(scene.sounds().filter(s=>s.name==='eat').map(s=>s.args),[[false,0],[true,1]]);
-  const move=scene.sounds().find(s=>s.name==='move');assert.equal(move.args[0],6);assert.ok(move.args[1]>0&&move.args[1]<=.62);
+  assert.equal(scene.sounds().filter(s=>s.name==='move'||s.name==='stop').length,0,'ordinary swimming and arrival are silent');
 });
 
 test('net reminder follows placement, exhaustion, undo, reload and levels without nets', () => {
@@ -296,17 +296,17 @@ test('first-encounter device rules are recorded only on confirmation and can be 
   assert.ok(elements.guideTabs.innerHTML.includes('소용돌이'));
 });
 
-test('arrival reacts once at contact, before the boat phase ends', () => {
+test('arrival remains visually responsive and silent before the boat phase ends', () => {
   const scene = game(); scene.move('U');
   scene.tick(0.14);
   assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 0);
   scene.tick(0.01);
   assert.equal(scene.state().animating, true, 'boat phase is still active');
   assert.ok(scene.effects().settle, 'shark settles while boats move');
-  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 1);
+  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 0);
   scene.render(); assert.equal(scene.shark()[5], false, 'tail is no longer in swim mode');
   finishTurn(scene);
-  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 1, 'finish must not replay contact');
+  assert.equal(scene.sounds().filter(s => s.name === 'stop').length, 0, 'finishing the turn stays silent');
 });
 
 const portalLevel = {name:'portal motion fixture',par:4,map:[

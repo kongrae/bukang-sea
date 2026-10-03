@@ -79,7 +79,6 @@ function createGameAudio({ enabled = () => true, active = () => true,
       if (!victim) { totals.dropped++; return null; }
       cancel(victim);
     }
-    if (name === 'move') for (const v of voices) if (v.name === 'move') cancel(v);
     if (priority >= 2) for (const v of voices) if (v.priority < 2 && !v.cancelled) {
       v.gain.gain.setTargetAtTime(mix[v.group] * .35, now, .012);
     }
@@ -128,14 +127,6 @@ function createGameAudio({ enabled = () => true, active = () => true,
   };
   const reward = (name, draw) => (token = null) => { const v = begin(name, 'reward', 3, .12, token); if (v) draw(v); };
   const effects = {
-    move: effect('move', 'motion', 1, .065, (v, distance = 3, duration = .3) => {
-      const strength = Math.min(1, Math.max(1, distance) / 9), length = Math.min(.32, Math.max(.09, duration * .68));
-      wash(v, length, .18 + strength * .07, 650, 1550); drop(v, 240, .09, .055, 0, 310);
-    }),
-    stop: effect('stop', 'motion', 1, .07, (v, amp = .5) => {
-      for (const other of voices) if (other.name === 'move') cancel(other);
-      drop(v, 330, .13, .09 + Math.min(1, amp) * .025, 0, 220); wash(v, .09, .08, 900, 380);
-    }),
     bump: effect('bump', 'motion', 1, .18, v => drop(v, 235, .095, .12, 0, 175, true)),
     eat: (complete = false, chain = 0) => {
       const v = begin('eat', 'pickup', complete ? 3 : 2, complete ? 0 : .055); if (!v) return;

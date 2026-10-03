@@ -996,7 +996,7 @@ function tryMove(d) {
   prepareSwim(anim);
   bump = null; settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(steps, anim.dur / (reduceMotion ? 2 : 1)); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
+  haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
 }
 function eatFish(fi) {
   anim.eaten.add(fi);
@@ -1033,7 +1033,6 @@ function landShark(a) {
   if (!reduceMotion && (soft || ['o', 'G'].includes(cellAt(g, x + dx, y + dy)))) contactPulse.set(index, { at: clock, amp });
   ring(x + dx * 0.3, y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
   splashAt(x + dx * 0.45, y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
-  sfx.stop(amp);
 }
 function finishAnim(present = true) {
   const a = anim;

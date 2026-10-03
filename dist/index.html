@@ -806,7 +806,7 @@ button:disabled:active { transform: none; }
     <div class="sheet-header" data-sheet-drag><div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-heading"><h3 id="settingsTitle">설정</h3><button class="icon-btn" type="button" data-sheet-close="settingsOverlay" aria-label="닫기">✕</button></div>
     </div>
-    <label class="switch"><span>소리<small>헤엄·물보라·효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
+    <label class="switch"><span>소리<small>숭어·장치·구출 효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
@@ -4365,7 +4365,6 @@ function createGameAudio({ enabled = () => true, active = () => true,
       if (!victim) { totals.dropped++; return null; }
       cancel(victim);
     }
-    if (name === 'move') for (const v of voices) if (v.name === 'move') cancel(v);
     if (priority >= 2) for (const v of voices) if (v.priority < 2 && !v.cancelled) {
       v.gain.gain.setTargetAtTime(mix[v.group] * .35, now, .012);
     }
@@ -4414,14 +4413,6 @@ function createGameAudio({ enabled = () => true, active = () => true,
   };
   const reward = (name, draw) => (token = null) => { const v = begin(name, 'reward', 3, .12, token); if (v) draw(v); };
   const effects = {
-    move: effect('move', 'motion', 1, .065, (v, distance = 3, duration = .3) => {
-      const strength = Math.min(1, Math.max(1, distance) / 9), length = Math.min(.32, Math.max(.09, duration * .68));
-      wash(v, length, .18 + strength * .07, 650, 1550); drop(v, 240, .09, .055, 0, 310);
-    }),
-    stop: effect('stop', 'motion', 1, .07, (v, amp = .5) => {
-      for (const other of voices) if (other.name === 'move') cancel(other);
-      drop(v, 330, .13, .09 + Math.min(1, amp) * .025, 0, 220); wash(v, .09, .08, 900, 380);
-    }),
     bump: effect('bump', 'motion', 1, .18, v => drop(v, 235, .095, .12, 0, 175, true)),
     eat: (complete = false, chain = 0) => {
       const v = begin('eat', 'pickup', complete ? 3 : 2, complete ? 0 : .055); if (!v) return;
@@ -5464,7 +5455,7 @@ function tryMove(d) {
   prepareSwim(anim);
   bump = null; settle = null; pop = null;
   ring(pts[0][0], pts[0][1], 0.7, 0.35);
-  sfx.move(steps, anim.dur / (reduceMotion ? 2 : 1)); haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
+  haptic('tick'); updateHud(); coachDone('swipe'); checkpoint();
 }
 function eatFish(fi) {
   anim.eaten.add(fi);
@@ -5501,7 +5492,6 @@ function landShark(a) {
   if (!reduceMotion && (soft || ['o', 'G'].includes(cellAt(g, x + dx, y + dy)))) contactPulse.set(index, { at: clock, amp });
   ring(x + dx * 0.3, y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
   splashAt(x + dx * 0.45, y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
-  sfx.stop(amp);
 }
 function finishAnim(present = true) {
   const a = anim;

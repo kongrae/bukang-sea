@@ -17,21 +17,19 @@ function fixture() {
     mute:value=>{enabled=!value;audio.syncEnabled();},active:value=>{active=value;if(value)audio.activate();else audio.suspend();}};
 }
 test('audio stays locked until input, one context/noise buffer is reused, and finished nodes disconnect',()=>{
-  const f=fixture();f.sfx.move();assert.equal(f.contexts(),0);f.audio.unlock();
-  for(let i=0;i<300;i++){f.audio.unlock();f.sfx.move(i%12,.5);f.advance(.5);f.sfx.stop();f.advance(.3);}
+  const f=fixture();f.sfx.jet();assert.equal(f.contexts(),0);f.audio.unlock();
+  for(let i=0;i<300;i++){f.audio.unlock();f.sfx.jet();f.advance(.5);f.sfx.sand();f.advance(.3);}
   assert.equal(f.contexts(),1);assert.equal(f.audio.inspect().buffers,1);assert.equal(f.audio.inspect().voices,0);
   assert.ok(f.sources.every(n=>n.disconnected));assert.ok(f.params.every(p=>p.events.every(e=>e.slice(1).every(Number.isFinite))));
 });
-test('move duration is bounded by actual movement and repeated blocked input is throttled',()=>{
-  const f=fixture();f.audio.unlock();f.sfx.move(1,.1);const short=f.sources[0].stopTime-f.sources[0].startTime;
-  f.advance(1);f.sfx.move(12,.8);const long=f.sources[2].stopTime-f.sources[2].startTime;
-  assert.ok(short<long);assert.ok(long<=.3261);
-  f.advance(1);const before=f.audio.inspect().played;for(let i=0;i<20;i++){f.sfx.bump();f.advance(.01);}
+test('repeated blocked input is throttled',()=>{
+  const f=fixture();f.audio.unlock();
+  const before=f.audio.inspect().played;for(let i=0;i<20;i++){f.sfx.bump();f.advance(.01);}
   assert.equal(f.audio.inspect().played-before,2);
 });
 test('continuous overlaps stay bounded and priority rewards survive a full low-priority mix',()=>{
   const f=fixture();f.audio.unlock();
-  for(let i=0;i<1000;i++) {f.sfx.move(10,.6);f.sfx.jet();f.sfx.gate();f.sfx.net();f.sfx.boat();f.sfx.eat(false,3);f.sfx.star(2);f.advance(.01);assert.ok(f.audio.inspect().voices<=8);}
+  for(let i=0;i<1000;i++) {f.sfx.bump();f.sfx.jet();f.sfx.gate();f.sfx.net();f.sfx.boat();f.sfx.eat(false,3);f.sfx.star(2);f.advance(.01);assert.ok(f.audio.inspect().voices<=8);}
   assert.ok(f.audio.inspect().dropped>0);assert.ok(f.audio.inspect().peakVoices<=8);f.advance(2);assert.equal(f.audio.inspect().sources,0);
 });
 test('mute cancels sounding and scheduled notes, including tokens captured by future reward callbacks',()=>{
@@ -64,6 +62,6 @@ test('semantic UI sounds suppress the generic click and repeated sheet events',(
   assert.equal(f.audio.inspect().played,1);f.advance(.3);f.sfx.equip();f.sfx.ui();assert.equal(f.audio.inspect().played,2);
 });
 test('unavailable or rejected browser audio never breaks a game action',async()=>{
-  const missing=createGameAudio({createContext:()=>{throw Error('unavailable');}});assert.equal(missing.unlock(),null);assert.doesNotThrow(()=>missing.effects.move());
-  const f=fixture();f.context.state='suspended';f.context.resume=()=>Promise.reject(Error('gesture required'));f.audio.unlock();f.sfx.move();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(f.audio.inspect().played,0);
+  const missing=createGameAudio({createContext:()=>{throw Error('unavailable');}});assert.equal(missing.unlock(),null);assert.doesNotThrow(()=>missing.effects.jet());
+  const f=fixture();f.context.state='suspended';f.context.resume=()=>Promise.reject(Error('gesture required'));f.audio.unlock();f.sfx.jet();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(f.audio.inspect().played,0);
 });
