@@ -59,8 +59,9 @@ test('test build preserves progression by default and unlocks later stages only 
   execFileSync(process.execPath,['tools/build.js','--playtest'],{cwd:root});
   const file=fs.readFileSync(path.join(root,'playtest/index.html'),'utf8');
   const unlockedSource = file.match(/^const unlocked = .*$/m)[0];
-  const normal = new Function('testAll','save',unlockedSource + '; return unlocked;')(false,{best:{}});
-  const lab = new Function('testAll','save',unlockedSource + '; return unlocked;')(true,{best:{}});
+  const { STORY_ORDER, STORY_POSITION } = require('../src/levels');
+  const unlockedFor = (testAll, save) => new Function('testAll','save','STORY_ORDER','STORY_POSITION',unlockedSource + '; return unlocked;')(testAll,save,STORY_ORDER,STORY_POSITION);
+  const normal = unlockedFor(false,{best:{}}), lab = unlockedFor(true,{best:{}});
   assert.equal(normal(0),true); assert.equal(normal(47),false); assert.equal(lab(47),true);
   // The pilot course follows the same rule: natural order by default, every course canal only in lab mode.
   const pilotSource = file.match(/^const pilotUnlocked = .*$/m)[0];
@@ -75,7 +76,7 @@ test('test build preserves progression by default and unlocks later stages only 
   for(const rel of ['src/game.js','dist/index.html','dist/artifact.html']) {
     const prod=fs.readFileSync(path.join(root,rel),'utf8');
     assert.ok(prod.includes("const STORE_KEY = 'bukang-sea-v1';"),rel);
-    assert.ok(prod.includes('const unlocked = i => i === 0 || save.best[i - 1] != null ||'),rel);
+    assert.ok(prod.includes('const unlocked = i => i === 0 || save.best[STORY_ORDER[STORY_POSITION[i] - 1]] != null ||'),rel);
     assert.ok(!prod.includes('const unlocked = i => testAll'),rel);
     assert.ok(prod.includes('const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;'),rel);
   }

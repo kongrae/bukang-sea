@@ -61,7 +61,7 @@ function measure(level) {
 if (require.main === module) {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
-  const { LEVELS, CHAPTERS, LEVEL_ROLES } = new Function(src + '; return { LEVELS, CHAPTERS, LEVEL_ROLES };')();
+  const { LEVELS, CHAPTERS, STORY_ORDER, LEVEL_ROLES } = new Function(src + '; return { LEVELS, CHAPTERS, STORY_ORDER, LEVEL_ROLES };')();
   let i = 0;
   const fixed = process.argv.includes('--fixed-nets');
   console.log('Live rules: free net relocation. Full = all fish + escape; escape = fish optional. Counts are not human difficulty scores.');
@@ -69,7 +69,7 @@ if (require.main === module) {
   for (const [ci, ch] of CHAPTERS.entries()) {
     console.log(`\n${ci + 1}장 ${ch.name}`);
     for (let k = 0; k < ch.count; k++, i++) {
-      const L = LEVELS[i], g = E.parseLevel(L), role = LEVEL_ROLES[L.role || 'regular'];
+      const L = LEVELS[STORY_ORDER[i]], g = E.parseLevel(L), role = LEVEL_ROLES[L.role || 'regular'];
       const full = E.plan(g, g.start, 0, new Set(), g.nets, true);
       const escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
       console.log(`  ${String(i + 1).padStart(2)} ${L.name.padEnd(8, '　')} ${role.label}  par ${String(L.par).padStart(2)}  full ${full ? full.moves : '-'}  escape ${escape ? escape.moves : '-'}  allowance ${full ? L.par - full.moves : '-'}  fish detour ${full && escape ? full.moves - escape.moves : '-'}  nets ${g.nets}${fixed ? `  fixed-net bits ${measure(L).bits}` : ''}`);

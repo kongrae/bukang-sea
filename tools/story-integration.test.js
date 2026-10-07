@@ -1,22 +1,23 @@
 const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
-const E = require('../src/engine'), { LEVELS, CHAPTERS, STORY_EXTENSION_LEVELS } = require('../src/levels');
+const E = require('../src/engine'), { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_EXTENSION_LEVELS } = require('../src/levels');
 const { PILOT_LEVELS } = require('../src/pilot');
 const source = fs.readFileSync(path.join(__dirname,'../src/game.js'),'utf8');
 const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`,'m'))?.[0]
   || source.match(new RegExp(`function ${name}\\([^]*?\\n}`))?.[0];
 function fixture(stored = {}) {
-  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','refreshSkins'].map(fn).join('\n');
+  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','migrateStoryOrder','refreshSkins'].map(fn).join('\n');
   const skins=source.slice(source.indexOf('const SKINS ='),source.indexOf('// adds newly earned skins'));
   return new Function('stored',`
     ${fs.readFileSync(path.join(__dirname,'../src/engine.js'),'utf8')}
     ${fs.readFileSync(path.join(__dirname,'../src/levels.js'),'utf8')}
+    ${fs.readFileSync(path.join(__dirname,'../src/pilot.js'),'utf8')}
     const save=Object.assign({best:{},sessions:{},hintUsage:{},owned:['basic'],skin:'basic',daily:{}},JSON.parse(JSON.stringify(stored)));
     const STORE_KEY='isolated-test',localStorage={setItem:()=>{}},journalTotals=()=>({visits:0,operations:0});
     ${source.match(/^const unlocked = .*$/m)[0]}
     ${skins}
     ${functions}
-    return {save,migrate:migratePilotToStory,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars};
+    return {save,migrate:migratePilotToStory,reorder:migrateStoryOrder,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars};
   `)(stored);
 }
 function record(index, id = index, move = null) {
@@ -26,12 +27,17 @@ function record(index, id = index, move = null) {
   if(move){const r=E.turn(g,state.pos,move,new Set(),state.boats,state.gate);Object.assign(state,{pos:r.end,dir:move,boats:r.boats,moves:1,gate:r.gate,history:[start]});}
   return {version:1,id,layout:JSON.stringify([level.map,level.nets||0]),state};
 }
-test('main story has 60 unique slots and preserves the original 48 layouts, names, roles and star targets',()=>{
-  assert.equal(LEVELS.length,60);assert.equal(CHAPTERS.reduce((n,c)=>n+c.count,0),60);
-  assert.deepEqual(CHAPTERS.map(c=>c.count),[12,12,12,12,4,8]);
-  const digest=crypto.createHash('sha256').update(JSON.stringify(LEVELS.slice(0,48).map(l=>[l.name,l.map,l.nets||0,l.par,l.role||'regular']))).digest('hex');
-  assert.equal(digest,'7cb76224cd60f7be12c12d094e7653e3304b9eaec8584e761e53f3eecc2952ae');
-  assert.deepEqual(LEVELS.slice(48),PILOT_LEVELS);assert.equal(PILOT_LEVELS,STORY_EXTENSION_LEVELS);
+test('saved LEVELS indices keep the original 60 canals in place while 72 canals play in six 12-canal chapters',()=>{
+  assert.equal(LEVELS.length,72);assert.deepEqual(CHAPTERS.map(c=>c.count),[12,12,12,12,12,12]);
+  assert.deepEqual([...STORY_ORDER].sort((a,b)=>a-b),LEVELS.map((_,i)=>i),'every canal appears once in play order');
+  STORY_ORDER.forEach((index,position)=>assert.equal(STORY_POSITION[index],position));
+  const sha=data=>crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+  assert.equal(sha(LEVELS.slice(0,48).map(l=>[l.name,l.map,l.nets||0])),'1b08e6cf43f45b3e1872730ee4e86043052f01f9bf2accde3e0340dcebfa84c6','original layouts never move');
+  // 2026-10-07: roles follow the new slots; nine targets rise by one and none fall (docs/CHAPTER-RESTRUCTURE.md).
+  assert.equal(sha(LEVELS.slice(0,48).map(l=>[l.name,l.map,l.nets||0,l.par,l.role||'regular'])),'caebf6c95a7d15b9f27745cb14d2194395e283ab5412acf3412e36439d163a63');
+  const retargeted={11:['regular',10],12:['learn',9],17:['learn',8],20:['regular',13],23:['regular',11],33:['regular',11],37:['learn',9],43:['regular',17],46:['regular',12]};
+  for(const [i,[role,par]] of Object.entries(retargeted)) assert.deepEqual([LEVELS[i].role||'regular',LEVELS[i].par],[role,par],'level index '+i);
+  assert.deepEqual(LEVELS.slice(48,60),PILOT_LEVELS);assert.equal(PILOT_LEVELS,STORY_EXTENSION_LEVELS);
   assert.ok(!fs.readFileSync(path.join(__dirname,'../src/shell.html'),'utf8').includes('id="pilotBtn"'));
 });
 test('legacy bests import once without adding stars twice, altering old progress or relocking an earned skin',()=>{
@@ -64,4 +70,28 @@ test('invalid pilot saves never become unlocked story turns or fabricate complet
   const f=fixture({pilot:{version:1,best:{p01:'3',p02:-1,p03:4}},sessions:{pilot},hintUsage:{'pilot:p05':{count:-1,lastUsed:NaN}}});
   f.migrate();assert.deepEqual(f.save.best,{});assert.deepEqual(f.save.storyAccess,[]);
   assert.equal(f.session(52),null);assert.equal(f.save.hintUsage['story:52'],undefined);
+});
+test('the new play order keeps every canal the previous order opened and never fabricates stars',()=>{
+  const best=Object.fromEntries(Array.from({length:20},(_,i)=>[i,3]));
+  const f=fixture({best,storyExpansion:1,storyAccess:[]});f.reorder();
+  assert.deepEqual(f.save.best,best);assert.equal(f.save.storyOrder,2);assert.equal(f.save.storyRescued,undefined);
+  assert.ok(f.unlocked(20),'old next canal 21 stays open although it moved into chapter 2');
+  assert.ok(f.unlocked(60),'a new canal opens after its cleared predecessor in play order');
+  assert.equal(f.unlocked(21),false,'canals the old order kept locked stay locked');
+  const once=JSON.stringify(f.save);f.reorder();assert.equal(JSON.stringify(f.save),once);
+  const fresh=fixture();fresh.migrate();fresh.reorder();assert.deepEqual(fresh.save.storyAccess,[0]);
+  assert.ok(fresh.unlocked(0));assert.equal(fresh.unlocked(48),false);assert.equal(fresh.unlocked(1),false);
+  fresh.save.best[0]=1;assert.ok(fresh.unlocked(STORY_ORDER[1]));assert.equal(fresh.unlocked(STORY_ORDER[2]),false);
+});
+test('an old pilot import still lands on its own canals before the reorder keeps access',()=>{
+  const f=fixture({best:{0:3},pilot:{version:1,best:{p05:2}}});f.migrate();f.reorder();
+  assert.deepEqual(f.save.best,{0:3,52:2});assert.ok(f.unlocked(52)&&f.unlocked(53));
+  assert.equal(f.save.best[60],undefined,'new canals 60-71 never receive imported records');
+});
+test('players who rescued all 60 canals before the additions keep their rescue and can play the new canals',()=>{
+  const best=Object.fromEntries(Array.from({length:60},(_,i)=>[i,1]));
+  const f=fixture({best,storyExpansion:1});f.reorder();assert.equal(f.save.storyRescued,1);
+  const firstNew=STORY_ORDER.filter(i=>i>=60&&STORY_ORDER[STORY_POSITION[i]-1]<60);
+  assert.ok(firstNew.length>=5);for(const i of firstNew) assert.ok(f.unlocked(i),'new canal '+i+' follows a cleared canal');
+  assert.equal(f.unlocked(61),false,'back-to-back new canals still open one at a time');f.save.best[60]=1;assert.ok(f.unlocked(61));
 });

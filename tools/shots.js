@@ -18,25 +18,28 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PORT = 9335;
 
 // Each scene: progress to store, then a script run on the title screen. `$`, sleep, tap(x, y), swipe(dir) are available.
-const done = n => Object.fromEntries(Array.from({ length: n }, (_, i) => [i, i % 5 === 3 ? 2 : 3]));
+// Saves are keyed by LEVELS index (data-i); done(n) clears the first n canals in play order, before(i) every canal ahead of i.
+const { STORY_ORDER, STORY_POSITION } = require('../src/levels.js');
+const done = n => Object.fromEntries(STORY_ORDER.slice(0, n).map((i, k) => [i, k % 5 === 3 ? 2 : 3]));
+const before = i => done(STORY_POSITION[i]);
 const scenes = [
-  { name: '1-title', save: { best: done(14), last: 14 }, run: `` },
-  { name: '2-jets', save: { best: done(8), last: 8 }, run: `
+  { name: '1-title', save: { best: done(14), last: STORY_ORDER[14] }, run: `` },
+  { name: '2-jets', save: { best: before(8), last: 8 }, run: `
     document.querySelector('.lv[data-i="8"]').click(); await sleep(400);
     for (const d of 'URU') { swipe(d); await sleep(1200); }
     $('hintBtn').click(); await sleep(600);` },
-  { name: '3-nets', save: { best: done(11), last: 11 }, run: `
+  { name: '3-nets', save: { best: before(11), last: 11 }, run: `
     document.querySelector('.lv[data-i="11"]').click(); await sleep(400);
     tap(5, 1); tap(3, 8); await sleep(200);
     for (const d of 'UL') { swipe(d); await sleep(1200); }` },
-  { name: '4-clear', save: { best: done(4), last: 4 }, run: `
+  { name: '4-clear', save: { best: before(4), last: 4 }, run: `
     document.querySelector('.lv[data-i="4"]').click(); await sleep(400);
     for (const d of 'ULULRULU') { swipe(d); await sleep(1300); }
     await sleep(1200);` },
-  { name: '5-chapter4', save: { best: done(42), last: 42 }, run: `
+  { name: '5-chapter4', save: { best: before(42), last: 42 }, run: `
     document.querySelector('.lv[data-i="42"]').click(); await sleep(400);
     for (const d of 'URD') { swipe(d); await sleep(1300); }` },
-  { name: '6-chapters', save: { best: done(27), last: 27 }, run: `
+  { name: '6-chapters', save: { best: done(27), last: STORY_ORDER[27] }, run: `
     $('stagePicker').open = true; await sleep(300);
     document.querySelector('.chapter-btn[data-chapter="2"]').click(); await sleep(400);
     $('stagePicker').scrollIntoView(); await sleep(300);` },
@@ -69,7 +72,7 @@ async function cdp() {
       await send('Page.navigate', { url: game }); await sleep(800);
       // guides already seen so no coach/device popup covers the scene
       const seenDevices = ['buoy', 'boat', 'jet', 'net', 'sand', 'whirl'];
-      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, sound: false, coachSwipe: true, coachNet: true, seenDevices }))}); location.reload();`).catch(() => {});
+      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, storyOrder: 2, sound: false, coachSwipe: true, coachNet: true, seenDevices }))}); location.reload();`).catch(() => {});
       await sleep(1200);
       await ev(`(async () => {
         const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));

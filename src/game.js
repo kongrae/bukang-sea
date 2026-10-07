@@ -202,37 +202,43 @@ function journalTotals() {
   return { visits: stamps.length, operations: stamps.filter(n => n === 2).length };
 }
 normalizeJournal(); // Import only surviving records; old single-puzzle clears never become full operations.
-const unlocked = i => i === 0 || save.best[i - 1] != null || (i >= 48 && (Array.isArray(save.storyAccess) && save.storyAccess.includes(i) || Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3));
-// chapter of level i: { ci, start, end, name } (CHAPTERS lists consecutive runs of LEVELS)
+// i is a LEVELS index; the previous canal is the one before it in STORY_ORDER. Cleared canals and kept access stay open.
+const unlocked = i => i === 0 || save.best[STORY_ORDER[STORY_POSITION[i] - 1]] != null || Array.isArray(save.storyAccess) && save.storyAccess.includes(i) || Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+// chapter of LEVELS index i: { ci, start, end, name }; start/end are play positions (CHAPTERS lists runs of STORY_ORDER)
 function chapterOf(i) {
+  const position = STORY_POSITION[i] ?? 0;
   let start = 0;
   for (let ci = 0; ci < CHAPTERS.length; ci++) {
     const end = start + CHAPTERS[ci].count - 1;
-    if (i <= end) return { ci, start, end, name: CHAPTERS[ci].name };
+    if (position <= end) return { ci, start, end, name: CHAPTERS[ci].name };
     start = end + 1;
   }
   return { ci: 0, start: 0, end: LEVELS.length - 1, name: '' };
 }
 
 /* ---------- story journey: derived from existing clears, independent of daily operations ---------- */
+// Next/last canal in play order for a LEVELS index (undefined after the final canal).
+const storyNext = i => STORY_ORDER[STORY_POSITION[i] + 1];
+const storyLast = i => STORY_POSITION[i] === STORY_ORDER.length - 1;
 const JOURNEY_STORY = [
-  { intro: '좁은 북항 수로에 갇힌 상어. 굽은 물길을 하나씩 열어 주세요.', outro: '좁은 수로를 벗어났어요! 이제 공원 안쪽 운하를 따라 나아가요.' },
-  { intro: '화단 사이로 이어진 운하. 갈림길을 지나 바다 쪽으로 길을 찾아요.', outro: '공원 운하를 통과했어요! 저 앞에 방파제가 보여요.' },
-  { intro: '방파제 너머로 흐르는 물살. 물줄기와 그물을 이용해 출구를 열어요.', outro: '방파제를 넘어왔어요! 이제 모래톱과 소용돌이가 있는 외항으로 나아가요.' },
-  { intro: '모래톱과 소용돌이를 지나 외항의 물길을 건너요.', outro: '외항을 통과했어요! 새로 열린 북항 바깥길을 따라 수문 시설로 가요.' },
-  { intro: '부두 사이 굽은 물길을 지나 수문 시설 입구까지 가요.', outro: '북항 바깥길을 통과했어요! 이제 스위치로 수문을 여닫아 보세요.' },
+  { intro: '좁은 북항 수로에 갇힌 상어. 굽은 물길을 하나씩 열고 물줄기도 타 보세요.', outro: '좁은 수로를 벗어났어요! 이제 공원 안쪽 운하를 따라 나아가요.' },
+  { intro: '화단 사이로 이어진 운하. 오가는 구조정을 피해 바다 쪽으로 길을 찾아요.', outro: '공원 운하를 통과했어요! 저 앞에 방파제가 보여요.' },
+  { intro: '방파제 너머로 흐르는 물살. 그물을 쳐서 멈출 자리를 만들어요.', outro: '방파제를 넘어왔어요! 이제 모래톱이 쌓인 외항으로 나아가요.' },
+  { intro: '모래톱에 올라서면 멈춰요. 모래톱을 디딤돌 삼아 외항의 물길을 건너요.', outro: '외항을 통과했어요! 이제 소용돌이가 도는 북항 바깥길로 가요.' },
+  { intro: '떨어진 물길은 소용돌이로 이어져요. 부두 사이를 지나 수문 시설 입구까지 가요.', outro: '북항 바깥길을 통과했어요! 이제 스위치로 수문을 여닫아 보세요.' },
   { intro: '스위치 위에 멈춰 수문을 열고 닫아요. 마지막 갑문 너머가 넓은 바다예요.', outro: '마지막 수문이 열렸어요. 상어가 넓은 바다로 돌아갑니다.' },
 ];
 function storyProgress() {
   let start = 0;
   const chapters = CHAPTERS.map((ch, ci) => {
-    const indices = Array.from({ length: ch.count }, (_, i) => start + i); start += ch.count;
+    const indices = Array.from({ length: ch.count }, (_, k) => STORY_ORDER[start + k]); start += ch.count;
     const count = indices.filter(i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3).length;
     return { ci, start: indices[0], count, total: ch.count, complete: count === ch.count };
   });
   const count = chapters.reduce((sum, ch) => sum + ch.count, 0);
   return { chapters, count, complete: count === LEVELS.length };
 }
+const endingAvailable = (progress = storyProgress()) => progress.complete || save.storyRescued === 1;
 const journeyOpen = () => !$('journeyOverlay').hidden;
 const endingOpen = () => !$('endingOverlay').hidden;
 let endingReturn = 'title', endingElapsed = 0;
@@ -243,7 +249,7 @@ function renderJourney() {
     const available = unlocked(ch.start), text = ch.complete ? '통과' : available ? '구출 중' : '앞 장을 통과하면 열려요';
     return `<li data-journey="${ch.ci}" class="journey-stop${ch.complete ? ' complete' : ''}"><span class="journey-number" aria-hidden="true">${ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
   }).join('');
-  $('journeyEndingBtn').hidden = !progress.complete;
+  $('journeyEndingBtn').hidden = !endingAvailable(progress);
 }
 function openJourney() {
   renderJourney(); openSheet('journeyOverlay');
@@ -259,12 +265,14 @@ function selectJourneyChapter(ci) {
   $('chapterPicker').querySelector(`[data-chapter="${ci}"]`).focus();
 }
 function openEnding(from = 'title') {
-  if (!storyProgress().complete) return false;
+  const progress = storyProgress();
+  if (!endingAvailable(progress)) return false;
   endingReturn = from; endingElapsed = 0;
   if (from === 'clear') { cancelClearPresentation(); closeSheet('clearOverlay', null, false); }
   if (from === 'journey') closeSheet('journeyOverlay', null, false);
-  $('endingRecord').textContent = `${LEVELS.length}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
-  $('endingAfter').textContent = totalStars() < LEVELS.length * 3 ? '남은 별을 모으거나 오늘의 구조작전에서 새로운 물길을 열어 주세요.'
+  $('endingRecord').textContent = `${progress.count}개 수로 구출 완료 · ★ ${totalStars()} / ${LEVELS.length * 3}`;
+  $('endingAfter').textContent = !progress.complete ? '새로 들어온 수로가 기다리고 있어요. 남은 수로도 마저 구출해 주세요.'
+    : totalStars() < LEVELS.length * 3 ? '남은 별을 모으거나 오늘의 구조작전에서 새로운 물길을 열어 주세요.'
     : '모든 별도 모았어요! 오늘의 구조작전에서 새로운 물길을 열어 주세요.';
   openSheet('endingOverlay');
   $('endingCard').scrollTop = 0; $('endingTitle').focus({ preventScroll: true });
@@ -282,8 +290,8 @@ function continueStory() {
   if (FREE) { const difficulty = FREE.difficulty; openFree(); startFree(difficulty, true); }
   else if (DAILY) continueDaily();
   else if (PILOT) continuePilot();
-  else if (LVL === LEVELS.length - 1 && storyProgress().complete) openEnding('clear');
-  else if (LVL < LEVELS.length - 1) loadLevel(LVL + 1);
+  else if (storyLast(LVL) && storyProgress().complete) openEnding('clear');
+  else if (storyNext(LVL) !== undefined) loadLevel(storyNext(LVL));
   else show('title');
 }
 function drawEnding(t) {
@@ -808,7 +816,7 @@ function migratePilotToStory() {
   const validStars = n => Number.isInteger(n) && n >= 1 && n <= 3;
   const oldBest = save.pilot?.version === 1 ? save.pilot.best : null;
   const access = new Set();
-  for (let i = 48; i < LEVELS.length; i++) {
+  for (let i = 48; i < 48 + PILOT_LEVELS.length; i++) {
     const id = LEVELS[i].id, stars = oldBest?.[id];
     if (validStars(stars)) {
       save.best[i] = Math.max(validStars(save.best[i]) ? save.best[i] : 0, stars);
@@ -829,6 +837,18 @@ function migratePilotToStory() {
   }
   // Retain the old records as an archive; import once so clearing/restarting never revives a stale session.
   save.storyAccess = [...access]; save.storyExpansion = 1; persist();
+}
+// 2026-10-07 장 재구성: the play order changed while LEVELS indices and every saved record stayed put.
+// Keep each canal the previous sequential rule had opened, and remember a rescue completed before the new canals.
+function migrateStoryOrder() {
+  if (save.storyOrder === 2) return;
+  const previousCount = 60, cleared = i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+  const access = new Set(Array.isArray(save.storyAccess) ? save.storyAccess : []);
+  for (let i = 0; i < previousCount; i++) {
+    if (i === 0 || save.best[i - 1] != null || i >= 48 && (access.has(i) || cleared(i))) access.add(i);
+  }
+  if (Array.from({ length: previousCount }, (_, i) => i).every(cleared)) save.storyRescued = 1;
+  save.storyAccess = [...access]; save.storyOrder = 2; persist();
 }
 function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
 function dailySessionRecord(daily) {
@@ -900,8 +920,10 @@ function splashAt(x, y, n, dir, force = 1) {
 function loadLevel(i, keep, definition = null) {
   DAILY = null; FREE = null; PILOT = null; LVL = i; save.last = i; deco = i;
   STORY = definition || (keep ? storyLevel(i) : LEVELS[i]);
-  const role = LEVEL_ROLES[STORY.role || 'regular'];
-  enter(STORY, keep, `${chapterOf(i).ci + 1}장 · 수로 ${i + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`);
+  const role = LEVEL_ROLES[STORY.role || 'regular'], chap = chapterOf(i);
+  const preview = STORY_POSITION[i] === chap.end && CHAPTERS[chap.ci + 1]?.region === 'sluice-works';
+  enter(STORY, keep, `${chap.ci + 1}장 · 수로 ${STORY_POSITION[i] + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`,
+    CHAPTERS[chap.ci].region, preview);
 }
 function loadDaily(daily, keep) {
   DAILY = daily; FREE = null; PILOT = null; deco = dailySeed(dailyStageId(daily)) % 997;
@@ -918,7 +940,7 @@ function loadPilot(i, keep) {
   enter(level, keep, `${region.name} · 시험 ${i + 1} / ${PILOT_LEVELS.length} · ${LEVEL_ROLES[level.role || 'regular'].label}`);
 }
 const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : PILOT ? loadPilot(PILOT.index) : loadLevel(LVL, null, STORY);
-function enter(level, keep, label) {
+function enter(level, keep, label, region = level.region, regionPreview = !!level.boundary) {
   sfx.clear();
   cancelClearPresentation();
   hintRequest++;
@@ -927,7 +949,7 @@ function enter(level, keep, label) {
   anim = null; hint = null; cleared = false; clearPlayEffects();
   pop = reduceMotion ? null : { t: 0 }; queued = null;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
-  setBoardRegion(level.region);
+  setBoardRegion(region, regionPreview);
   $('lvNum').textContent = label;
   $('lvName').textContent = level.name;
   setTip(level.tip);
@@ -1231,9 +1253,10 @@ function rewardSnapshot() {
 function collectRewardEvents(before, stars, skins, badges) {
   const story = !DAILY && !FREE && !PILOT, stamp = DAILY ? save.journal.days[DAILY.date] || 0 : 0;
   if (story && stars > before.best) { rewardPending.stars.add(LVL); pendingStoryCount = true; }
-  if (story && !before.best && LVL + 1 < LEVELS.length) {
-    rewardPending.levels.add(LVL + 1);
-    if (LVL === chapterOf(LVL).end) { rewardPending.chapters.add(chapterOf(LVL + 1).ci); rewardPending.journey.add(chapterOf(LVL + 1).ci); }
+  const next = story ? storyNext(LVL) : undefined;
+  if (story && !before.best && next !== undefined) {
+    rewardPending.levels.add(next);
+    if (STORY_POSITION[LVL] === chapterOf(LVL).end) { rewardPending.chapters.add(chapterOf(next).ci); rewardPending.journey.add(chapterOf(next).ci); }
   }
   if (DAILY && Number.isInteger(DAILY.stage) && !before.stage) {
     if (!rewardPending.daily.has(DAILY.date)) rewardPending.daily.set(DAILY.date, new Set());
@@ -1327,7 +1350,7 @@ function onClear() {
   $('clearJournalStamp').hidden = !event.stamp;
   $('clearJournalStamp').textContent = event.stamp === 2 ? '✓ 오늘의 작전 완료 도장을 찍었어요!' : '● 오늘의 참여 도장을 찍었어요!';
   const titles = ['바다로 나갔어요!', '시원하게 탈출!', '상어야, 잘 가!'];
-  const story = !DAILY && !FREE && !PILOT, chap = chapterOf(LVL), chapterEnd = story && LVL === chap.end, last = story && LVL === LEVELS.length - 1;
+  const story = !DAILY && !FREE && !PILOT, chap = chapterOf(LVL), chapterEnd = story && STORY_POSITION[LVL] === chap.end, last = story && storyLast(LVL);
   const journey = story && storyProgress(), rescueComplete = last && journey.complete;
   const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
   // Region previews now follow the main chapter sequence as well as legacy developer fixtures.
@@ -1335,7 +1358,8 @@ function onClear() {
   $('clearStory').hidden = !milestone && !regionEnd;
   $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : regionEnd ? (regionEnd.finale ? '수문을 모두 지나 바깥 바다로 나갔어요! 시험 코스를 끝까지 구출했어요.'
     : '북항을 지나왔어요! 다음은 스위치로 수문을 여닫는 수문 시설이에요.') : '';
-  const nextRegion = story && chapterEnd ? LEVELS[LVL + 1]?.region : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
+  const chapterRegion = story && chapterEnd && !last ? CHAPTERS[chap.ci + 1].region : null;
+  const nextRegion = chapterRegion && PILOT_REGIONS.some(r => r.id === chapterRegion) ? chapterRegion : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
   $('clearRegion').hidden = !nextRegion;
   if (nextRegion) showRegionPreview($('clearRegion'), nextRegion, '다음 지역');
   $('clearTitle').classList.toggle('story-title', !!milestone || !!regionEnd);
@@ -1800,10 +1824,10 @@ const cellType = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h) ? (seaCells.
 // Region surfaces for the board (water, sea, quay, seams, rails, plantings, frame). Story canals and North Harbor keep the
 // shared look. Devices, fish, nets and exits keep their colours in every region; decoration stays on promenade tiles.
 let boardSurface = null;
-function setBoardRegion(regionId) {
+function setBoardRegion(regionId, preview = false) {
   const region = typeof PILOT_REGIONS !== 'undefined' && regionId ? PILOT_REGIONS.find(r => r.id === regionId) : null, p = region && region.palette;
   boardSurface = { water: p ? p.water : C.water, sea: p ? p.sea : C.sea, land: p ? p.land : ['#f8f8e8', '#dcebdc'], seam: p ? p.seam : C['concrete-2'],
-    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview: !!curLevel()?.boundary };
+    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview };
   frameEl.style.setProperty('--board-frame', p ? p.frame : '');
   $('gameScreen').dataset.region = region ? region.id : '';
 }
@@ -2379,12 +2403,12 @@ function renderLevelGrid(followProgress = false) {
   const button = (L, i, k) => {
     const b = save.best[i] || 0; const ok = unlocked(i);
     const stars = '★'.repeat(b) + `<i>${'★'.repeat(3 - b)}</i>`;
-    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${i + 1} ${L.name}${ok ? `, 별 ${b}개, ${L.nets ? `그물 ${L.nets}개` : '그물 없음'}` : ', 잠김'}">
-      <span class="n">${i + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span>${ok ? netLevelBadge(L.nets) : ''}<span class="st">${stars}</span></button>`;
+    return `<button class="lv${i === target ? ' cur' : ''}" type="button" data-i="${i}" style="--i:${k}" ${ok ? '' : 'disabled'} aria-label="수로 ${STORY_POSITION[i] + 1} ${L.name}${ok ? `, 별 ${b}개, ${L.nets ? `그물 ${L.nets}개` : '그물 없음'}` : ', 잠김'}">
+      <span class="n">${STORY_POSITION[i] + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span>${ok ? netLevelBadge(L.nets) : ''}<span class="st">${stars}</span></button>`;
   };
   let start = 0;
   $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
-    const idx = Array.from({ length: ch.count }, (_, k) => start + k); start += ch.count;
+    const idx = Array.from({ length: ch.count }, (_, k) => STORY_ORDER[start + k]); start += ch.count;
     const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]);
     if (ci === selectedChapter) {
       const progress = storyProgress().chapters[ci];
@@ -2398,16 +2422,16 @@ function renderLevelGrid(followProgress = false) {
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;
-  $('journeyLabel').innerHTML = `<b>수로 ${target + 1} · ${(resume ? storyLevel(target) : LEVELS[target]).name}</b>${resume ? `<span>${resume.moves}회 진행</span>` : ''}`;
+  $('journeyLabel').innerHTML = `<b>수로 ${STORY_POSITION[target] + 1} · ${(resume ? storyLevel(target) : LEVELS[target]).name}</b>${resume ? `<span>${resume.moves}회 진행</span>` : ''}`;
   $('playBtn').textContent = resume || Object.keys(save.best).length ? '이어서 구출!' : '구출 시작!';
   const progress = storyProgress();
   $('journeyBtn').textContent = `구출 여정 · ${progress.count} / ${LEVELS.length} 수로${progress.complete ? ' · 구출 성공' : ''} ›`;
-  $('endingBtn').hidden = !progress.complete;
+  $('endingBtn').hidden = !endingAvailable(progress);
   if (progress.complete && !resume) $('playBtn').textContent = '별 더 모으기';
   applyStoryRewards();
 }
 function nextLevel() {
-  for (let i = 0; i < LEVELS.length; i++) if (save.best[i] == null) return i;
+  for (const i of STORY_ORDER) if (save.best[i] == null) return i;
   return Math.min(save.last, LEVELS.length - 1);
 }
 function renderLegend() {
@@ -2769,7 +2793,7 @@ if (capApp) capApp.addListener('appStateChange', ({ isActive }) => {
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
-  migratePilotToStory();
+  migratePilotToStory(); migrateStoryOrder();
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)

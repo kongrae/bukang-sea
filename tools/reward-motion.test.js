@@ -14,6 +14,7 @@ function scene({ stored={}, reduced=false }={}) {
   return new Function('stored','reduceMotion','NativeDate',`
     ${read('engine')}
     ${read('levels')}
+    ${read('pilot')}
     ${read('variety')}
     ${read('variety-reserves')}
     ${read('daily')}
@@ -52,7 +53,7 @@ function scene({ stored={}, reduced=false }={}) {
     }return elements.get(id);};
     const localStorage={getItem:()=>JSON.stringify(Object.assign({best:{},sessions:{}},stored)),setItem:(_,v)=>written=v};
     ${section('const STORE_KEY','const unlocked')}
-    const unlocked=i=>i===0||save.best[i-1]!=null;
+    ${source.match(/^const unlocked = .*$/m)[0]}
     ${section('function flower(', '/* ---------- haptics:')}
     ${fn('chapterOf')}
     ${section('/* ---------- story journey:', '/* ---------- shark skins:')}
@@ -95,7 +96,9 @@ test('only new or improved story records queue stars, next level and chapter; re
   const game=scene({stored:{best:{0:3,11:1},owned:['basic']}});game.finish(0,1);
   assert.deepEqual(game.pending().levels,[]);assert.deepEqual(game.pending().stars,[]);assert.equal(game.save().best[0],3);
   game.finish(11,3);assert.deepEqual(game.pending().stars,[11]);assert.deepEqual(game.pending().chapters,[]);
-  game.finish(23,1);assert.deepEqual(game.pending().levels,[24]);assert.deepEqual(game.pending().chapters,[2]);
+  // Chapter 2 ends at play position 24; the next canal in play order belongs to chapter 3.
+  const { STORY_ORDER: ORDER } = require('../src/levels');
+  game.finish(ORDER[23],1);assert.deepEqual(game.pending().levels,[ORDER[24]]);assert.deepEqual(game.pending().chapters,[2]);
 });
 
 test('collapsed stage picker retains unlock and star cues until the player opens it',()=>{

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const root = path.join(__dirname, '..');
-const LEVELS = new Function(fs.readFileSync(path.join(root, 'src/levels.js'), 'utf8') + '; return LEVELS;')();
+const { LEVELS, STORY_ORDER } = new Function(fs.readFileSync(path.join(root, 'src/levels.js'), 'utf8') + '; return { LEVELS, STORY_ORDER };')();
 const { PILOT_LEVELS } = require('../src/pilot.js');
 const ATTEMPT_HEADERS = ['participant_id','cohort','device','build','level','attempt','outcome','duration_sec','moves','stars','hints','undos','misinputs','assisted','notes','session'];
 const SURVEY_HEADERS = ['participant_id','cohort','device','build','readability','control','fun','again','resume','notes','session'];
@@ -52,13 +52,13 @@ function meta(r) {
   return r;
 }
 const personKey = r => [r.participant_id, r.build].join('|');
-// Story canals are numbers 1–48; pilot canals keep their stable ids so they are never confused with story numbers.
+// Story canals are the on-screen numbers (play order); pilot canals keep their stable ids so they are never confused with story numbers.
 function levelValue(value) {
   if (/^p\d{2}$/.test(value)) { if (!PILOT_LEVELS.some(l => l.id === value)) throw new Error('level 범위 오류'); return value; }
   return number(value, 'level', {min: 1, max: LEVELS.length, required: true});
 }
 const levelOrder = level => typeof level === 'number' ? level : LEVELS.length + 1 + PILOT_LEVELS.findIndex(l => l.id === level);
-const levelName = level => typeof level === 'number' ? LEVELS[level - 1].name : '시험 ' + PILOT_LEVELS.find(l => l.id === level).name;
+const levelName = level => typeof level === 'number' ? LEVELS[STORY_ORDER[level - 1]].name : '시험 ' + PILOT_LEVELS.find(l => l.id === level).name;
 function checkPeople(rows) {
   const people = new Map();
   for (const r of rows) {

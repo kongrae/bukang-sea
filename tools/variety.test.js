@@ -12,7 +12,7 @@ const { replayPlan } = require('./replay-plan');
 const { shapeKey } = require('./variety-audit');
 const read = name => fs.readFileSync(path.join(__dirname, '../src', name + '.js'), 'utf8');
 const source = read('game');
-const { LEVELS, LEGACY_STORY_LEVELS } = new Function(read('levels') + ';return {LEVELS,LEGACY_STORY_LEVELS};')();
+const { LEVELS, LEGACY_STORY_LEVELS, STORY_ORDER } = new Function(read('levels') + ';return {LEVELS,LEGACY_STORY_LEVELS,STORY_ORDER};')();
 const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))?.[0]
   || source.match(new RegExp(`function ${name}\\([^]*?\\n}`))?.[0];
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -97,8 +97,11 @@ test('all twelve old story sessions resume and retry their old board, while new 
 });
 
 test('authored story boards retain required device learning order and add diverse spatial families', () => {
-  const first = pattern => LEVELS.findIndex(l=>l.map.some(row=>pattern.test(row)))+1;
-  assert.equal(first(/[bB]/),6);assert.equal(first(/[<>^v]/),7);assert.equal(first(/s/),37);assert.equal(first(/w/),40);
+  // First appearance in play order: one new device per chapter (docs/CHAPTER-RESTRUCTURE.md).
+  const played = STORY_ORDER.map(i=>LEVELS[i]);
+  const first = pattern => played.findIndex(l=>l.map.some(row=>pattern.test(row)))+1;
+  assert.equal(first(/[<>^v]/),7);assert.equal(first(/[bB]/),13);assert.equal(played.findIndex(l=>l.nets)+1,25);
+  assert.equal(first(/s/),37);assert.equal(first(/w/),49);assert.equal(first(/[pGg]/),61);
   assert.ok(new Set(LEVELS.map(l=>shapeKey(l.map))).size>=29);
   for(const i of [42,45]) {
     const level=LEVELS[i],g=E.parseLevel(level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);

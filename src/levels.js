@@ -119,7 +119,7 @@ const LEVELS = [
     "idea": "물줄기에 들어가는 방향",
     "revision": 2
   },
-  { par: 10, role: 'challenge', name: '소방정 총출동', tip: '숭어 세 마리. 순서를 잘 정해 보세요.', map: [
+  { par: 10, role: 'challenge', name: '소방정 총출동', tip: '숭어 세 마리. 순서를 잘 정해 보세요. 1장의 마지막 도전이에요.', map: [
     '###E###',
     '#^..of#',
     '#.o<..#',
@@ -155,7 +155,7 @@ const LEVELS = [
     '#o....#',
     '####S##',
   ] },
-  { par: 9, role: 'challenge', name: '바다로 가는 길', nets: 2, tip: '그물은 두 개까지 쓸 수 있어요. 숭어 세 마리를 챙기는 1장의 마지막 도전이에요.', map: [
+  { par: 10, name: '바다로 가는 길', nets: 2, tip: '그물 두 개를 옮겨 가며 구조정과 물줄기 사이의 숭어 세 마리를 챙겨요.', map: [
     '###E###',
     '#.....#',
     '#.oo..#',
@@ -169,7 +169,7 @@ const LEVELS = [
     '###S###',
   ] },
   /* ----- 2장 친수공원 운하 ----- */
-  { par: 8, name: '작은 순환로', tip: '가운데 화단을 빙 돌 수 있어요. 숭어 두 마리를 챙겨요.', map: [
+  { par: 9, role: 'learn', name: '작은 순환로', tip: '가운데 화단을 빙 돌 수 있어요. 숭어 두 마리를 챙겨요.', map: [
     '####E##',
     '#....o#',
     '#..f..#',
@@ -239,7 +239,7 @@ const LEVELS = [
     "idea": "두 연결로 선택",
     "revision": 2
   },
-  { par: 7, name: '화단 옆 그물', nets: 1, tip: '그물 하나로 멈출 자리를 만들어 주세요.', map: [
+  { par: 8, role: 'learn', name: '화단 옆 그물', nets: 1, tip: '그물 하나로 멈출 자리를 만들어 주세요.', map: [
     '###E###',
     '#.f...#',
     '#...of#',
@@ -281,7 +281,7 @@ const LEVELS = [
     '#.....#',
     '###S###',
   ] },
-  { par: 12, role: 'challenge', name: '갈림길', tip: '두 갈래 물길과 물줄기 두 개. 어느 쪽부터 갈까요?', map: [
+  { par: 13, name: '갈림길', tip: '두 갈래 물길과 물줄기 두 개. 어느 쪽부터 갈까요?', map: [
     '###E####',
     '#.o....#',
     '#......#',
@@ -317,7 +317,7 @@ const LEVELS = [
     '#<f...#',
     '###S###',
   ] },
-  { par: 10, role: 'challenge', name: '운하의 끝', nets: 2, tip: '섬 양쪽의 숭어를 챙긴 뒤, 그물을 옮겨 출구로 가요. 2장의 마지막 도전이에요.', map: [
+  { par: 11, name: '운하의 끝', nets: 2, tip: '섬 양쪽의 숭어를 챙긴 뒤, 그물을 옮겨 출구로 가요.', map: [
     '###E####',
     '#.f....#',
     '#......#',
@@ -386,7 +386,7 @@ const LEVELS = [
     "idea": "짧은 옆길 우회",
     "revision": 2
   },
-  { par: 17, role: 'challenge', name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요.', map: [
+  { par: 17, role: 'challenge', name: '구조정 호위', tip: '구조정이 오가는 때를 맞춰 지나가요. 2장의 마지막 도전이에요.', map: [
     '####E####',
     '#....b..#',
     '#.......#',
@@ -459,7 +459,7 @@ const LEVELS = [
     '#...f...#',
     '#S#######',
   ] },
-  { par: 10, role: 'challenge', name: '석호의 밤', nets: 1, tip: '그물을 걷어 옮기며 숭어 세 마리를 모아요. 물줄기에 타는 순서를 생각해 보세요.', map: [
+  { par: 11, name: '석호의 밤', nets: 1, tip: '그물을 걷어 옮기며 숭어 세 마리를 모아요. 물줄기에 타는 순서를 생각해 보세요.', map: [
     '#######E#',
     '#vf...o.#',
     '#...o...#',
@@ -475,7 +475,7 @@ const LEVELS = [
     "par": 10,
     "name": "가지마다 정지점",
     "nets": 2,
-    "tip": "긴 벽 옆에서 그물로 멈출 자리를 만들어 숭어 쪽으로 돌아요.",
+    "tip": "이번엔 그물을 두 개까지 쓸 수 있어요. 긴 벽 옆에 멈출 자리를 만들어 숭어 쪽으로 돌아요.",
     "map": [
       "#########",
       "#..#f...#",
@@ -517,7 +517,8 @@ const LEVELS = [
     '####S####',
   ] },
   {
-    "par": 8,
+    "par": 9,
+    "role": "learn",
     "name": "모래톱 갈림길",
     "tip": "모래톱은 벽 없이 멈추는 자리예요. 멈춘 뒤 옆길을 살펴요.",
     "map": [
@@ -535,7 +536,7 @@ const LEVELS = [
     "idea": "모래톱에서 방향 바꾸기",
     "revision": 2
   },
-  { par: 14, role: 'challenge', name: '삼각주', tip: '물줄기와 모래톱이 함께 있어요.', map: [
+  { par: 14, role: 'challenge', name: '삼각주', tip: '외항의 마지막 도전! 물줄기와 모래톱을 함께 써요.', map: [
     '#E#######',
     '#.......#',
     '#..fs...#',
@@ -600,7 +601,7 @@ const LEVELS = [
     "idea": "떨어진 두 바다 연결",
     "revision": 2
   },
-  { par: 16, role: 'challenge', name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
+  { par: 17, name: '물살 건너기', tip: '숭어 세 마리. 어느 물길부터 갈까요?', map: [
     '#####E###',
     '#...#...#',
     '#...#..w#',
@@ -642,7 +643,7 @@ const LEVELS = [
     "idea": "건너간 물길에서 정지하기",
     "revision": 2
   },
-  { par: 11, role: 'challenge', name: '성곽 수로', nets: 1, tip: '성곽 안에도 숭어가 있어요. 소용돌이로 들어갔다 돌아와 출구 앞에 그물을 쳐요.', map: [
+  { par: 12, name: '성곽 수로', nets: 1, tip: '성곽 안에도 숭어가 있어요. 소용돌이로 들어갔다 돌아와 출구 앞에 그물을 쳐요.', map: [
     '####E####',
     '#.......#',
     '#.......#',
@@ -654,7 +655,7 @@ const LEVELS = [
     '#.......#',
     '####S####',
   ] },
-  { par: 12, role: 'challenge', name: '먼바다로', nets: 1, tip: '외항의 마지막 도전! 양쪽 물길의 숭어 네 마리를 모두 챙겨 먼바다로 보내 주세요.', map: [
+  { par: 12, role: 'challenge', name: '먼바다로', nets: 1, tip: '북항 바깥길의 마지막 도전! 소용돌이로 이어진 양쪽 물길의 숭어 네 마리를 모두 챙겨요.', map: [
     '#####E###',
     '#...#...#',
     '#..f#..o#',
@@ -705,7 +706,7 @@ const STORY_EXTENSION_LEVELS = [
     ] },
   { id: 'p04', region: 'north-harbor', role: 'learn', name: '북항 끝 부두', par: 8, nets: 0, route: 'U R D L D U', boundary: true,
     intent: '출구 바로 아래의 숭어를 먹고 같은 줄로 곧장 올라가 북항을 마무리한다.',
-    tip: '저 너머가 수문 시설이에요. 출구 아래 숭어도 잊지 마세요.', map: [
+    tip: '잠깐 쉬어 가는 수로예요. 출구 아래 숭어도 잊지 마세요.', map: [
       '#####E###',
       '#.......#',
       '#.......#',
@@ -762,7 +763,7 @@ const STORY_EXTENSION_LEVELS = [
     ] },
   { id: 'p09', region: 'sluice-works', role: 'learn', name: '모퉁이 스위치', par: 6, nets: 0, route: 'U R D U', needsGate: true,
     intent: '모퉁이에서 바로 눌리는 스위치로 배운 조작을 빠르게 확인하는 쉬어 가는 판.',
-    tip: '잠깐 쉬어 가는 수로예요. 모퉁이 스위치부터 눌러 보세요.', map: [
+    tip: '모퉁이 스위치부터 눌러 보세요. 멈춰야 눌린다는 걸 잊지 마세요.', map: [
       '####E##',
       '####G##',
       '#p...o#',
@@ -813,15 +814,170 @@ const STORY_EXTENSION_LEVELS = [
 ];
 LEVELS.push(...STORY_EXTENSION_LEVELS);
 
-/* ---------- Chapters: consecutive runs of LEVELS (count 합계 = LEVELS.length) ---------- */
+// 2026-10-07 장 재구성: 장마다 새 장치 하나를 위해 더한 12개(LEVELS 60–71). 화면 위치는 STORY_ORDER가 정한다.
+const STORY_CHAPTER_LEVELS = [
+  /* ----- 2장 구조정 (새 16·17번) ----- */
+  { par: 11, name: '출구 앞 순찰', tip: '구조정이 위쪽 물길을 오가요. 구조정 바로 옆에 멈추는 때를 노려 보세요.', map: [
+    '####E####',
+    '#...b...#',
+    '#....o..#',
+    '#..#.#f.#',
+    '#.......#',
+    '#..#.#..#',
+    '#..o....#',
+    '#f......#',
+    '#####S###',
+  ] },
+  { par: 12, name: '섬 둘레 두 척', tip: '구조정 두 척이 섬 둘레를 지켜요. 어느 구조정 앞에서 멈출지 살펴보세요.', map: [
+    '#########',
+    '#....B..#',
+    '#...#...#',
+    '#..###fo#',
+    '#..###..E',
+    '#f.###..#',
+    '#.......#',
+    '#.b....o#',
+    '####S####',
+  ] },
+  /* ----- 4장 모래톱 (새 39·40·41·43·45·46번) ----- */
+  { par: 10, name: '모래톱 징검다리', tip: '모래톱은 벽이 없어도 멈춰 서요. 출구와 같은 줄에 멈출 곳을 찾아보세요.', map: [
+    '#####E###',
+    '##......#',
+    '#......f#',
+    '#.......#',
+    '#.o.....#',
+    '#....s.s#',
+    '#.......#',
+    '#...f..##',
+    '##S######',
+  ] },
+  { par: 11, name: '두 번 멈추기', tip: '처음 닿는 모래톱에서 바로 나가면 숭어를 놓쳐요. 다른 모래톱도 살펴보세요.', map: [
+    '########',
+    '#....f.E',
+    '#....s.#',
+    '#.f##..#',
+    '#.s....#',
+    '#......#',
+    '##.....#',
+    '#...o..#',
+    '#......#',
+    '#####S##',
+  ] },
+  { par: 12, name: '기둥 사이 물길', tip: '기둥과 모래톱이 멈출 자리를 만들어 줘요. 숭어 세 마리를 모두 챙겨요.', map: [
+    '#####E###',
+    '#...o...#',
+    '#....f..#',
+    '#..#....#',
+    '#....s..#',
+    '#....#..#',
+    '#.f..f..#',
+    '#....s..#',
+    '###S#####',
+  ] },
+  { par: 11, name: '물살 끝 모래톱', tip: '물줄기를 탄 뒤 어디에서 멈추는지 끝까지 따라가 보세요.', map: [
+    '#E#######',
+    '#....v..#',
+    '#.......#',
+    '#.....###',
+    '#.f.....#',
+    '###..sf.#',
+    '#......s#',
+    '#...o...#',
+    '#######S#',
+  ] },
+  { par: 12, name: '구조정과 모래톱', tip: '구조정이 움직이면 멈출 자리도 달라져요. 모래톱과 함께 써 보세요.', map: [
+    '#######',
+    '#.....E',
+    '#s.o..#',
+    '#....b#',
+    '#.#...#',
+    '#.....#',
+    '#.f.#.#',
+    '#.....#',
+    '#..sf.#',
+    '#.....#',
+    '##S####',
+  ] },
+  { par: 12, name: '그물 정류장', nets: 1, tip: '그물로 한 번 멈춰 서면 모래톱이 다음 길을 이어 줘요.', map: [
+    '######E#',
+    '#......#',
+    '#......#',
+    '#...####',
+    '#..f####',
+    '###s..##',
+    '###.of##',
+    '#f...o##',
+    '#.....##',
+    '##S#####',
+  ] },
+  /* ----- 5장 소용돌이 (새 50·52번) ----- */
+  { par: 8, role: 'learn', name: '소용돌이 지름길', tip: '소용돌이로 들어간 방향 그대로 짝 소용돌이에서 나와요. 출구로 이어지는 줄을 찾아보세요.', map: [
+    '#####E#',
+    '#f..#w#',
+    '#.ow#.#',
+    '#...#.#',
+    '#.f.#.#',
+    '#...#.#',
+    '#...#.#',
+    '##S####',
+  ] },
+  { par: 13, name: '두 물길 오가기', tip: '소용돌이는 몇 번이든 탈 수 있어요. 들어가는 방향을 바꿔 보세요.', map: [
+    '###E#####',
+    '#..w#f..#',
+    '#..f#...#',
+    '#...#w..#',
+    '#...#.o.#',
+    '#...#...#',
+    '#f.o#...#',
+    '######S##',
+  ] },
+  /* ----- 6장 수문 조합 (새 69·70번) ----- */
+  { par: 10, name: '구조정과 스위치', tip: '스위치는 그 위에서 멈춰야 눌려요. 무엇이 앞을 막아 줄 수 있을까요?', map: [
+    '#########',
+    '#......GE',
+    '#......##',
+    '#.p.....#',
+    '#b......#',
+    '#..f....#',
+    '#....o.f#',
+    '##S######',
+  ] },
+  { par: 11, name: '모래톱 수문', tip: '수문을 연 다음, 수문과 같은 줄에 멈출 방법을 찾아요.', map: [
+    '#######E#',
+    '#.s.....#',
+    '#.o.....#',
+    '#....f..#',
+    '####G####',
+    '#.......#',
+    '#.......#',
+    '#...sf.p#',
+    '#S#######',
+  ] },
+];
+LEVELS.push(...STORY_CHAPTER_LEVELS);
+
+/* ---------- Chapters: consecutive runs of STORY_ORDER positions (count 합계 = LEVELS.length) ---------- */
+// One new device per chapter: 물줄기 · 구조정 · 그물 · 모래톱 · 소용돌이 · 스위치/수문 (docs/CHAPTER-RESTRUCTURE.md).
 const CHAPTERS = [
   { name: '북항 수로', count: 12, region: 'harbor-canals' },
   { name: '친수공원 운하', count: 12, region: 'waterside-park' },
   { name: '방파제 너머', count: 12, region: 'beyond-breakwater' },
   { name: '외항 물길', count: 12, region: 'outer-harbor' },
-  { name: '북항 바깥길', count: 4, region: 'north-harbor' },
-  { name: '수문 시설', count: 8, region: 'sluice-works' },
+  { name: '북항 바깥길', count: 12, region: 'north-harbor' },
+  { name: '수문 시설', count: 12, region: 'sluice-works' },
 ];
+// Play order: position (수로 번호 - 1) → LEVELS index. Saves, sessions and hints stay keyed by the LEVELS index,
+// so LEVELS remains append-only and records survive any change of play order.
+const STORY_ORDER = [
+  0, 1, 2, 48, 3, 4, 6, 7, 16, 14, 49, 8,
+  5, 12, 18, 60, 61, 51, 15, 22, 26, 31, 20, 28,
+  9, 17, 29, 34, 23, 50, 10, 19, 11, 33, 13, 35,
+  36, 37, 62, 63, 64, 21, 65, 44, 66, 67, 24, 38,
+  39, 68, 42, 69, 41, 30, 40, 45, 46, 43, 25, 47,
+  52, 53, 56, 54, 55, 32, 57, 58, 70, 71, 27, 59,
+];
+const STORY_POSITION = [];
+STORY_ORDER.forEach((index, position) => { STORY_POSITION[index] = position; });
 
 // Exact pre-redesign definitions: only matching in-progress saves may resume these routes.
 const LEGACY_STORY_LEVELS = {
@@ -1038,4 +1194,4 @@ const LEGACY_STORY_LEVELS = {
   }
 };
 
-if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS };
+if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS, STORY_CHAPTER_LEVELS };

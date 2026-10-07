@@ -1,4 +1,4 @@
-// Extra checks for main stages 49–60 (former pilot): compare against the original 48 and validate gate learning.
+// Extra checks for the former pilot canals p01–p12 (LEVELS 48–59): compare against the original 48 and validate gate learning.
 //   node tools/verify-pilot.js   (also run at the end of npm run verify)
 // Per canal: data rules, minimum route = authored route, role-based star target, net need, and a counterfactual gate test:
 // with every switch disabled (gates frozen in their start state) neither escape nor the all-fish goal may be reachable.
@@ -19,7 +19,7 @@ function verifyPilot(log = console.log) {
   const regions = new Map(PILOT_REGIONS.map((r, i) => [r.id, i]));
   const shapes = new Map();
   let failed = 0, lastRegion = 0;
-  log(`\n정식 수로 49–60 (${PILOT_LEVELS.length}개): 기존 48개와 배치 중복·수문 규칙 추가 검사`);
+  log(`\n이전 시험 코스 p01–p12 (${PILOT_LEVELS.length}개): 기존 48개와 배치 중복·수문 규칙 추가 검사`);
   if (PILOT_LEVELS.length !== 12) { failed++; log(`FAIL pilot course must have 12 canals, got ${PILOT_LEVELS.length}`); }
   PILOT_LEVELS.forEach((lvl, i) => {
     const problems = [], role = LEVEL_ROLES[lvl.role || 'regular'];
