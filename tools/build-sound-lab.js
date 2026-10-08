@@ -1,6 +1,6 @@
 // Development-only A/B audition + actual-rule game soak. Nothing here is copied to www/dist.
 const fs = require('node:fs'), path = require('node:path'), cp = require('node:child_process');
-const { gameBody } = require('./build-source');
+const { gameBody, embedAudio } = require('./build-source');
 const root = path.resolve(__dirname, '..'), folder = path.join(root, 'outputs/audio');
 const baseline = process.argv[2] || 'def8fd47bc50a4274a4380424fd08c915b2edee7';
 if (!/^[a-zA-Z0-9_.\/-]+$/.test(baseline) || baseline.startsWith('-')) throw Error('Invalid baseline ref');
@@ -10,7 +10,7 @@ const oldAudio = old.slice(old.indexOf('let actx = null;'), old.indexOf('/* ----
 if (!oldAudio.includes('const sfx =')) throw Error('Baseline sound section missing');
 fs.mkdirSync(folder, {recursive:true});
 const factory = `function createBeforeAudio(context) { const save={sound:true}; ${oldAudio.replace('let actx = null;', 'let actx = context;')} return sfx; }`;
-const sounds = fs.readFileSync(path.join(root,'src/sound.js'),'utf8');
+const sounds = embedAudio(fs.readFileSync(path.join(root,'src/sound.js'),'utf8'));
 const page = fs.readFileSync(path.join(__dirname,'sound-lab.html'),'utf8').replace('<!-- sound-code -->', `<script>${sounds}\n${factory}\n${fs.readFileSync(path.join(__dirname,'sound-lab.js'),'utf8')}</script>`);
 fs.writeFileSync(path.join(folder,'index.html'), page.replaceAll('BASELINE_COMMIT',baseline));
 const controls = fs.readFileSync(path.join(__dirname,'sound-game-qa.js'),'utf8');

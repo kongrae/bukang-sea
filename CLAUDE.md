@@ -24,7 +24,7 @@ npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-ke
 npm run verify           # 정식 수로 72개 해법·별 기준·플레이 순서(장마다 새 장치 1개, 장 끝 도전) 검사 + verify-pilot
 npm run verify:pilot     # 이전 시험 코스 p01–p12(저장 인덱스 48–59): 역할별 별 기준·기록 해법·수문 필수성·벽 구조 중복
 npm test                 # 풀이기·일일 퍼즐 호환·구조정 연출·진행 복원·장치 안내 회귀 검사
-npm run build:sound-lab   # outputs/audio/ 전후 미리듣기·WAV·파형 검사·기록 격리 5분 실제 규칙 자동 플레이 (출시 제외)
+npm run build:sound-lab   # outputs/audio/ 이전·합성·음원 세 세트 미리듣기·WAV·파형 검사·기록 격리 5분 실제 규칙 자동 플레이 (출시 제외)
 npm run build:playtest   # playtest/ 관찰용 빌드. 기본 정상 진행, ?tester=P01&all=1은 후반 수로 개방(기록 격리)
 npm run serve:playtest   # localhost:5175 (?tester=P01로 이용자별 기록, --host는 tools/serve.js로 실행)
 npm run playtest:report -- attempts.csv survey.csv --out results.md # 수동 실제 관찰 CSV만 분석
@@ -73,7 +73,7 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → sound.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 기본 상어 WebP 3개와 스킨 WebP 16개, 로비 아이콘 WebP 5개, 수문·스위치 SVG 4개, 지역 카드 WebP 6개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART` 목록, 토큰은 src에 한 번씩). 1–4장 그림 원본·프롬프트는 `assets/art/chapter-scenes-v1/`, 연결 방식은 `docs/CHAPTER-ART.md`를 따른다. 2026-10-03 스킨별 입체 디테일과 납품/검증 기준은 `assets/art/skins-v2/README.md`를 따른다. 스킨 ID·해금 조건은 유지한다.
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → sound.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 기본 상어 WebP 3개와 스킨 WebP 16개, 로비 아이콘 WebP 5개, 수문·스위치 SVG 4개, 지역 카드 WebP 6개, 효과음 19개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART`·`AUDIO` 목록, 토큰은 src에 한 번씩). 1–4장 그림 원본·프롬프트는 `assets/art/chapter-scenes-v1/`, 연결 방식은 `docs/CHAPTER-ART.md`를 따른다. 2026-10-03 스킨별 입체 디테일과 납품/검증 기준은 `assets/art/skins-v2/README.md`를 따른다. 스킨 ID·해금 조건은 유지한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -148,7 +148,7 @@ par는 별 3개를 받는 이동 기준이다. 무료 그물 회수·재설치�
 - 화면 전환은 push(목록→수로)/pop(수로→목록) 슬라이드, 결과는 아래에서 올라오는 시트(넓은 화면에서는 가운데 카드).
 - `window.Capacitor?.Plugins?.App`이 있으면(네이티브 앱) 하드웨어 뒤로가기 = 목록으로, 목록에서는 앱 종료.
 - `window.claude?.hot` 부분은 Claude 아티팩트 실시간 업데이트용 훅이다. 일반 브라우저에서는 없는 값이라 무해하다.
-- 사운드는 `src/sound.js`에서 WebAudio로 합성(외부 오디오 파일 없음). `game.js` 바로 전에 빌드에 포함한다. 첫 사용자 입력 후에만 활성화하며 물방울·물살·둥근 토이 타격음을 공유한다. 컨텍스트/노이즈 버퍼를 재사용하고 재생 상한·이벤트 간격·획득/보상 우선순위를 적용한다. `save.sound`를 유지하며 음소거/화면 이탈/백그라운드 시 현재 음과 예약 보상음을 정리한다. 구현·미리듣기·검증 범위는 `docs/SOUND-DESIGN.md` 참고.
+- 사운드는 `src/sound.js`에서 재생한다. 기본은 사람이 녹음·제작한 CC0 음원 19개(`assets/audio`, 출처 `assets/audio/LICENSES.md`, 2026-10-08 FX04)이고, 디코드에 실패한 소리만 WebAudio 합성음으로 대신한다. AI 생성 오디오와 다른 게임에서 추출한 소리는 쓰지 않는다. 음원을 바꾸거나 더하면 `SFX_SAMPLES`·`tools/build-source.js` `AUDIO`·LICENSES.md를 함께 고친다(테스트가 일치와 400KB 상한을 검사). `game.js` 바로 전에 빌드에 포함한다. 첫 사용자 입력 후에만 활성화하며 물방울·물살·둥근 토이 타격음을 공유한다. 컨텍스트/노이즈 버퍼를 재사용하고 재생 상한·이벤트 간격·획득/보상 우선순위를 적용한다. `save.sound`를 유지하며 음소거/화면 이탈/백그라운드 시 현재 음과 예약 보상음을 정리한다. 구현·미리듣기·검증 범위는 `docs/SOUND-DESIGN.md`, 음원 선택·근거는 `docs/SOUND-MOTION.md` 참고.
 
 ## 디자인
 

@@ -1,6 +1,6 @@
 # 사운드·연출 보강 인수 문서 (FX01–FX06)
 
-작성일: 2026-10-08. 작업 폴더: `C:\workspace\bukang-sea`. 상태: 인수 문서(미착수).
+작성일: 2026-10-08. 작업 폴더: `C:\workspace\bukang-sea`. 상태: FX01–FX06 진행 완료(2026-10-08). 결정과 결과는 [SOUND-MOTION.md](SOUND-MOTION.md)를 따른다.
 
 에이전트에게 이렇게 요청한다.
 

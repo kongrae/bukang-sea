@@ -17,20 +17,24 @@ const sequence = [
 ];
 let muted = false, suspended = false, oldContext = null, oldEffects = null, timers = [], epoch = 0, selected = 'after';
 const afterAudio = createGameAudio({enabled:()=>!muted,active:()=>!suspended});
+// The same engine without recordings: the synthesized set that played before FX04 (and stays as the fallback).
+const synthAudio = createGameAudio({enabled:()=>!muted,active:()=>!suspended,samples:null});
+const LABEL = {before:'이전',synth:'합성',after:'음원'};
 function stopLab() {
-  epoch++; timers.forEach(clearTimeout); timers=[]; afterAudio.effects.clear();
+  epoch++; timers.forEach(clearTimeout); timers=[]; afterAudio.effects.clear(); synthAudio.effects.clear();
   if(oldContext) { oldContext.close().catch(()=>{}); oldContext=null; oldEffects=null; }
   $lab('status').textContent='정지 · 남은 예약음 취소';
 }
 function getEffects(version) {
   selected=version;
   if(version==='after'){afterAudio.unlock();return afterAudio.effects;}
+  if(version==='synth'){synthAudio.unlock();return synthAudio.effects;}
   if(!oldContext){oldContext=new AudioContext();oldEffects=createBeforeAudio(oldContext);}
   return oldEffects;
 }
 function playSequence(version) {
   stopLab(); const effects=getEffects(version), ticket=epoch;
-  $lab('status').textContent=(version==='after'?'개선':'이전')+' 세트 재생 중';
+  $lab('status').textContent=LABEL[version]+' 세트 재생 중';
   for(const [time,name,...args] of sequence) timers.push(setTimeout(()=>{
     if(ticket===epoch&&!muted&&!suspended)effects[name]?.(...args);
   },time*1000));
@@ -39,19 +43,19 @@ function playSequence(version) {
 for(const [label,name,args] of cases) {
   const row=document.createElement('div');row.className='effect';
   const heading=document.createElement('b');heading.textContent=label;row.append(heading);
-  for(const version of ['before','after']) {
-    const button=document.createElement('button');button.textContent=label+' · '+(version==='before'?'이전':'개선');button.className=version==='after'?'new':'';
-    const removed=['move','stop'].includes(name)&&version==='after';
+  for(const version of ['before','synth','after']) {
+    const button=document.createElement('button');button.textContent=label+' · '+LABEL[version];button.className=version==='after'?'new':'';
+    const removed=['move','stop'].includes(name)&&version!=='before';
     const absent=['boat','unlockReward','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
     if(removed)button.textContent=label+' · 제거됨';
     button.onclick=()=>{stopLab();if(!muted&&!suspended)getEffects(version)[name]?.(...args);$lab('status').textContent=label+' · '+version;};row.append(button);
   }
   $lab('effects').append(row);
 }
-$lab('beforeSequence').onclick=()=>playSequence('before');$lab('afterSequence').onclick=()=>playSequence('after');$lab('stop').onclick=stopLab;
-$lab('mute').onclick=()=>{muted=!muted;stopLab();afterAudio.syncEnabled();$lab('mute').textContent=muted?'음소거 끄기':'음소거 켜기';};
-$lab('background').onclick=()=>{suspended=!suspended;stopLab();if(suspended)afterAudio.suspend();else afterAudio.activate();$lab('background').textContent=suspended?'앱 복귀 모의':'백그라운드 전환 모의';};
-document.addEventListener('visibilitychange',()=>{stopLab();if(document.hidden)afterAudio.suspend();else if(!suspended)afterAudio.activate();});
+$lab('beforeSequence').onclick=()=>playSequence('before');$lab('synthSequence').onclick=()=>playSequence('synth');$lab('afterSequence').onclick=()=>playSequence('after');$lab('stop').onclick=stopLab;
+$lab('mute').onclick=()=>{muted=!muted;stopLab();afterAudio.syncEnabled();synthAudio.syncEnabled();$lab('mute').textContent=muted?'음소거 끄기':'음소거 켜기';};
+$lab('background').onclick=()=>{suspended=!suspended;stopLab();for(const a of [afterAudio,synthAudio]){if(suspended)a.suspend();else a.activate();}$lab('background').textContent=suspended?'앱 복귀 모의':'백그라운드 전환 모의';};
+document.addEventListener('visibilitychange',()=>{stopLab();for(const a of [afterAudio,synthAudio]){if(document.hidden)a.suspend();else if(!suspended)a.activate();}});
 setInterval(()=>{$lab('live').textContent=JSON.stringify({version:selected,muted,suspended,...afterAudio.inspect()},null,2);},250);
 function wav(buffer) {
   const samples=buffer.getChannelData(0),data=new ArrayBuffer(44+samples.length*2),view=new DataView(data);
@@ -71,8 +75,9 @@ async function renderSound(version,events,duration) {
   // Offline rendering is deliberately suspended at each event, so expose its scheduling state as running.
   const facade=new Proxy(ctx,{get:(target,key)=>key==='state'?'running':key==='resume'?()=>Promise.resolve():typeof target[key]==='function'?target[key].bind(target):target[key]});
   let seed=12345;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
-  const engine=version==='after'?createGameAudio({createContext:()=>facade,enabled:()=>enabled,random}):null;
-  if(engine)engine.unlock();const effects=engine?engine.effects:createBeforeAudio(facade);
+  const engine=version==='before'?null:createGameAudio({createContext:()=>facade,enabled:()=>enabled,random,...(version==='synth'?{samples:null}:{})});
+  // Recordings decode asynchronously; wait so the render contains them rather than the fallback.
+  if(engine){engine.unlock();await engine.loaded();}const effects=engine?engine.effects:createBeforeAudio(facade);
   const groups=new Map();for(const event of events){const at=Math.round(event[0]*48000/128)*128/48000;if(!groups.has(at))groups.set(at,[]);groups.get(at).push(event);}
   const jobs=[...groups].map(([time,items])=>ctx.suspend(time).then(()=>{
     for(const [,name,...args]of items){if(name==='mute'){enabled=!args[0];engine?.syncEnabled();}else effects[name]?.(...args);}
@@ -94,7 +99,7 @@ function addRender(label,buffer) {
 $lab('render').onclick=async()=>{
   stopLab();$lab('render').disabled=true;$lab('metrics').textContent='실제 오디오 파형 렌더링 중…';
   try {for(const url of downloads)URL.revokeObjectURL(url);downloads.length=0;$lab('renders').replaceChildren();const results={};
-    for(const version of ['before','after']){const out=await renderSound(version,sequence,13);results[version]=out.stats;addRender('shark-sos-'+version,out.buffer);}
+    for(const version of ['before','synth','after']){const out=await renderSound(version,sequence,13);results[version]=out.stats;addRender('shark-sos-'+version,out.buffer);}
     $lab('metrics').textContent=JSON.stringify(results,null,2);
   }catch(error){$lab('metrics').textContent=String(error);}finally{$lab('render').disabled=false;}
 };

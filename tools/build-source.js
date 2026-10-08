@@ -14,6 +14,18 @@ const ART = [
   ...['harbor-canals', 'waterside-park', 'beyond-breakwater', 'outer-harbor'].map(name =>
     [`REGION_${name.replaceAll('-', '_').toUpperCase()}`, `art/regions/${name}.webp`]),
 ];
+// Embedded sound recordings (CC0, provenance in assets/audio/LICENSES.md); tokens live in src/sound.js SFX_SAMPLES.
+const AUDIO = ['soft-impact-0.ogg', 'soft-impact-2.ogg', 'soft-impact-3.ogg', 'water-drop.mp3', 'water-drop-2.mp3',
+  'cloth-1.ogg', 'cloth-3.ogg', 'water-swish.mp3', 'drain-glug.mp3', 'wet-sand-step.mp3', 'toggle.ogg', 'wood-creak.ogg',
+  'splash.mp3', 'select.ogg', 'open.ogg', 'close.ogg', 'marimba-c5.mp3', 'marimba-g5.mp3', 'glockenspiel-c6.mp3']
+  .map(file => [file.replace(/\.\w+$/, '').replaceAll('-', '_').toUpperCase(), `audio/${file}`]);
+function embedAudio(text) {
+  for (const [token, file] of AUDIO) {
+    const data = fs.readFileSync(path.join(root, 'assets', file)), type = file.endsWith('.ogg') ? 'audio/ogg' : 'audio/mpeg';
+    text = text.replaceAll(`@@SFX_${token}@@`, `data:${type};base64,` + data.toString('base64'));
+  }
+  return text;
+}
 function gameBody() {
   const read = file => fs.readFileSync(path.join(root, 'src', file), 'utf8');
   let body = [read('shell.html'), '<style>', read('art-theme.css'), '</style>', '<script>',
@@ -22,6 +34,6 @@ function gameBody() {
     const data = fs.readFileSync(path.join(root, 'assets', file)), type = file.endsWith('.svg') ? 'image/svg+xml' : 'image/webp';
     body = body.replaceAll(`@@ART_${token}@@`, `data:${type};base64,` + data.toString('base64'));
   }
-  return body;
+  return embedAudio(body);
 }
-module.exports = { gameBody, ART };
+module.exports = { gameBody, ART, AUDIO, embedAudio };

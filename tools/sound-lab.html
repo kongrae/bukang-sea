@@ -5,13 +5,13 @@
 </style><main>
 <span class="tag">개발 전용 · 출시 게임에는 포함되지 않음</span>
 <h1>상어 SOS 사운드 비교실</h1>
-<p>같은 행동으로 이전 소리와 새로운 물방울·토이 소리를 비교하세요. 출력 볼륨을 낮춰 시작해 보세요.</p>
-<small>이전 기준: <code>BASELINE_COMMIT</code> · 외부 오디오 자산 없음 · 청취 평가는 사용자가 확인</small>
+<p>같은 행동으로 이전 소리(10-03 기준), 합성 소리(FX04 전), 실제 녹음 소리(현재)를 비교하세요. 출력 볼륨을 낮춰 시작해 보세요.</p>
+<small>이전 기준: <code>BASELINE_COMMIT</code> · 실제 녹음 CC0 20개(assets/audio, 출처 assets/audio/LICENSES.md) · 청취 평가는 사용자가 확인</small>
 <section class="card"><h2>같은 순서로 비교</h2><p>이동 → 정지 → 막힘 → 연속 숭어 → 그물 설치·회수 → 장치 → 탈출·별·스킨 해금</p>
-<nav><button id="beforeSequence">이전 세트 재생</button><button id="afterSequence" class="new">개선 세트 재생</button><button id="stop">모두 정지</button><button id="mute">음소거 켜기</button><button id="background">백그라운드 전환 모의</button></nav>
+<nav><button id="beforeSequence">이전 세트 재생</button><button id="synthSequence">합성 세트 재생</button><button id="afterSequence" class="new">음원 세트 재생</button><button id="stop">모두 정지</button><button id="mute">음소거 켜기</button><button id="background">백그라운드 전환 모의</button></nav>
 <p id="status" role="status">준비 · 버튼을 누른 뒤에만 오디오를 시작합니다.</p><pre id="live"></pre>
 </section>
 <section class="card"><h2>행동별 미리듣기</h2><div class="effects" id="effects"></div></section>
-<section class="card"><h2>파형과 출력 검사</h2><p>실제 브라우저의 OfflineAudioContext로 두 세트를 렌더링합니다. 피크·RMS·인접 샘플 차이·마지막 무음 구간을 측정합니다. 수치 검사는 귀로 듣는 평가를 대신하지 않습니다.</p><nav><button id="render">전후 WAV 만들기 및 검사</button><button id="stressRender">밀집 재생·음소거 파형 검사</button></nav><pre id="metrics">아직 렌더링하지 않음</pre><div id="renders"></div></section>
+<section class="card"><h2>파형과 출력 검사</h2><p>실제 브라우저의 OfflineAudioContext로 두 세트를 렌더링합니다. 피크·RMS·인접 샘플 차이·마지막 무음 구간을 측정합니다. 수치 검사는 귀로 듣는 평가를 대신하지 않습니다.</p><nav><button id="render">세 세트 WAV 만들기 및 검사</button><button id="stressRender">밀집 재생·음소거 파형 검사</button></nav><pre id="metrics">아직 렌더링하지 않음</pre><div id="renders"></div></section>
 <section class="card"><h2>실제 게임 연결 검사</h2><p>기록을 분리한 게임에서 동일한 수로를 실행합니다. ‘5분 자동 플레이’는 실제 이동·그물·장치·구출 규칙을 반복합니다. 주관적인 5분 청취 검증은 별도로 필요합니다.</p><nav><a href="game-before.html">변경 전 게임</a><a href="game-after.html">개선 게임 · 5분 검사</a></nav></section>
 </main><!-- sound-code --></html>
