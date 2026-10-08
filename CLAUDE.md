@@ -6,6 +6,7 @@
 ## 작업 규칙
 
 - **작업을 마칠 때마다 자동으로 커밋한다**(사용자 요청, 2026-09-30). verify·빌드 통과 후 `master`에 바로 커밋, `.claude/`는 제외, 메시지는 한국어 요약.
+- **커밋한 뒤 GitHub Pages에도 항상 반영한다**(사용자 요청, 2026-10-08). `powershell -ExecutionPolicy Bypass -File tools/deploy-pages.ps1`(pwsh도 가능)이 `master` 푸시와 `www/` 빌드의 `gh-pages` 배포를 함께 한다. 배포 뒤 https://kongrae.github.io/bukang-sea/version.json 의 `sourceCommit`이 방금 커밋과 같은지 확인한다. 공개 저장소이므로 키·비밀번호 파일은 커밋하지 않는다.
 - `src/` 를 고쳤으면 `dist/`(build, build:artifact)도 다시 빌드해 함께 커밋한다.
 
 ## 명령어

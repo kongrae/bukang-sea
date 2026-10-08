@@ -1,4 +1,4 @@
-# 소스 master와 www 빌드를 각각 GitHub / GitHub Pages에 배포한다.
+﻿# 소스 master와 www 빌드를 각각 GitHub / GitHub Pages에 배포한다.
 $ErrorActionPreference = 'Stop'
 $projectDir = Split-Path -Parent $PSScriptRoot
 $repoUrl = 'https://github.com/kongrae/bukang-sea.git'
