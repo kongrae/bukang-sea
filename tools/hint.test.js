@@ -125,21 +125,23 @@ test('older and malformed hint records stay playable', async () => {
 });
 
 // The stuck nudge with the production hint allowance and a controllable clock; the frame loop supplies dt.
-function nudger({ par = 5 } = {}) {
-  return new Function('par', `
-    let tip = null, pulses = 0, hint = null, hintRequest = 0, cleared = false, anim = null, coach = null, now = 1e6;
+function nudger({ par = 5, nets = 0 } = {}) {
+  return new Function('par', 'nets', `
+    let tip = null, pulses = 0, netPulses = 0, hint = null, hintRequest = 0, cleared = false, anim = null, coach = null, now = 1e6;
     const Date = {now: () => now}, save = {hintUsage: {}}, persist = () => {}, LVL = 0, DAILY = null, FREE = null, PILOT = null;
     const reduceMotion = false, elements = {hintBtn: {disabled: false, offsetWidth: 0, classList: {toggle: (name, on) => { if (name === 'nudge' && on) pulses++; }}},
+      netTool: {offsetWidth: 0, classList: {toggle: (name, on) => { if (name === 'nudge' && on) netPulses++; }}},
       hintStatus: {textContent: ''}, app: {inert: false}, gameScreen: {hidden: false}};
     const $ = id => elements[id], setTip = (text, isHint) => { tip = [text, isHint]; };
-    let st = {moves: 0, history: []};
-    const curLevel = () => ({par});
+    let st = {moves: 0, history: [], nets: []};
+    const curLevel = () => ({par}), g = {nets};
     ${hintSource}
-    return { tick: seconds => { for (let t = 0; t < seconds; t += 0.05) tickHintNudge(0.05); }, tip: () => tip, pulses: () => pulses,
-      move: () => { st.moves++; st.history.push({}); }, edit: () => st.history.push({}), restart: () => { st = {moves: 0, history: []}; },
+    return { tick: seconds => { for (let t = 0; t < seconds; t += 0.05) tickHintNudge(0.05); }, tip: () => tip, pulses: () => pulses, netPulses: () => netPulses,
+      move: () => { st.moves++; st.history.push({nets: st.nets.slice()}); }, edit: () => { st.history.push({nets: st.nets.slice()}); st.nets = st.nets.length ? [] : [7]; },
+      restart: () => { st = {moves: 0, history: [], nets: []}; },
       set: (key, value) => { if (key === 'inert') elements.app.inert = value; else if (key === 'coach') coach = value; else if (key === 'cleared') cleared = value;
         else if (key === 'hint') hint = value; else if (key === 'used') save.hintUsage['story:0'] = {count: value, lastUsed: now}; else if (key === 'later') now += value; } };
-  `)(par);
+  `)(par, nets);
 }
 
 test('stuck nudge: 40 s without a move or edit pulses the hint button once and invites a hint in the tip', () => {
@@ -161,4 +163,11 @@ test('stuck nudge: passing the star target invites a hint at once; covered, fini
   const shown = nudger(); shown.set('hint', {dir: 'U'}); shown.tick(60); assert.equal(shown.pulses(), 0, 'a hint is already on screen');
   const cooling = nudger(); cooling.set('used', 2); cooling.tick(45); assert.equal(cooling.pulses(), 0, 'waits for the hint cooldown');
   cooling.set('later', 13000); cooling.tick(0.1); assert.equal(cooling.pulses(), 1);
+});
+
+test('stuck nudge on a net canal with no net placed yet points at the net tool instead of the hint', () => {
+  const unused = nudger({ nets: 1 }); unused.tick(41);
+  assert.deepEqual([unused.netPulses(), unused.pulses()], [1, 0]); assert.match(unused.tip()[0], /그물 1개를 쓸 수 있어요/);
+  const tried = nudger({ nets: 1 }); tried.edit(); tried.edit(); tried.tick(41);
+  assert.deepEqual([tried.netPulses(), tried.pulses()], [0, 1], 'a player who placed and took back a net gets the hint invitation');
 });

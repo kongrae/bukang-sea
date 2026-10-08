@@ -29,10 +29,10 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const staticLayer = {}, waterPath = {}, caustic = {}, causticPat = {};
     const elements = new Map();
     const $ = id => {
-      if (!elements.has(id)) { const names = new Set(); elements.set(id, {hidden: false, classList: {contains: n => names.has(n), toggle: (n, on = !names.has(n)) => (on ? names.add(n) : names.delete(n), on), add: n => names.add(n), remove: n => names.delete(n)}}); }
+      if (!elements.has(id)) { const names = new Set(); elements.set(id, {hidden: false, setAttribute(k, v) { this[k] = v; }, classList: {contains: n => names.has(n), toggle: (n, on = !names.has(n)) => (on ? names.add(n) : names.delete(n), on), add: n => names.add(n), remove: n => names.delete(n)}}); }
       return elements.get(id);
     };
-    const haptic = noop, updateHud = updateNetStatus, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
+    const tips = [], haptic = noop, updateHud = updateNetStatus, coachDone = noop, setupCoach = noop, setTip = text => tips.push(text), refreshHint = noop;
     const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawFish = noop, css = {getPropertyValue: () => 'sans-serif'};
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null, PILOT = null;
@@ -47,6 +47,9 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const drawBoat = (ctx, x, y) => boatsDrawn.push([x / T - 0.5, y / T - 0.5]);
     const onClear = () => {cleared = true;};
     ${source.match(/^function markDevicesSeen\(.*$/m)[0]}
+    ${source.match(/^let netCallout = .*$/m)[0]}
+    ${source.match(/^const netsKnown = .*$/m)[0]}
+    ${source.match(/^const NO_NETS_TIP = .*$/m)[0]}
     ${effects}
     ${functions}
     st = freshState(level);
@@ -58,11 +61,12 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     return {
       move: tryMove, tick: step, undo, tap: tapTile, pause: pauseGame, checkpoint,
       stored: () => written,
-      netStatus: () => ({title: $('netTitle').textContent, help: $('netHelp').textContent, disabled: $('netStatus').disabled, guideHidden: $('netGuideLabel').hidden}),
+      netTool: () => ({shown: !$('netTool').hidden, nets: $('netTool').classList.contains('has-nets'), left: $('netToolCount').hidden ? null : $('netToolCount').textContent,
+        label: $('netToolLabel').textContent, wide: $('controls').classList.contains('with-net'), callout: !$('netCallout').hidden}), tips: () => tips.slice(),
       restore: (record, otherLevel = level, id = LVL) => restoreSession(record, otherLevel, id),
       render: () => {boatsDrawn = []; netsDrawn = []; dentsDrawn = []; draw(0); return boatsDrawn;}, dents: () => dentsDrawn.slice(),
       flights: () => flights.slice(), spot: value => { deviceSpot = value; }, shown: () => [...deviceSpotShown],
-      spotState: () => deviceSpot && {t: deviceSpot.t, started: deviceSpot.started}, netSpot: () => $('netStatus').classList.contains('spot'),
+      spotState: () => deviceSpot && {t: deviceSpot.t, started: deviceSpot.started}, netSpot: () => $('netTool').classList.contains('spot'),
       sounds: () => sounds.slice(), shark: () => sharkDrawn, nets: () => netsDrawn,
       effects: () => JSON.parse(JSON.stringify({particles, wake, contacts:[...contactPulse], retract:[...netRetract], netPop:[...netPop], settle, zoom: exitZoom,
         anim:anim && {t:anim.t,dur:anim.dur,swimDur:anim.swimDur,portals:anim.portals,p:anim.p,landed:anim.landed,warpScale:anim.warpScale}})),
@@ -173,22 +177,24 @@ test('pickup pitch index resets each move; net install and retrieval report only
   assert.equal(scene.sounds().filter(s=>s.name==='move'||s.name==='stop').length,0,'ordinary swimming and arrival are silent');
 });
 
-test('net reminder follows placement, exhaustion, undo, reload and levels without nets', () => {
+test('net tool: nets left through placement, exhaustion, undo and reload; grey 없음 once nets are known; callout until the first edit', () => {
   const level = {par: 8, nets: 2, map: ['###E###','#.....#','#S....#','#.....#','#######']};
   const scene = game({level});
-  assert.equal(scene.netStatus().title, '그물 수로 · 남음 2 / 2');
+  assert.deepEqual(scene.netTool(), {shown: true, nets: true, left: '2', label: '그물', wide: true, callout: true}, 'a fresh net canal points at its tool');
   scene.tap(3, 2); scene.tap(4, 2);
-  assert.equal(scene.netStatus().title, '그물 수로 · 남음 0 / 2');
-  assert.equal(scene.netStatus().help, '설치 2개 · 누르면 회수해요');
-  assert.equal(scene.netStatus().disabled, false, 'exhausted nets can still be recalled and explained');
+  assert.deepEqual(scene.netTool(), {shown: true, nets: true, left: '0', label: '그물', wide: true, callout: false}, 'the first edit retires the callout');
   assert.equal(scene.state().moves, 0);
   const resumed = game({level, stored:scene.stored()});
-  assert.deepEqual(resumed.netStatus(), scene.netStatus());
-  resumed.tap(3, 2); assert.equal(resumed.netStatus().title, '그물 수로 · 남음 1 / 2');
-  resumed.undo(); assert.equal(resumed.netStatus().title, '그물 수로 · 남음 0 / 2');
-  const plain = game({index:0});
-  assert.equal(plain.netStatus().title, '그물 없는 수로');
-  assert.equal(plain.netStatus().disabled, true); assert.equal(plain.netStatus().guideHidden, true);
+  assert.deepEqual(resumed.netTool(), scene.netTool(), 'a resumed attempt that already edited shows no callout');
+  resumed.tap(3, 2); assert.equal(resumed.netTool().left, '1');
+  resumed.undo(); assert.equal(resumed.netTool().left, '0');
+  resumed.undo(); resumed.undo(); assert.equal(resumed.netTool().callout, false, 'undoing back to the start does not bring it back');
+  const before = game({index:0});
+  assert.deepEqual([before.netTool().shown, before.netTool().wide], [false, false], 'hidden until the player has met nets');
+  before.tap(3, 3); assert.match(before.tips().at(-1), /화면을 밀어서/);
+  const known = game({index:0, stored: JSON.stringify({best: {}, coachNet: true, sessions: {}, seenDevices: ['net']})});
+  assert.deepEqual(known.netTool(), {shown: true, nets: false, left: null, label: '없음', wide: true, callout: false});
+  known.tap(3, 3); assert.equal(known.tips().at(-1), '이 수로에는 그물이 없어요. 화면을 밀어서 길을 찾아요.');
 });
 
 test('installed and removed nets, and their undo history, survive a reload', () => {

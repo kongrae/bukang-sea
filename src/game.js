@@ -996,10 +996,10 @@ function startDeviceSpot() {
   deviceSpot.started = true;
   if (deviceSpot.level != null) deviceSpotShown.add(deviceSpot.level);
   if (deviceSpot.seen?.length) markDevicesSeen(deviceSpot.seen);
-  if (deviceSpot.net) $('netStatus').classList.add('spot');
+  if (deviceSpot.net) $('netTool').classList.add('spot');
 }
 function endDeviceSpot() {
-  if (deviceSpot?.started && deviceSpot.net) $('netStatus').classList.remove('spot');
+  if (deviceSpot?.started && deviceSpot.net) $('netTool').classList.remove('spot');
   deviceSpot = null;
 }
 // Sand cells the shark has stopped on in this attempt, derived from the saved turn history so undo, restart and
@@ -1142,14 +1142,24 @@ function updateHud() {
   $('undoBtn').disabled = !st.history.length;
   catchGoal();
 }
+// The round net tool at the end of the bottom row, in every mode: gold with the nets left on a net canal, grey "없음"
+// on other canals once the player has met nets, hidden before that. A fresh attempt on a net canal also points at it
+// with a callout over the other controls until the first move or net edit (or a tap on the callout).
+let netCallout = { st: null, done: false };
+const netsKnown = () => g.nets > 0 || !!save.seenDevices?.includes('net');
 function updateNetStatus() {
-  const available = g.nets - st.nets.length, active = g.nets > 0;
-  $('netStatus').classList.toggle('has-nets', active);
-  $('netStatus').disabled = !active;
-  $('netTitle').textContent = active ? `그물 수로 · 남음 ${available} / ${g.nets}` : '그물 없는 수로';
-  $('netHelp').textContent = active ? (st.nets.length ? `설치 ${st.nets.length}개 · 누르면 회수해요` : '빈 물 칸을 톡! 그물을 설치해요') : '화면을 밀어서 길을 찾아요';
-  $('netGuideLabel').hidden = !active;
+  const active = g.nets > 0, left = g.nets - st.nets.length, known = netsKnown();
+  $('netTool').hidden = !known; $('controls').classList.toggle('with-net', known);
+  $('netTool').classList.toggle('has-nets', active);
+  $('netToolLabel').textContent = active ? '그물' : '없음';
+  $('netToolCount').textContent = `${left}`; $('netToolCount').hidden = !active;
+  $('netTool').setAttribute('aria-label', active ? `그물 ${left}개 남음, 모두 ${g.nets}개. 누르면 사용법을 봐요` : '이 수로에는 그물이 없어요');
+  if (netCallout.st !== st) netCallout = { st, done: false };   // enter() starts each attempt with a new st
+  if (st.history.length) netCallout.done = true;
+  $('netCallout').hidden = !active || netCallout.done;
+  if (!$('netCallout').hidden) $('netCallout').textContent = `그물 ${g.nets}개를 쓸 수 있어요 · 빈 물 칸을 톡!`;
 }
+const NO_NETS_TIP = '이 수로에는 그물이 없어요. 화면을 밀어서 길을 찾아요.';
 // A caught mullet pops up from its tile and flies into the HUD goal, whose icon bounces as it lands (collect to
 // counter). Visual only: the count is already updated. Undo, replay and leaving drop flights in progress.
 const FISH_FLIGHT_MS = 560, GOAL_CATCH_MS = 320;
@@ -1294,7 +1304,7 @@ function tapTile(gx, gy) {
   if (anim || cleared) return;
   const device = cellAt(g, gx, gy);
   if (device === 'p' || device === 'G') { setTip(device === 'p' ? '스위치는 상어가 그 위에서 멈춰야 눌려요.' : '수문은 스위치로 열고 닫아요. 닫힌 수문은 벽처럼 막아요.'); return; }
-  if (!g.nets) { setTip('화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
+  if (!g.nets) { setTip(save.seenDevices?.includes('net') ? NO_NETS_TIP : '화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
   const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
   const at = st.nets.indexOf(idx);
@@ -1363,6 +1373,12 @@ function tickHintNudge(dt) {
   if (!over && hintNudge.idle < HINT_NUDGE_IDLE) return;
   if (hint || hintWait() || (hintSearching !== 0 && hintSearching === hintRequest)) return;
   hintNudge.done = true;
+  // a net canal where no net has been placed yet: the likely miss is the nets themselves
+  if (g.nets > 0 && !st.nets.length && !st.history.some(h => h.nets?.length)) {
+    pulseRewardMark($('netTool'), 'nudge');
+    setTip(`그물 ${g.nets}개를 쓸 수 있어요. 빈 물 칸을 눌러 보세요.`, true);
+    return;
+  }
   pulseRewardMark($('hintBtn'), 'nudge');
   setTip(over ? '이동이 기준을 넘었어요. 힌트로 가장 짧은 길을 볼 수 있어요.' : '막히면 힌트를 눌러 보세요. 다음 한 수를 보여 줘요.', true);
 }
@@ -2710,7 +2726,7 @@ function showDeviceGuide(firstOnly = false, requestedKey = null) {
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
   guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
-  guideReturnFocus = requestedKey === 'net' ? 'netStatus' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
+  guideReturnFocus = requestedKey === 'net' ? 'netTool' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
   openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
 }
@@ -2935,7 +2951,10 @@ $('guideToggle').addEventListener('click', toggleGuidePlayback);
 $('guideReplay').addEventListener('click', replayGuide);
 $('guidePrev').addEventListener('click', () => changeGuideStep(-1));
 $('guideNext').addEventListener('click', () => changeGuideStep(1));
-$('netStatus').addEventListener('click', () => { if (g.nets) showDeviceGuide(false, 'net'); });
+$('netTool').addEventListener('click', () => {
+  if (g.nets) showDeviceGuide(false, 'net'); else { setTip(NO_NETS_TIP); pulseRewardMark($('netTool'), 'nudge'); }
+});
+$('netCallout').addEventListener('click', () => { netCallout.done = true; $('netCallout').hidden = true; });
 $('guideTabs').addEventListener('click', e => {
   const b = e.target.closest('[data-guide]'); if (!b) return;
   selectGuideDevice(+b.dataset.guide);
@@ -3044,7 +3063,7 @@ if (capApp) capApp.addListener('appStateChange', ({ isActive }) => {
 function start(data) {
   migratePilotToStory(); migrateStoryOrder();
   refreshSkins();   // grant skins already earned by existing progress
-  renderLegend(); renderLevelGrid();
+  renderLegend(); drawLegendIcon($('netToolIcon')); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
     ? [1, DAILY_OPERATION_VERSION].includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion) : makeDaily(data.daily));
   const level = resumeDaily ? resumeDaily.level : data && storyLevel(data.lvl);
@@ -3084,7 +3103,7 @@ if (typeof SHARK_ART !== 'undefined') {
   SHARK_ART.load();
 }
 if (typeof BOARD_ART !== 'undefined') {
-  BOARD_ART.onReady = () => { invalidateScenes(); guidePaintTime = -1; if ($('legend').childElementCount) $('legend').querySelectorAll('canvas').forEach(drawLegendIcon); };
+  BOARD_ART.onReady = () => { invalidateScenes(); guidePaintTime = -1; if ($('legend').childElementCount) $('legend').querySelectorAll('canvas').forEach(drawLegendIcon); drawLegendIcon($('netToolIcon')); };
   BOARD_ART.load();
 }
 $('clearMascot').addEventListener('error', e => { e.currentTarget.hidden = true; });
