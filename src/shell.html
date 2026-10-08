@@ -273,12 +273,14 @@ h1 .sea { color: var(--title-alert); }
 .chapter-art img { transform-origin: 50% 62%; }
 .chapter-playing .chapter-art img { animation: chapter-art 5s ease-out both; }
 .chapter-route { position: relative; flex-shrink: 0; margin: 38px 24px 0; }
-.chapter-route::before { content: ""; position: absolute; left: 10px; right: 26px; top: 50%; height: 2px; margin-top: -1px; background: #b9d8da; }
-.chapter-route ol { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; align-items: center; }
-.chapter-route li { position: relative; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #a7cfd3; background: #f6fbfa; color: #4d6f76; font-size: 11px; font-weight: 700; }
+/* the line fades at both ends: the journey continues past whatever chapters exist now */
+.chapter-route::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: linear-gradient(90deg, transparent, #b9d8da 16%, #b9d8da 84%, transparent); }
+.chapter-route ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); justify-items: center; align-items: center; }
+.chapter-route li { position: relative; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #a7cfd3; background: #f6fbfa; color: #4d6f76; font-size: 11px; font-weight: 700; }
 .chapter-route li.done { border-color: #286446; background: #286446; color: #fff; }
-.chapter-route li.now { width: 26px; height: 26px; border-color: var(--buoy); background: #fff0d6; color: #8a4310; font-size: 13px; }
-.chapter-route li.sea { width: auto; height: auto; border: 0; background: none; color: #1f7d97; font-size: 12px; padding-left: 4px; }
+.chapter-route li.past { border-color: #286446; color: #286446; }
+.chapter-route li.now { width: 28px; height: 28px; border-color: var(--buoy); background: #fff0d6; color: #8a4310; font-size: 13px; }
+.chapter-route li.gap { visibility: hidden; }
 .chapter-shark { position: absolute; left: 0; bottom: 100%; width: 44px; height: 28px; margin: 0 0 2px -22px; pointer-events: none; }
 .chapter-number { margin: 14px 0 0; font-size: 14px; font-weight: 700; color: #3d6670; }
 .card.chapter-card h3 { margin: 0 20px; font-size: clamp(30px, 9vw, 36px); }

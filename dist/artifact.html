@@ -273,12 +273,14 @@ h1 .sea { color: var(--title-alert); }
 .chapter-art img { transform-origin: 50% 62%; }
 .chapter-playing .chapter-art img { animation: chapter-art 5s ease-out both; }
 .chapter-route { position: relative; flex-shrink: 0; margin: 38px 24px 0; }
-.chapter-route::before { content: ""; position: absolute; left: 10px; right: 26px; top: 50%; height: 2px; margin-top: -1px; background: #b9d8da; }
-.chapter-route ol { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; align-items: center; }
-.chapter-route li { position: relative; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #a7cfd3; background: #f6fbfa; color: #4d6f76; font-size: 11px; font-weight: 700; }
+/* the line fades at both ends: the journey continues past whatever chapters exist now */
+.chapter-route::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: linear-gradient(90deg, transparent, #b9d8da 16%, #b9d8da 84%, transparent); }
+.chapter-route ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); justify-items: center; align-items: center; }
+.chapter-route li { position: relative; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #a7cfd3; background: #f6fbfa; color: #4d6f76; font-size: 11px; font-weight: 700; }
 .chapter-route li.done { border-color: #286446; background: #286446; color: #fff; }
-.chapter-route li.now { width: 26px; height: 26px; border-color: var(--buoy); background: #fff0d6; color: #8a4310; font-size: 13px; }
-.chapter-route li.sea { width: auto; height: auto; border: 0; background: none; color: #1f7d97; font-size: 12px; padding-left: 4px; }
+.chapter-route li.past { border-color: #286446; color: #286446; }
+.chapter-route li.now { width: 28px; height: 28px; border-color: var(--buoy); background: #fff0d6; color: #8a4310; font-size: 13px; }
+.chapter-route li.gap { visibility: hidden; }
 .chapter-shark { position: absolute; left: 0; bottom: 100%; width: 44px; height: 28px; margin: 0 0 2px -22px; pointer-events: none; }
 .chapter-number { margin: 14px 0 0; font-size: 14px; font-weight: 700; color: #3d6670; }
 .card.chapter-card h3 { margin: 0 20px; font-size: clamp(30px, 9vw, 36px); }
@@ -5159,25 +5161,31 @@ function drawEnding(t) {
   const eased = 1 - Math.pow(1 - u, 2), sx = w * (0.14 + 0.6 * eased), sy = h * 0.54 + Math.sin(time * 0.8) * h * 0.025;
   drawShark(ctx, sx, sy, 0, Math.min(76, w * 0.22), time, u < 1, 1, 1, currentSkin());
 }
-// Chapter title card: region picture, the route to the sea, the chapter's story and its new device. It covers the
-// first canal of chapters 2–6 until it is cleared, once per app session; the canal's start cue and device guide wait.
-// Retrying the canal and resuming an attempt that already moved skip it. Nothing is saved.
+// Chapter title card: region picture, the route so far, the chapter's story and its new device. It covers the first
+// canal of every chapter after the first until it is cleared, once per app session; the canal's start cue and device
+// guide wait. Retrying the canal and resuming an attempt that already moved skip it. Nothing is saved.
+// Chapters keep being added, so nothing here assumes a chapter count or a final chapter.
 const chapterCardShown = new Set();
 let chapterCardAt = 0;
 const chapterOpen = () => !$('chapterOverlay').hidden;
 function chapterCardDue(i, keep, chap) {
   return chap.ci > 0 && STORY_POSITION[i] === chap.start && !(save.best[i] >= 1) && !keep?.moves && !chapterCardShown.has(chap.ci);
 }
+// The card's route window: two chapters back, this one in the middle, two ahead. Slots past either end of the current
+// chapter list stay empty and the line fades out, so the route never shows an end point.
+const chapterRouteStops = (ci, total = CHAPTERS.length) => [-2, -1, 0, 1, 2].map(d => ci + d).map(k => k >= 0 && k < total ? k : null);
 function openChapterCard(ci) {
-  const chapter = CHAPTERS[ci], devices = chapterDevices(ci), art = $('chapterArt'), route = $('chapterRoute');
+  const chapter = CHAPTERS[ci], devices = chapterDevices(ci), art = $('chapterArt'), route = $('chapterRoute'), journey = storyProgress().chapters;
   chapterCardShown.add(ci); chapterCardAt = performance.now();
   art.classList.remove('no-art'); art.innerHTML = '<img alt="" width="720" height="480">';
   setRegionArt(art.querySelector('img'), chapter.region);
-  route.innerHTML = CHAPTERS.map((_, k) => `<li class="${k < ci ? 'done' : k === ci ? 'now' : ''}">${k < ci ? '✓' : k + 1}</li>`).join('') + '<li class="sea">바다</li>';
-  route.setAttribute('aria-label', `바다까지 ${CHAPTERS.length}장 중 ${ci + 1}장`);
+  route.innerHTML = chapterRouteStops(ci).map(k => k == null ? '<li class="gap"></li>'
+    : k === ci ? `<li class="now">${k + 1}</li>` : k > ci ? `<li>${k + 1}</li>` : journey[k].complete ? '<li class="done">✓</li>' : `<li class="past">${k + 1}</li>`).join('');
+  route.setAttribute('aria-label', `구출 여정 ${ci + 1}장`);
   $('chapterNumber').textContent = `${ci + 1}장`;
   $('chapterName').textContent = chapter.name;
-  $('chapterIntro').textContent = JOURNEY_STORY[ci].intro;
+  $('chapterIntro').textContent = JOURNEY_STORY[ci]?.intro || '';
+  $('chapterIntro').hidden = !JOURNEY_STORY[ci];
   const names = devices.map(k => DEVICE_GUIDES.find(d => d.key === k)?.name).filter(Boolean);
   $('chapterDevice').hidden = !names.length;
   $('chapterDevice').innerHTML = names.length ? `<canvas data-k="${devices[0]}" width="72" height="72" aria-hidden="true"></canvas><span>새 장치 · ${names.join(', ')}</span>` : '';
@@ -5186,11 +5194,12 @@ function openChapterCard(ci) {
   $('chapterCard').classList.toggle('chapter-playing', !reduceMotion);
   openSheet('chapterOverlay'); sfx.chapter();
   $('chapterGo').focus({ preventScroll: true });
-  // The shark hops from the last chapter's stop to this one (layout offsets: the card's entry scale does not count).
+  // The shark hops from the last chapter's stop (slot 1) to this one in the middle (slot 2). Layout offsets: the card's
+  // entry scale does not count.
   const shark = $('chapterShark'), centre = li => li.offsetLeft + li.offsetWidth / 2;
-  drawRouteShark(shark); shark.style.left = centre(route.children[ci]) + 'px';
+  drawRouteShark(shark); shark.style.left = centre(route.children[2]) + 'px';
   if (!reduceMotion && typeof shark.animate === 'function') {
-    const dx = centre(route.children[ci - 1]) - centre(route.children[ci]);
+    const dx = centre(route.children[1]) - centre(route.children[2]);
     shark.animate([{ transform: `translateX(${dx}px)` }, { transform: `translate(${dx / 2}px, -7px)`, offset: .5 }, { transform: 'none' }],
       { duration: 900, delay: 300, easing: 'ease-in-out', fill: 'backwards' });
   }

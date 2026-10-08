@@ -566,16 +566,27 @@ test('only the canal introducing a device spotlights it: one per chapter, before
   scene.set('reduced', true); assert.equal(scene.load(48), null, 'reduced motion');
 });
 
-test('a chapter card covers only the first canal of chapters 2–6: once per app session, before moving, until cleared', () => {
+test('a chapter card covers only the first canal of every chapter after the first: once per session, before moving, until cleared', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 5].map(ci => storyLoader().devices(ci)), [['jet'], ['boat'], ['net'], ['sand'], ['whirl'], ['gate']]);
+  // chapter start positions come from the data, so added chapters are covered without editing this test
+  const { CHAPTERS } = require('../src/levels.js'), starts = CHAPTERS.map((_, ci) => CHAPTERS.slice(0, ci).reduce((n, ch) => n + ch.count, 0));
   const scene = storyLoader();
   scene.load(0); assert.deepEqual(scene.cards(), [], 'the first chapter starts the game without a card');
   assert.equal(scene.held(), false, 'without a card the canal starts at once');
-  for (const position of [12, 24, 36, 48, 60]) scene.load(position);
-  assert.deepEqual(scene.cards(), [1, 2, 3, 4, 5]); assert.equal(scene.held(), true, 'the card holds the start cue and device guide');
-  scene.load(12); scene.load(13); assert.deepEqual(scene.cards(), [1, 2, 3, 4, 5], 'once per session, and only the first canal');
+  for (const position of starts.slice(1)) scene.load(position);
+  const later = CHAPTERS.map((_, ci) => ci).slice(1);
+  assert.deepEqual(scene.cards(), later); assert.equal(scene.held(), true, 'the card holds the start cue and device guide');
+  scene.load(starts[1]); scene.load(starts[1] + 1); assert.deepEqual(scene.cards(), later, 'once per session, and only the first canal');
   const resumed = storyLoader(); resumed.load(24, {moves: 3}); assert.deepEqual(resumed.cards(), [], 'a resumed attempt that moved');
   resumed.load(24, {moves: 0}); assert.deepEqual(resumed.cards(), [2], 'a resumed attempt that only placed nets still opens it');
   const cleared = storyLoader(); cleared.set(36, 1); cleared.load(36); assert.deepEqual(cleared.cards(), [], 'cleared first canal');
   const retry = storyLoader(); retry.retry(48, {moves: 2}); assert.deepEqual(retry.cards(), [], 'retrying a resumed attempt does not open it');
+});
+
+test('the chapter card route keeps the current chapter centred with two on each side and no end point', () => {
+  const stops = new Function(source.match(/^const chapterRouteStops = .*$/m)[0] + '; return chapterRouteStops;')();
+  assert.deepEqual(stops(1, 6), [null, 0, 1, 2, 3], 'chapter 2: the start of the journey on the left');
+  assert.deepEqual(stops(5, 6), [3, 4, 5, null, null], 'the newest chapter: the route fades out instead of ending');
+  assert.deepEqual(stops(5, 9), [3, 4, 5, 6, 7], 'chapters added later appear ahead of it');
+  assert.deepEqual(stops(20, 30), [18, 19, 20, 21, 22], 'five stops however long the journey grows');
 });

@@ -129,6 +129,19 @@ test('chapter 4 leads into the north harbor preview, then chapter 5 leads to the
   assert.equal(harbor.element('clearTitle').textContent,'북항 바깥길 통과!');
 });
 
+test('every chapter has its story lines and an embedded region picture, so added chapters cannot ship half-made', () => {
+  const { CHAPTERS, LEVELS: ALL } = require('../src/levels');
+  const story = new Function(`${source.match(/^const JOURNEY_STORY = \[[^]*?\n\];/m)[0]} return JOURNEY_STORY;`)();
+  const art = fs.readFileSync(path.join(__dirname, '../src/art.js'), 'utf8'), { ART } = require('./build-source');
+  const regionTokens = Object.fromEntries([...art.slice(art.indexOf('const REGION_ART')).matchAll(/'([\w-]+)': '@@ART_([A-Z_]+)@@'/g)].map(m => [m[1], m[2]]));
+  assert.equal(CHAPTERS.reduce((n, ch) => n + ch.count, 0), ALL.length, 'chapters cover every canal');
+  CHAPTERS.forEach((ch, ci) => {
+    assert.ok(story[ci]?.intro && story[ci]?.outro, `${ci + 1}장 JOURNEY_STORY intro/outro`);
+    const token = regionTokens[ch.region], file = ART.find(([name]) => name === token)?.[1];
+    assert.ok(file && fs.existsSync(path.join(__dirname, '../assets', file)), `${ci + 1}장 region art for ${ch.region}`);
+  });
+});
+
 test('players who rescued all 60 canals before the additions keep the ending while the new canals wait', () => {
   const best=Object.fromEntries(Array.from({length:60},(_,i)=>[i,1]));
   const kept=scene({best,storyRescued:1});kept.render();
