@@ -517,26 +517,35 @@ test('the new-device spotlight starts once the board is uncovered and ends on th
   assert.equal(scene.spotState(), null, 'fades out by itself');
 });
 
-test('only the canal introducing a device spotlights it: one per chapter, before the first move, until cleared', () => {
+// Production loadLevel with its device spotlight and chapter card decisions; enter() and the card itself are stand-ins.
+function storyLoader() {
   const data = require('../src/levels.js');
   const story = source.slice(source.indexOf('// Device kinds a story canal introduces'), source.indexOf('/* ---------- story journey:'));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
-  const loadLevel = source.match(/function loadLevel\([^]*?\n}/)[0];
-  const scene = new Function('data', `
+  const loadLevel = source.match(/function loadLevel\([^]*?\n}/)[0], cardDue = source.match(/function chapterCardDue\([^]*?\n}/)[0];
+  return new Function('data', `
     ${engine}
     const { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, LEVEL_ROLES } = data;
-    let DAILY = null, FREE = null, PILOT = null, STORY = null, LVL = 0, deco = 0, g, st, deviceSpot = null, reduceMotion = false, moves = 0;
-    const save = {best: {}}, deviceSpotShown = new Set(), storyLevel = i => ({...LEVELS[i], map: LEVELS[i].map.slice()});
-    const enter = level => { g = parseLevel(level); st = {moves, boats: g.boats.map(b => b.slice())}; };
+    let DAILY = null, FREE = null, PILOT = null, STORY = null, LVL = 0, deco = 0, g, st, deviceSpot = null, reduceMotion = false, moves = 0, held = null;
+    const save = {best: {}}, deviceSpotShown = new Set(), chapterCardShown = new Set(), cards = [], storyLevel = i => ({...LEVELS[i], map: LEVELS[i].map.slice()});
+    const enter = (level, keep, label, region, preview, cover) => { held = cover; g = parseLevel(level); st = {moves, boats: g.boats.map(b => b.slice())}; };
+    const openChapterCard = ci => { chapterCardShown.add(ci); cards.push(ci); };
     ${story}
+    ${cardDue}
     ${loadLevel}
     const at = position => STORY_ORDER[position];
     return {
-      introduced: position => introducedDevices(at(position)),
+      introduced: position => introducedDevices(at(position)), devices: chapterDevices,
       load: (position, keep) => { deviceSpot = null; loadLevel(at(position), keep); return deviceSpot && {cells: deviceSpot.cells.map(k => g.cells[k]), net: deviceSpot.net}; },
+      retry: (position, keep) => { loadLevel(at(position), keep); loadLevel(at(position), null, STORY); },
+      cards: () => cards.slice(), held: () => held,
       boats: () => st.boats.map(b => b[0]), set: (key, value) => { if (key === 'moves') moves = value; else if (key === 'reduced') reduceMotion = value; else if (key === 'shown') deviceSpotShown.add(at(value)); else save.best[at(key)] = value; },
     };
   `)(data);
+}
+
+test('only the canal introducing a device spotlights it: one per chapter, before the first move, until cleared', () => {
+  const scene = storyLoader();
   const firsts = { jet: 6, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60 };
   for (const [kind, position] of Object.entries(firsts)) {
     assert.deepEqual(scene.introduced(position), [kind]);
@@ -555,4 +564,18 @@ test('only the canal introducing a device spotlights it: one per chapter, before
   scene.set('shown', 12); assert.equal(scene.load(12), null, 'already shown in this app session');
   scene.set('moves', 2); assert.equal(scene.load(24), null, 'resumed after moving'); scene.set('moves', 0);
   scene.set('reduced', true); assert.equal(scene.load(48), null, 'reduced motion');
+});
+
+test('a chapter card covers only the first canal of chapters 2–6: once per app session, before moving, until cleared', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(ci => storyLoader().devices(ci)), [['jet'], ['boat'], ['net'], ['sand'], ['whirl'], ['gate']]);
+  const scene = storyLoader();
+  scene.load(0); assert.deepEqual(scene.cards(), [], 'the first chapter starts the game without a card');
+  assert.equal(scene.held(), false, 'without a card the canal starts at once');
+  for (const position of [12, 24, 36, 48, 60]) scene.load(position);
+  assert.deepEqual(scene.cards(), [1, 2, 3, 4, 5]); assert.equal(scene.held(), true, 'the card holds the start cue and device guide');
+  scene.load(12); scene.load(13); assert.deepEqual(scene.cards(), [1, 2, 3, 4, 5], 'once per session, and only the first canal');
+  const resumed = storyLoader(); resumed.load(24, {moves: 3}); assert.deepEqual(resumed.cards(), [], 'a resumed attempt that moved');
+  resumed.load(24, {moves: 0}); assert.deepEqual(resumed.cards(), [2], 'a resumed attempt that only placed nets still opens it');
+  const cleared = storyLoader(); cleared.set(36, 1); cleared.load(36); assert.deepEqual(cleared.cards(), [], 'cleared first canal');
+  const retry = storyLoader(); retry.retry(48, {moves: 2}); assert.deepEqual(retry.cards(), [], 'retrying a resumed attempt does not open it');
 });

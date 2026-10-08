@@ -5,7 +5,7 @@ const cases = [
   ['그물 설치','net',[false]],['그물 회수','net',[true]],['물줄기','jet',[]],['소용돌이','warp',[]],
   ['모래톱','sand',[]],['스위치','press',[]],['수문','gate',[]],['구조정','boat',[]],
   ['바다로 탈출','exit',[]],['별 1','star',[0]],['별 2','star',[1]],['별 3','star',[2]],
-  ['스킨 해금','unlockReward',[]],['일반 버튼','ui',[]],['구출 시작','start',[]],['상어 선택','equip',[]],
+  ['스킨 해금','unlockReward',[]],['장 시작','chapter',[]],['일반 버튼','ui',[]],['구출 시작','start',[]],['상어 선택','equip',[]],
   ['시트 열기','sheet',[true]],['시트 닫기','sheet',[false]],['되돌리기','undo',[]],
 ];
 const sequence = [
@@ -46,7 +46,7 @@ for(const [label,name,args] of cases) {
   for(const version of ['before','synth','after']) {
     const button=document.createElement('button');button.textContent=label+' · '+LABEL[version];button.className=version==='after'?'new':'';
     const removed=['move','stop'].includes(name)&&version!=='before';
-    const absent=['boat','unlockReward','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
+    const absent=['boat','unlockReward','chapter','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
     if(removed)button.textContent=label+' · 제거됨';
     button.onclick=()=>{stopLab();if(!muted&&!suspended)getEffects(version)[name]?.(...args);$lab('status').textContent=label+' · '+version;};row.append(button);
   }

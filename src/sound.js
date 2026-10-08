@@ -202,7 +202,7 @@ function createGameAudio({ enabled = () => true, active = () => true,
   // Each effect uses its recordings only when all of them decoded; otherwise the synthesized cue plays unchanged.
   const lv = { bump: -34, drop: -32, note: -34, bell: -34, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
     pressNote: -40, creak: -41, gateWater: -46, boat: -47, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
-    unlock: -31, unlockBell: -36, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
+    unlock: -31, unlockBell: -36, chapter: -31, chapterBell: -36, chapterWater: -44, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
   const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'], DROPS = ['waterDrop', 'waterDrop2'];
   const CHAIN = ['A4', 'B4', 'C#5', 'E5', 'F#5', 'A5'];
   const effects = {
@@ -308,6 +308,17 @@ function createGameAudio({ enabled = () => true, active = () => true,
       }
       [440, 659.25, 880].forEach((hz, i) => drop(v, hz, .29, .15 - i * .015, i * .1, hz));
       wash(v, .2, .09, 650, 1550, .05);
+    }),
+    // A new chapter's title card: water carries the shark on, then a rising call that ends on a bell.
+    chapter: reward('chapter', v => {
+      if (ready('waterSwish', ...MALLETS, ...BELLS)) {
+        sample(v, 'waterSwish', { lvl: lv.chapterWater, dur: .5, fade: .2, rate: .9 });
+        notes(v, ['C#5', 'E5', 'A5'], { lvl: lv.chapter, dur: .7, gap: .13, delay: .12, fade: .3 });
+        note(v, 'A5', { bell: true, lvl: lv.chapterBell, dur: 1.1, delay: .38, fade: .4 });
+        return;
+      }
+      wash(v, .3, .12, 500, 1400);
+      [554.37, 659.25, 880].forEach((hz, i) => drop(v, hz, .26, .14 - i * .015, .12 + i * .13, hz));
     }),
     clear: () => clear(), cancelReward: () => clear('reward'), token: () => epoch,
   };

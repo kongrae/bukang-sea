@@ -62,7 +62,7 @@ function scene({ stored={}, reduced=false }={}) {
     const sfx={win:()=>sounds.push(['win',now]),star:k=>sounds.push([k,now]),equip:()=>sounds.push(['equip',now]),cancelReward:noop,token:()=>0,unlockReward:()=>sounds.push(['unlock',now])};
     const haptic=v=>vibrations.push(v),renderLevelGrid=noop,storySession=()=>null;
     const curLevel=()=>DAILY?DAILY.level:LEVELS[LVL],dailySessionKey=()=> 'daily';
-    const show=noop,loadLevel=noop;
+    const show=noop,loadLevel=noop,showRegionPreview=noop;
     const advance=ms=>{const end=now+ms;while(true){const entry=[...timers].filter(([,t])=>t.due<=end).sort((a,b)=>a[1].due-b[1].due)[0];if(!entry)break;now=entry[1].due;timers.delete(entry[0]);entry[1].cb();}now=end;};
     return {save:()=>JSON.parse(written),element:$,sounds:()=>sounds.slice(),timers:()=>timers.size,advance,cancel:cancelClearPresentation,
       interrupt:interruptClearPresentation,resume:()=>clearReveal?.(false),pendingResult:()=>!!clearReveal,

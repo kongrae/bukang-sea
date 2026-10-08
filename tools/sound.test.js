@@ -106,6 +106,18 @@ test('mute and backgrounding stop recorded layers and their scheduled reward not
   f.mute(false); const count = f.sources.length; f.sfx.star(2, token); assert.equal(f.sources.length, count, 'a cancelled ceremony stays silent');
   f.sfx.exit(); f.active(false); f.advance(.05); await new Promise(resolve => setTimeout(resolve, 40)); assert.equal(f.audio.inspect().sources, 0);
 });
+test('chapter card call: water, then C#5–E5–A5 with a later bell in the shared scale; synthesized without recordings', async () => {
+  const f = fixture(recordings()); f.audio.unlock(); await f.audio.loaded();
+  f.sfx.chapter();
+  const layers = recordedOf(f), pitch = n => Math.round(n.playbackRate.value * SFX_SAMPLES[n.buffer.key][3]);
+  assert.equal(layers[0].buffer.key, 'waterSwish'); assert.equal(f.sources.filter(n => n.kind === 'tone').length, 0);
+  assert.deepEqual(layers.slice(1).map(pitch), [554, 659, 880, 880]);
+  assert.equal(layers.at(-1).buffer.key, 'glockC6'); assert.ok(layers.at(-1).startTime >= .38, 'the bell lands on the top note');
+  f.mute(true); f.advance(.03); assert.equal(f.audio.inspect().voices, 0, 'muting cancels it like any reward');
+  const synth = fixture(); synth.audio.unlock(); synth.sfx.chapter();
+  assert.ok(synth.sources.filter(n => n.kind === 'tone').length >= 3, 'falls back to synthesized notes');
+  synth.advance(2); assert.equal(synth.audio.inspect().sources, 0);
+});
 test('embedded recordings: each token has a CC0 file with provenance and the set stays under 400 KB as data URLs', () => {
   const root = path.join(__dirname, '..'), source = fs.readFileSync(path.join(root, 'src/sound.js'), 'utf8');
   const tokens = [...source.matchAll(/@@SFX_([A-Z0-9_]+)@@/g)].map(m => m[1]);

@@ -15,7 +15,7 @@ function invalidateScenes() { gameNeedsPaint = heroNeedsPaint = endingNeedsPaint
 const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
 
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
-const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay'];
+const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay', 'chapterOverlay'];
 const sheetExits = new Map(), sheetOrigins = new Map();
 // Every dismissal goes through the menu's own cleanup/return path. Results require an explicit action.
 const sheetDismiss = {
@@ -218,6 +218,11 @@ function introducedDevices(i) {
   }
   return Object.keys(firstDeviceAt).filter(kind => firstDeviceAt[kind] === STORY_POSITION[i]);
 }
+// Device kinds that first appear in chapter ci (one per chapter since the 2026-10-07 restructure).
+function chapterDevices(ci) {
+  let start = 0; for (let k = 0; k < ci; k++) start += CHAPTERS[k].count;
+  return STORY_ORDER.slice(start, start + CHAPTERS[ci].count).flatMap(i => introducedDevices(i));
+}
 // chapter of LEVELS index i: { ci, start, end, name }; start/end are play positions (CHAPTERS lists runs of STORY_ORDER)
 function chapterOf(i) {
   const position = STORY_POSITION[i] ?? 0;
@@ -332,6 +337,53 @@ function drawEnding(t) {
   }
   const eased = 1 - Math.pow(1 - u, 2), sx = w * (0.14 + 0.6 * eased), sy = h * 0.54 + Math.sin(time * 0.8) * h * 0.025;
   drawShark(ctx, sx, sy, 0, Math.min(76, w * 0.22), time, u < 1, 1, 1, currentSkin());
+}
+// Chapter title card: region picture, the route to the sea, the chapter's story and its new device. It covers the
+// first canal of chapters 2–6 until it is cleared, once per app session; the canal's start cue and device guide wait.
+// Retrying the canal and resuming an attempt that already moved skip it. Nothing is saved.
+const chapterCardShown = new Set();
+let chapterCardAt = 0;
+const chapterOpen = () => !$('chapterOverlay').hidden;
+function chapterCardDue(i, keep, chap) {
+  return chap.ci > 0 && STORY_POSITION[i] === chap.start && !(save.best[i] >= 1) && !keep?.moves && !chapterCardShown.has(chap.ci);
+}
+function openChapterCard(ci) {
+  const chapter = CHAPTERS[ci], devices = chapterDevices(ci), art = $('chapterArt'), route = $('chapterRoute');
+  chapterCardShown.add(ci); chapterCardAt = performance.now();
+  art.classList.remove('no-art'); art.innerHTML = '<img alt="" width="720" height="480">';
+  setRegionArt(art.querySelector('img'), chapter.region);
+  route.innerHTML = CHAPTERS.map((_, k) => `<li class="${k < ci ? 'done' : k === ci ? 'now' : ''}">${k < ci ? '✓' : k + 1}</li>`).join('') + '<li class="sea">바다</li>';
+  route.setAttribute('aria-label', `바다까지 ${CHAPTERS.length}장 중 ${ci + 1}장`);
+  $('chapterNumber').textContent = `${ci + 1}장`;
+  $('chapterName').textContent = chapter.name;
+  $('chapterIntro').textContent = JOURNEY_STORY[ci].intro;
+  const names = devices.map(k => DEVICE_GUIDES.find(d => d.key === k)?.name).filter(Boolean);
+  $('chapterDevice').hidden = !names.length;
+  $('chapterDevice').innerHTML = names.length ? `<canvas data-k="${devices[0]}" width="72" height="72" aria-hidden="true"></canvas><span>새 장치 · ${names.join(', ')}</span>` : '';
+  $('chapterDevice').querySelectorAll('canvas').forEach(drawLegendIcon);
+  $('chapterGo').textContent = `${ci + 1}장 시작`;
+  $('chapterCard').classList.toggle('chapter-playing', !reduceMotion);
+  openSheet('chapterOverlay'); sfx.chapter();
+  $('chapterGo').focus({ preventScroll: true });
+  // The shark hops from the last chapter's stop to this one (layout offsets: the card's entry scale does not count).
+  const shark = $('chapterShark'), centre = li => li.offsetLeft + li.offsetWidth / 2;
+  drawRouteShark(shark); shark.style.left = centre(route.children[ci]) + 'px';
+  if (!reduceMotion && typeof shark.animate === 'function') {
+    const dx = centre(route.children[ci - 1]) - centre(route.children[ci]);
+    shark.animate([{ transform: `translateX(${dx}px)` }, { transform: `translate(${dx / 2}px, -7px)`, offset: .5 }, { transform: 'none' }],
+      { duration: 900, delay: 300, easing: 'ease-in-out', fill: 'backwards' });
+  }
+}
+function drawRouteShark(canvas) {
+  const w = 44, h = 28, d = Math.min(window.devicePixelRatio || 1, 3), x = canvas.getContext('2d');
+  canvas.width = Math.round(w * d); canvas.height = Math.round(h * d);
+  x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h);
+  drawShark(x, w / 2, h / 2, 0, 26, 0, false);
+}
+function closeChapterCard() {
+  if (!chapterOpen() || performance.now() - chapterCardAt < 450) return;   // a double tap on "다음 장으로" must not skip it
+  sfx.start(); closeSheet('chapterOverlay');
+  showDeviceGuide(true);
 }
 
 /* ---------- shark skins: earned with story stars (one with a daily streak), kept once earned ---------- */
@@ -977,8 +1029,10 @@ function loadLevel(i, keep, definition = null) {
   STORY = definition || (keep ? storyLevel(i) : LEVELS[i]);
   const role = LEVEL_ROLES[STORY.role || 'regular'], chap = chapterOf(i);
   const preview = STORY_POSITION[i] === chap.end && CHAPTERS[chap.ci + 1]?.region === 'sluice-works';
+  // Retrying (replay passes the current definition) never reopens the chapter card.
+  const card = !definition && chapterCardDue(i, keep, chap);
   enter(STORY, keep, `${chap.ci + 1}장 · 수로 ${STORY_POSITION[i] + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`,
-    CHAPTERS[chap.ci].region, preview);
+    CHAPTERS[chap.ci].region, preview, card);
   // The canal that introduces a chapter's new device spotlights it before the first move, once per app session until
   // cleared. Nets have no tile, so their HUD pill glows instead.
   const fresh = STORY === LEVELS[i] && !st.moves && !deviceSpotShown.has(i) && !(save.best[i] >= 1);
@@ -989,6 +1043,7 @@ function loadLevel(i, keep, definition = null) {
     if (kinds.includes('boat')) st.boats.forEach(b => cells.push(b[0]));
     if (cells.length || kinds.includes('net')) deviceSpot = { level: i, cells, net: kinds.includes('net'), t: 0, started: false };
   }
+  if (card) openChapterCard(chap.ci);
 }
 function loadDaily(daily, keep) {
   DAILY = daily; FREE = null; PILOT = null; deco = dailySeed(dailyStageId(daily)) % 997;
@@ -1005,7 +1060,8 @@ function loadPilot(i, keep) {
   enter(level, keep, `${region.name} · 시험 ${i + 1} / ${PILOT_LEVELS.length} · ${LEVEL_ROLES[level.role || 'regular'].label}`);
 }
 const replay = () => FREE ? loadFree(FREE) : DAILY ? loadDaily(DAILY) : PILOT ? loadPilot(PILOT.index) : loadLevel(LVL, null, STORY);
-function enter(level, keep, label, region = level.region, regionPreview = !!level.boundary) {
+// held: a chapter card covers the new canal; closing it plays the start cue and opens the device guide instead.
+function enter(level, keep, label, region = level.region, regionPreview = !!level.boundary, held = false) {
   sfx.clear();
   cancelClearPresentation();
   hintRequest++;
@@ -1026,6 +1082,7 @@ function enter(level, keep, label, region = level.region, regionPreview = !!leve
   ring(st.pos[0], st.pos[1], 0.9, 0.4);
   setupCoach();
   checkpoint();
+  if (held) return;
   sfx.start();
   showDeviceGuide(true);
 }
@@ -1460,10 +1517,15 @@ function onClear() {
   $('clearStory').hidden = !milestone && !regionEnd;
   $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : regionEnd ? (regionEnd.finale ? '수문을 모두 지나 바깥 바다로 나갔어요! 시험 코스를 끝까지 구출했어요.'
     : '북항을 지나왔어요! 다음은 스위치로 수문을 여닫는 수문 시설이에요.') : '';
-  const chapterRegion = story && chapterEnd && !last ? CHAPTERS[chap.ci + 1].region : null;
-  const nextRegion = chapterRegion && PILOT_REGIONS.some(r => r.id === chapterRegion) ? chapterRegion : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
+  // Every chapter end previews the next chapter's region by name; its opening card (openChapterCard) tells the rest.
+  const nextChapter = story && chapterEnd && !last ? CHAPTERS[chap.ci + 1] : null;
+  const nextRegion = nextChapter ? nextChapter.region : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
   $('clearRegion').hidden = !nextRegion;
-  if (nextRegion) showRegionPreview($('clearRegion'), nextRegion, '다음 지역');
+  if (nextChapter) showRegionPreview($('clearRegion'), nextRegion, `다음 지역 · ${chap.ci + 2}장`, { name: nextChapter.name });
+  else if (nextRegion) showRegionPreview($('clearRegion'), nextRegion, '다음 지역');
+  const chapterStars = milestone ? STORY_ORDER.slice(chap.start, chap.end + 1).reduce((n, i) => n + (save.best[i] || 0), 0) : 0;
+  $('clearChapterStamp').hidden = !milestone;
+  $('clearChapterStamp').textContent = `${chap.ci + 1}장 완료 · ★ ${chapterStars} / ${(chap.end - chap.start + 1) * 3}`;
   $('clearTitle').classList.toggle('story-title', !!milestone || !!regionEnd);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
   $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
@@ -2479,10 +2541,9 @@ function setRegionArt(img, regionId) {
   img.onerror = () => { img.closest('.region-art, .region-preview')?.classList.add('no-art'); img.hidden = true; };
   img.src = REGION_ART[regionId];
 }
-function showRegionPreview(el, regionId, label) {
-  const region = PILOT_REGIONS.find(r => r.id === regionId);
+function showRegionPreview(el, regionId, label, info = PILOT_REGIONS.find(r => r.id === regionId)) {
   el.classList.remove('no-art');
-  el.innerHTML = `<img alt="" width="720" height="480"><div><small>${label}</small><b>${region.name}</b><span>${region.goal}</span></div>`;
+  el.innerHTML = `<img alt="" width="720" height="480"><div><small>${label}</small><b>${info.name}</b>${info.goal ? `<span>${info.goal}</span>` : ''}</div>`;
   setRegionArt(el.querySelector('img'), regionId);
 }
 function renderPilot() {
@@ -2734,7 +2795,7 @@ function show(which, animate = true) {
   sfx.clear();
   flushSheetExits();
   if (which === 'title') cancelClearPresentation();
-  if (which === 'title') { pauseGame(); closeSheet('guideOverlay', null, false); guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
+  if (which === 'title') { pauseGame(); closeSheet('guideOverlay', null, false); closeSheet('chapterOverlay', null, false); guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
   $('gameScreen').hidden = which !== 'game';
@@ -2812,6 +2873,7 @@ $('titleSettingsBtn').addEventListener('click', openSettings);
 $('settingsDone').addEventListener('click', closeSettings);
 $('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
 $('guideDone').addEventListener('click', advanceGuide);
+$('chapterOverlay').addEventListener('click', closeChapterCard);   // the button or anywhere on the card starts the chapter
 $('guideClose').addEventListener('click', closeGuide);
 $('guideToggle').addEventListener('click', toggleGuidePlayback);
 $('guideReplay').addEventListener('click', replayGuide);
@@ -2883,6 +2945,7 @@ window.addEventListener('keydown', e => {
   if (dailyOpen()) { if (e.key === 'Escape') closeDaily(); return; }
   if (freeOpen()) { if (e.key === 'Escape') closeFree(); return; }
   if (pilotOpen()) { if (e.key === 'Escape') closePilot(); return; }
+  if (chapterOpen()) { if (e.key === 'Escape') closeChapterCard(); return; }
   if (guideOpen()) { if (e.key === 'Escape') closeGuide(); return; }
   if (settingsOpen()) { if (e.key === 'Escape') closeSettings(); return; }
   if (skinsOpen()) { if (e.key === 'Escape') closeSkins(); return; }
@@ -2911,6 +2974,7 @@ if (capApp) capApp.addListener('backButton', () => {
   else if (dailyOpen()) closeDaily();
   else if (freeOpen()) closeFree();
   else if (pilotOpen()) closePilot();
+  else if (chapterOpen()) closeChapterCard();
   else if (guideOpen()) closeGuide();
   else if (settingsOpen()) closeSettings();
   else if (skinsOpen()) closeSkins();
@@ -2951,6 +3015,7 @@ if (typeof SHARK_ART !== 'undefined') {
   SHARK_ART.onReady = () => {
     invalidateScenes(); guidePaintTime = -1;
     drawSkinPreview($('skinPreview'), currentSkin());
+    if (chapterOpen()) drawRouteShark($('chapterShark'));
     if (skinsOpen()) $('skinGrid').querySelectorAll('.skin').forEach(b => {
       const skin = SKINS.find(s => s.id === b.dataset.id);
       if (skin) drawSkinPreview(b.querySelector('canvas'), skin);

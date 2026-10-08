@@ -265,6 +265,34 @@ h1 .sea { color: var(--title-alert); }
 .ending-copy, .clear-story { margin: 0; font-size: 15px; line-height: 1.7; color: #304d50; }
 .clear-story { padding: 10px 12px; background: #e2ecdf; border-radius: 12px; font-size: 14px; }
 .ending-stamp { font: 22px var(--font-display); color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; }
+.chapter-stamp { font-size: 19px; }
+/* chapter title card: region picture, route to the sea, story and the chapter's new device */
+.overlay.chapter-overlay { align-items: center; padding: 16px; }
+.card.chapter-card { max-width: 420px; max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 26px; padding: 0 0 20px; gap: 0; animation-name: pop; cursor: pointer; }
+.card.chapter-card .chapter-art { flex-shrink: 0; border-radius: 0; }
+.chapter-art img { transform-origin: 50% 62%; }
+.chapter-playing .chapter-art img { animation: chapter-art 5s ease-out both; }
+.chapter-route { position: relative; flex-shrink: 0; margin: 38px 24px 0; }
+.chapter-route::before { content: ""; position: absolute; left: 10px; right: 26px; top: 50%; height: 2px; margin-top: -1px; background: #b9d8da; }
+.chapter-route ol { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; align-items: center; }
+.chapter-route li { position: relative; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #a7cfd3; background: #f6fbfa; color: #4d6f76; font-size: 11px; font-weight: 700; }
+.chapter-route li.done { border-color: #286446; background: #286446; color: #fff; }
+.chapter-route li.now { width: 26px; height: 26px; border-color: var(--buoy); background: #fff0d6; color: #8a4310; font-size: 13px; }
+.chapter-route li.sea { width: auto; height: auto; border: 0; background: none; color: #1f7d97; font-size: 12px; padding-left: 4px; }
+.chapter-shark { position: absolute; left: 0; bottom: 100%; width: 44px; height: 28px; margin: 0 0 2px -22px; pointer-events: none; }
+.chapter-number { margin: 14px 0 0; font-size: 14px; font-weight: 700; color: #3d6670; }
+.card.chapter-card h3 { margin: 0 20px; font-size: clamp(30px, 9vw, 36px); }
+.chapter-intro { margin: 8px 24px 0; font-size: 15px; line-height: 1.65; color: #304d50; }
+.chapter-device { display: inline-flex; align-items: center; gap: 8px; align-self: center; margin: 12px 0 0; padding: 5px 14px 5px 5px; border-radius: 999px; border: 1px solid #a5d3dc; background: #e4f3f7; color: #155b70; font-size: 14px; font-weight: 700; }
+.chapter-device canvas { width: 30px; height: 30px; border-radius: 9px; }
+#chapterGo { flex-shrink: 0; margin: 18px 20px 0; }
+.chapter-playing .chapter-number, .chapter-playing h3, .chapter-playing .chapter-intro, .chapter-playing .chapter-device, .chapter-playing .chapter-go { animation: chapter-rise .45s var(--ease-out) both; }
+.chapter-playing h3 { animation-delay: .1s; }
+.chapter-playing .chapter-intro { animation-delay: .22s; }
+.chapter-playing .chapter-device { animation-delay: .34s; }
+.chapter-playing .chapter-go { animation-delay: .44s; }
+@keyframes chapter-art { to { transform: scale(1.08); } }
+@keyframes chapter-rise { from { transform: translateY(10px); opacity: 0; } }
 .levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .lv {
   background: var(--harbor-2); border: 2px solid transparent; border-radius: 18px;
@@ -432,7 +460,7 @@ h1 .sea { color: var(--title-alert); }
 .star-sparks { position: absolute; inset: 0; pointer-events: none; color: #b87816; font-size: 14px; opacity: 0; text-shadow: 50px 8px 0 #d99a20, 10px 54px 0 #d99a20; }
 .clear-celebrating .star-sparks { animation: star-spark .65s ease-out var(--reward-delay) both; }
 .clear-celebrating .reward-check { animation: reward-check .7s ease-out var(--reward-delay); }
-.clear-celebrating #clearJournalStamp { animation: reward-stamp .65s var(--ease-spring) .9s both; }
+.clear-celebrating #clearJournalStamp, .clear-celebrating #clearChapterStamp { animation: reward-stamp .65s var(--ease-spring) .9s both; }
 .clear-celebrating .three-stars::after { content: ""; position: absolute; inset: -4px 10%; border-radius: 50%; border: 2px solid #d99a20; pointer-events: none; opacity: 0; animation: star-finish .5s ease-out .92s; }
 @keyframes star-pop { from { transform: scale(0) rotate(-30deg); opacity: 0; } }
 @keyframes star-spark { 25% { opacity: 1; transform: scale(1.12); } to { opacity: 0; transform: scale(1.45); } }
@@ -814,6 +842,7 @@ button:disabled:active { transform: none; }
     <h3 id="clearTitle">바다로 나갔어요!</h3>
     <div class="clear-body" id="clearBody">
       <div class="stars" id="clearStars"></div>
+      <div class="operation-stamp chapter-stamp" id="clearChapterStamp" hidden></div>
       <p class="clear-story" id="clearStory" hidden></p>
       <div class="region-preview" id="clearRegion" hidden></div>
       <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
@@ -849,5 +878,17 @@ button:disabled:active { transform: none; }
       <div class="guide-step-controls" role="group" aria-label="설명 넘기기"><button class="btn" id="guidePrev" type="button">이전 설명</button><span id="guideStepCount"></span><button class="btn" id="guideNext" type="button">다음 설명</button></div>
     </div>
     <button class="btn primary" id="guideDone" type="button">확인</button>
+  </div>
+</div>
+
+<div class="overlay chapter-overlay" id="chapterOverlay" hidden>
+  <div class="card chapter-card" id="chapterCard" role="dialog" aria-modal="true" aria-labelledby="chapterName" aria-describedby="chapterIntro">
+    <div class="region-art chapter-art" id="chapterArt"></div>
+    <div class="chapter-route"><ol id="chapterRoute"></ol><canvas class="chapter-shark" id="chapterShark" aria-hidden="true"></canvas></div>
+    <p class="chapter-number" id="chapterNumber"></p>
+    <h3 id="chapterName"></h3>
+    <p class="chapter-intro" id="chapterIntro"></p>
+    <p class="chapter-device" id="chapterDevice" hidden></p>
+    <button class="btn primary chapter-go" id="chapterGo" type="button">시작</button>
   </div>
 </div>

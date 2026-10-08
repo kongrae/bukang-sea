@@ -72,7 +72,9 @@ test('one-star chapter completion shows the milestone and continues to the next 
   const game=scene({best:bestThrough(11),owned:['basic','gold'],skin:'gold',sessions:{story:{id:ORDER[11]},daily:{keep:true}}});
   game.clear(ORDER[11]);
   assert.equal(game.element('clearTitle').textContent,'북항 수로 통과!');assert.equal(game.element('clearStory').hidden,false);
-  assert.match(game.element('clearStory').textContent,/공원 안쪽 운하/);assert.equal(game.element('clearRegion').hidden,true);
+  assert.match(game.element('clearStory').textContent,/공원 안쪽 운하/);
+  assert.equal(game.element('clearRegion').hidden,false);assert.equal(game.element('clearRegion').region,'waterside-park','every chapter end previews the next region');
+  assert.equal(game.element('clearChapterStamp').hidden,false);assert.equal(game.element('clearChapterStamp').textContent,'1장 완료 · ★ 12 / 36');
   assert.equal(game.element('nextBtn').textContent,'다음 장으로');game.next();assert.equal(game.stats().loaded,ORDER[12]);
   assert.equal(game.save().best[ORDER[11]],1);assert.equal(game.save().sessions.story,undefined);assert.deepEqual(game.save().sessions.daily,{keep:true});
   assert.deepEqual(game.save().owned,['basic','gold']);assert.equal(game.save().skin,'gold');
@@ -102,6 +104,7 @@ test('missing earlier escape cannot unlock ending through last-level clear or da
   const best=bestThrough(72);delete best[ORDER[6]];const game=scene({best});game.clear(ORDER[71]);
   assert.equal(game.progress().complete,false);assert.equal(game.element('nextBtn').textContent,'수로 목록');assert.equal(game.ending(),false);
   const daily=scene({best:bestThrough(72)});daily.clear(0,3,true);assert.equal(daily.element('clearStory').hidden,true);
+  assert.equal(daily.element('clearChapterStamp').hidden,true);assert.equal(daily.element('clearRegion').hidden,true);
   daily.next();assert.equal(daily.stats().dailyContinued,1);assert.equal(daily.element('endingOverlay').hidden,true);
 });
 
