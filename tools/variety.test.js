@@ -73,7 +73,8 @@ test('all twelve old story sessions resume and retry their old board, while new 
   const names=['levelSignature','copyTurn','restoreSession','storyLevel','storySession','freshState','loadLevel'];
   const harness=new Function('stored','index',`${read('engine')}\n${read('levels')}
     const save=stored,unlocked=()=>true,chapterOf=()=>({ci:0});
-    let LVL=0,DAILY=null,FREE=null,PILOT=null,STORY=null,deco=0,g,st,entered;
+    let LVL=0,DAILY=null,FREE=null,PILOT=null,STORY=null,deco=0,g,st,entered,reduceMotion=false;
+    const deviceSpotShown=new Set();
     const enter=(level,keep,label)=>{entered=level;st=keep||freshState(level);};
     const loadFree=()=>{},loadDaily=()=>{};
     ${names.map(fn).join('\n')}

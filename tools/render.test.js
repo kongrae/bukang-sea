@@ -28,15 +28,19 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const C = {}, T = 40, dpr = 1, OX = 0, OY = 0, CW = 360, CH = 640;
     const staticLayer = {}, waterPath = {}, caustic = {}, causticPat = {};
     const elements = new Map();
-    const $ = id => { if (!elements.has(id)) elements.set(id, {hidden: false, classList: {contains: () => false, toggle: noop}}); return elements.get(id); };
+    const $ = id => {
+      if (!elements.has(id)) { const names = new Set(); elements.set(id, {hidden: false, classList: {contains: n => names.has(n), toggle: (n, on = !names.has(n)) => (on ? names.add(n) : names.delete(n), on), add: n => names.add(n), remove: n => names.delete(n)}}); }
+      return elements.get(id);
+    };
     const haptic = noop, updateHud = updateNetStatus, coachDone = noop, setupCoach = noop, setTip = noop, refreshHint = noop;
     const drawExit = noop, drawJet = noop, drawBuoy = noop, drawWhirl = noop, drawFish = noop, css = {getPropertyValue: () => 'sans-serif'};
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null, PILOT = null;
     const localStorage = {setItem: (key, value) => {if (storageFails) throw Error('quota'); written = value;}};
     const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map();
-    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, exitZoom = null;
-    const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map();
+    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, exitZoom = null, deviceSpot = null;
+    const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map(), DEVICE_SPOT = { dur: 1.8, pulses: 3 }, flights = [];
+    const flyFish = (x, y) => flights.push([x, y]);
     let cleared = false, clock = 0, hintRequest = 0, deco = 0, boatsDrawn = [], sharkDrawn, netsDrawn = [], dentsDrawn = [];
     const drawSandDent = (ctx, x, y, T, ang, k) => dentsDrawn.push([x / T, y / T, +ang.toFixed(3), +k.toFixed(3)]);
     const drawShark = (...args) => sharkDrawn = args.slice(1), drawNet = (...args) => netsDrawn.push(args.slice(1));
@@ -56,6 +60,8 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
       netStatus: () => ({title: $('netTitle').textContent, help: $('netHelp').textContent, disabled: $('netStatus').disabled, guideHidden: $('netGuideLabel').hidden}),
       restore: (record, otherLevel = level, id = LVL) => restoreSession(record, otherLevel, id),
       render: () => {boatsDrawn = []; netsDrawn = []; dentsDrawn = []; draw(0); return boatsDrawn;}, dents: () => dentsDrawn.slice(),
+      flights: () => flights.slice(), spot: value => { deviceSpot = value; }, shown: () => [...deviceSpotShown],
+      spotState: () => deviceSpot && {t: deviceSpot.t, started: deviceSpot.started}, netSpot: () => $('netStatus').classList.contains('spot'),
       sounds: () => sounds.slice(), shark: () => sharkDrawn, nets: () => netsDrawn,
       effects: () => JSON.parse(JSON.stringify({particles, wake, contacts:[...contactPulse], retract:[...netRetract], netPop:[...netPop], settle, zoom: exitZoom,
         anim:anim && {t:anim.t,dur:anim.dur,swimDur:anim.swimDur,portals:anim.portals,p:anim.p,landed:anim.landed,warpScale:anim.warpScale}})),
@@ -426,4 +432,127 @@ test('escape eases the board toward the exit only with motion enabled; pausing r
   const reduced = game({ level, reduced: true });
   reduced.move('R'); finishTurn(reduced); reduced.move('U'); finishTurn(reduced);
   assert.equal(reduced.state().cleared, true); assert.equal(reduced.effects().zoom, null);
+});
+
+test('each caught mullet starts one HUD flight from its own tile; undo does not replay it', () => {
+  const scene = game({ level: { par: 2, map: ['#######E#', '#S.f..f.#', '#########'] } });
+  scene.move('R'); finishTurn(scene);
+  assert.deepEqual(scene.flights(), [[3, 1], [6, 1]]);
+  scene.undo(); assert.deepEqual(scene.flights(), [[3, 1], [6, 1]]);
+});
+
+// flyFish/catchGoal with a stand-in DOM: positions, heading, the landing bounce, its continuation and cleanup.
+function flightScene(reduced = false) {
+  const pick = name => source.match(new RegExp(`function ${name}\\([^]*?\\n}`))[0];
+  const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
+  return new Function('reduceMotion', `
+    let bump = null, settle = null, pop = null, exitZoom = null, deviceSpot = null, now = 1000;
+    const particles = [], wake = [], netPop = new Map(), jetFlash = new Map(), contactPulse = new Map(), netRetract = new Map();
+    const T = 40, OX = 10, OY = 20, appended = [], bounces = [], performance = {now: () => now}, window = {devicePixelRatio: 2}, drawFish = () => {};
+    const goal = {getBoundingClientRect: () => ({left: 30, top: 5, width: 22, height: 22}), animate: (frames, options) => bounces.push(options)};
+    const $ = id => id === 'stats' ? {querySelector: s => s === '.goal svg' ? goal : null} : {classList: {remove() {}}};
+    const cvs = {getBoundingClientRect: () => ({left: 0, top: 100}), animate() {}};
+    const document = {body: {append: el => appended.push(el)}, createElement: () => {
+      const el = {style: {}, removed: false, getContext: () => ({scale() {}}), remove() { el.removed = true; },
+        animate(frames, options) { el.frames = frames; el.options = options; return el.flight = {}; }};
+      return el;
+    }};
+    ${effects}
+    ${source.match(/^const FISH_FLIGHT_MS.*$/m)[0]}
+    ${pick('flyFish')}
+    ${pick('catchGoal')}
+    return {flyFish, catchGoal, clearPlayEffects, appended, bounces, flying: () => flyingFish.size, advance: ms => { now += ms; }};
+  `)(reduced);
+}
+const pose = transform => {
+  const [x, y, turn, sx] = transform.match(/translate\(([-\d.]+)px,([-\d.]+)px\) rotate\(([-\d.]+)deg\) scale\(([-\d.]+),/).slice(1).map(Number);
+  const a = turn * Math.PI / 180;
+  return { x, y, head: [Math.sign(sx) * Math.cos(a), Math.sign(sx) * Math.sin(a)] };
+};
+
+test('a mullet flight starts at its tile, ends on the HUD goal head-first, then bounces the goal once', () => {
+  const scene = flightScene();
+  scene.flyFish(3, 4);
+  const [icon] = scene.appended, size = 32;   // T 40 → icon 32px
+  assert.equal(icon.style.left, 10 + 3.5 * 40 - size / 2 + 'px'); assert.equal(icon.style.top, 100 + 20 + 4.5 * 40 - size / 2 + 'px');
+  assert.equal(icon.options.duration, 560); assert.equal(icon.frames[0].opacity, 0);
+  const end = pose(icon.frames[2].transform), lifted = pose(icon.frames[1].transform);
+  assert.deepEqual([end.x, end.y], [30 + 11 - size / 2 - 134, 5 + 11 - size / 2 - 284], 'lands on the goal icon centre');
+  const travel = [end.x - lifted.x, end.y - lifted.y], length = Math.hypot(...travel);
+  assert.ok(Math.abs(end.head[0] - travel[0] / length) < 0.01 && Math.abs(end.head[1] - travel[1] / length) < 0.01, 'head points along the flight');
+  assert.ok(icon.frames[2].transform.includes('scale(-0.45,0.45)'), 'a left-bound fish is mirrored, not upside down');
+  scene.flyFish(0, 4);
+  assert.ok(scene.appended[1].frames[2].transform.includes('scale(0.45,0.45)'), 'a right-bound fish keeps its drawing');
+  icon.flight.onfinish();
+  assert.equal(icon.removed, true); assert.equal(scene.flying(), 1);
+  assert.equal(scene.bounces.length, 1); assert.equal(scene.bounces[0].duration, 320); assert.equal(-scene.bounces[0].delay, 0);
+  scene.advance(100); scene.catchGoal();
+  assert.equal(scene.bounces.length, 2); assert.equal(scene.bounces[1].delay, -100, 'a HUD re-render continues the bounce');
+  scene.advance(300); scene.catchGoal(); assert.equal(scene.bounces.length, 2, 'no bounce once it has finished');
+});
+
+test('clearing play effects drops flights in progress without a late bounce; reduced motion has no flight', () => {
+  const scene = flightScene();
+  scene.flyFish(2, 2); scene.clearPlayEffects();
+  assert.equal(scene.appended[0].removed, true); assert.equal(scene.flying(), 0);
+  scene.appended[0].flight.onfinish(); scene.catchGoal();
+  assert.equal(scene.bounces.length, 0);
+  const reduced = flightScene(true); reduced.flyFish(2, 2);
+  assert.equal(reduced.appended.length, 0);
+});
+
+test('the new-device spotlight starts once the board is uncovered and ends on the first real move or after 1.8s', () => {
+  const scene = game({ level: { par: 2, nets: 1, map: ['#######E#', '#S......#', '#########'] } });
+  scene.spot({ level: 24, cells: [12], net: true, t: 0, started: false });
+  assert.equal(scene.netSpot(), false);
+  scene.tick(0.1);
+  assert.deepEqual(scene.spotState(), { t: 0.1, started: true }); assert.equal(scene.netSpot(), true);
+  assert.deepEqual(scene.shown(), [24], 'counted as shown for this app session');
+  scene.render();
+  scene.move('L'); assert.ok(scene.spotState(), 'a blocked swipe is not a move');
+  scene.move('R'); assert.equal(scene.spotState(), null); assert.equal(scene.netSpot(), false);
+  finishTurn(scene);
+  scene.spot({ level: 36, cells: [12], net: false, t: 0, started: false });
+  for (let k = 0; k < 40; k++) scene.tick(0.05);
+  assert.equal(scene.spotState(), null, 'fades out by itself');
+});
+
+test('only the canal introducing a device spotlights it: one per chapter, before the first move, until cleared', () => {
+  const data = require('../src/levels.js');
+  const story = source.slice(source.indexOf('// Device kinds a story canal introduces'), source.indexOf('/* ---------- story journey:'));
+  const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
+  const loadLevel = source.match(/function loadLevel\([^]*?\n}/)[0];
+  const scene = new Function('data', `
+    ${engine}
+    const { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, LEVEL_ROLES } = data;
+    let DAILY = null, FREE = null, PILOT = null, STORY = null, LVL = 0, deco = 0, g, st, deviceSpot = null, reduceMotion = false, moves = 0;
+    const save = {best: {}}, deviceSpotShown = new Set(), storyLevel = i => ({...LEVELS[i], map: LEVELS[i].map.slice()});
+    const enter = level => { g = parseLevel(level); st = {moves, boats: g.boats.map(b => b.slice())}; };
+    ${story}
+    ${loadLevel}
+    const at = position => STORY_ORDER[position];
+    return {
+      introduced: position => introducedDevices(at(position)),
+      load: (position, keep) => { deviceSpot = null; loadLevel(at(position), keep); return deviceSpot && {cells: deviceSpot.cells.map(k => g.cells[k]), net: deviceSpot.net}; },
+      boats: () => st.boats.map(b => b[0]), set: (key, value) => { if (key === 'moves') moves = value; else if (key === 'reduced') reduceMotion = value; else if (key === 'shown') deviceSpotShown.add(at(value)); else save.best[at(key)] = value; },
+    };
+  `)(data);
+  const firsts = { jet: 6, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60 };
+  for (const [kind, position] of Object.entries(firsts)) {
+    assert.deepEqual(scene.introduced(position), [kind]);
+    assert.equal(Math.floor(position / 12), Object.keys(firsts).indexOf(kind), 'one new device per chapter');
+  }
+  assert.deepEqual(scene.introduced(7), []);
+  assert.ok(scene.load(6).cells.every(c => '<>^v'.includes(c)));
+  assert.deepEqual(scene.load(12).cells.length, scene.boats().length);
+  assert.equal(scene.load(24).net, true);
+  assert.ok(scene.load(36).cells.length && scene.load(36).cells.every(c => c === 's'));
+  assert.deepEqual(scene.load(48).cells, ['w', 'w']);
+  assert.ok(scene.load(60).cells.includes('p') && scene.load(60).cells.every(c => 'pGg'.includes(c)));
+  assert.equal(scene.load(7), null, 'later canals of the chapter stay plain');
+  assert.equal(scene.load(36, true), null, 'an older definition of the canal is not the introduction');
+  scene.set(6, 1); assert.equal(scene.load(6), null, 'cleared');
+  scene.set('shown', 12); assert.equal(scene.load(12), null, 'already shown in this app session');
+  scene.set('moves', 2); assert.equal(scene.load(24), null, 'resumed after moving'); scene.set('moves', 0);
+  scene.set('reduced', true); assert.equal(scene.load(48), null, 'reduced motion');
 });

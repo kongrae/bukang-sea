@@ -192,8 +192,8 @@ function game({ level, reduced = false, stored = null, id = 'p05' } = {}) {
     const PILOT = {index: 4, level: Object.assign({}, level, {id: pilotId})};
     const localStorage = {setItem: (key, value) => { written = value; }};
     const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map();
-    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, cleared = false, clock = 0, hintRequest = 0, deco = 0, exitZoom = null;
-    const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map();
+    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, cleared = false, clock = 0, hintRequest = 0, deco = 0, exitZoom = null, deviceSpot = null;
+    const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map(), DEVICE_SPOT = { dur: 1.8, pulses: 3 }, flyFish = noop;
     const onClear = () => { cleared = true; };
     ${effects}
     ${functions}

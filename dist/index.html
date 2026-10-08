@@ -347,6 +347,7 @@ h1 .sea { color: var(--title-alert); }
 .chip svg.i { width: 22px; height: 22px; }
 .chip b.bump { animation: count-bump .35s var(--ease-spring); }
 @keyframes count-bump { 40% { transform: scale(1.35); } }
+.fish-fly { position: fixed; z-index: 5; pointer-events: none; will-change: transform, opacity; }
 .chip .k { color: var(--muted); }
 .chip.over b { color: var(--buoy); }
 .chip.done b { color: var(--star); }
@@ -358,6 +359,8 @@ h1 .sea { color: var(--title-alert); }
 .net-status.has-nets { background: linear-gradient(110deg, #fff1b5, #ffdda0); color: #714211; border: 2px solid #da9b42; box-shadow: inset 0 2px #fff9de, 0 2px #d2ad6e; cursor: pointer; }
 .net-status.has-nets > svg { display: block; }
 .net-status.has-nets:focus-visible { outline: 3px solid #08748b; outline-offset: 2px; }
+.net-status.spot { animation: net-spot .6s ease-in-out 3; }
+@keyframes net-spot { 50% { transform: scale(1.02); box-shadow: inset 0 2px #fff9de, 0 2px #d2ad6e, 0 0 0 5px rgba(255, 190, 80, .6); } }
 .net-guide-label { flex-shrink: 0; font-weight: 700; }
 .level-net { font: 11px/1.3 var(--font-body); border-radius: 6px; padding: 2px 5px; background: #e2eeec; color: #456a72; }
 .level-net.available { background: #ffe5a4; color: #714211; box-shadow: inset 0 0 0 1px #dba349; }
@@ -4977,6 +4980,20 @@ function journalTotals() {
 normalizeJournal(); // Import only surviving records; old single-puzzle clears never become full operations.
 // i is a LEVELS index; the previous canal is the one before it in STORY_ORDER. Cleared canals and kept access stay open.
 const unlocked = i => i === 0 || save.best[STORY_ORDER[STORY_POSITION[i] - 1]] != null || Array.isArray(save.storyAccess) && save.storyAccess.includes(i) || Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+// Device kinds a story canal introduces: the first canal in play order that uses them (one per chapter).
+const DEVICE_TILES = { jet: /[<>^v]/, boat: /[bB]/, sand: /s/, whirl: /w/, gate: /[pGg]/ };
+let firstDeviceAt = null;
+function introducedDevices(i) {
+  if (!firstDeviceAt) {
+    firstDeviceAt = {};
+    STORY_ORDER.forEach((index, position) => {
+      const level = LEVELS[index], map = level.map.join('');
+      for (const [kind, tile] of Object.entries(DEVICE_TILES)) if (firstDeviceAt[kind] == null && tile.test(map)) firstDeviceAt[kind] = position;
+      if (firstDeviceAt.net == null && level.nets) firstDeviceAt.net = position;
+    });
+  }
+  return Object.keys(firstDeviceAt).filter(kind => firstDeviceAt[kind] === STORY_POSITION[i]);
+}
 // chapter of LEVELS index i: { ci, start, end, name }; start/end are play positions (CHAPTERS lists runs of STORY_ORDER)
 function chapterOf(i) {
   const position = STORY_POSITION[i] ?? 0;
@@ -5544,6 +5561,9 @@ let settle = null, pop = null, queued = null, clock = 0;
 // Escape push-in toward the exit (Peggle-style closing moment); sand dents remember stops (permanence).
 let exitZoom = null;
 const EXIT_ZOOM = { scale: 0.06, dur: 0.45 }, sandSeen = new Map();
+// First canal of a new device (one per chapter): its tiles pulse after the device guide closes, until the first move.
+let deviceSpot = null;
+const DEVICE_SPOT = { dur: 1.8, pulses: 3 };
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 const contactPulse = new Map(), netRetract = new Map();
@@ -5673,6 +5693,19 @@ function clearPlayEffects() {
   particles.length = 0; wake.length = 0;
   netPop.clear(); jetFlash.clear(); contactPulse.clear(); netRetract.clear();
   bump = null; settle = null; pop = null; exitZoom = null;
+  for (const icon of flyingFish) icon.remove();
+  flyingFish.clear(); goalCatchAt = -Infinity; endDeviceSpot();
+}
+const flyingFish = new Set();   // HUD-bound mullet icons in flight (flyFish)
+let goalCatchAt = -Infinity;    // when one last landed in the HUD goal (catchGoal)
+const deviceSpotShown = new Set();   // LEVELS indices whose spotlight has played in this app session
+function startDeviceSpot() {
+  deviceSpot.started = true; deviceSpotShown.add(deviceSpot.level);
+  if (deviceSpot.net) $('netStatus').classList.add('spot');
+}
+function endDeviceSpot() {
+  if (deviceSpot?.started && deviceSpot.net) $('netStatus').classList.remove('spot');
+  deviceSpot = null;
 }
 // Sand cells the shark has stopped on in this attempt, derived from the saved turn history so undo, restart and
 // resume stay consistent: [cell index, arrival direction]. The current stop appears once the shark has landed.
@@ -5722,6 +5755,16 @@ function loadLevel(i, keep, definition = null) {
   const preview = STORY_POSITION[i] === chap.end && CHAPTERS[chap.ci + 1]?.region === 'sluice-works';
   enter(STORY, keep, `${chap.ci + 1}장 · 수로 ${STORY_POSITION[i] + 1} / ${LEVELS.length} · ${STORY === LEVELS[i] ? role.label : '이전 수로'}`,
     CHAPTERS[chap.ci].region, preview);
+  // The canal that introduces a chapter's new device spotlights it before the first move, once per app session until
+  // cleared. Nets have no tile, so their HUD pill glows instead.
+  const fresh = STORY === LEVELS[i] && !st.moves && !deviceSpotShown.has(i) && !(save.best[i] >= 1);
+  const kinds = reduceMotion || !fresh ? [] : introducedDevices(i);
+  if (kinds.length) {
+    const cells = [];
+    g.cells.forEach((c, k) => { if (kinds.some(kind => kind !== 'boat' && kind !== 'net' && DEVICE_TILES[kind].test(c))) cells.push(k); });
+    if (kinds.includes('boat')) st.boats.forEach(b => cells.push(b[0]));
+    if (cells.length || kinds.includes('net')) deviceSpot = { level: i, cells, net: kinds.includes('net'), t: 0, started: false };
+  }
 }
 function loadDaily(daily, keep) {
   DAILY = daily; FREE = null; PILOT = null; deco = dailySeed(dailyStageId(daily)) % 997;
@@ -5797,6 +5840,7 @@ function updateHud() {
   if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
   hudLast = { moves: st.moves, fish: st.fish.length };
   $('undoBtn').disabled = !st.history.length;
+  catchGoal();
 }
 function updateNetStatus() {
   const available = g.nets - st.nets.length, active = g.nets > 0;
@@ -5805,6 +5849,41 @@ function updateNetStatus() {
   $('netTitle').textContent = active ? `그물 수로 · 남음 ${available} / ${g.nets}` : '그물 없는 수로';
   $('netHelp').textContent = active ? (st.nets.length ? `설치 ${st.nets.length}개 · 누르면 회수해요` : '빈 물 칸을 톡! 그물을 설치해요') : '화면을 밀어서 길을 찾아요';
   $('netGuideLabel').hidden = !active;
+}
+// A caught mullet pops up from its tile and flies into the HUD goal, whose icon bounces as it lands (collect to
+// counter). Visual only: the count is already updated. Undo, replay and leaving drop flights in progress.
+const FISH_FLIGHT_MS = 560, GOAL_CATCH_MS = 320;
+function flyFish(fx, fy) {
+  const goal = $('stats').querySelector('.goal svg');
+  if (reduceMotion || !goal || typeof cvs.animate !== 'function') return;
+  const from = cvs.getBoundingClientRect(), to = goal.getBoundingClientRect(), size = Math.round(Math.max(28, Math.min(44, T * 0.8)));
+  const x0 = from.left + OX + (fx + 0.5) * T - size / 2, y0 = from.top + OY + (fy + 0.5) * T - size / 2, lift = size * 0.5;
+  const dx = to.left + to.width / 2 - size / 2 - x0, dy = to.top + to.height / 2 - size / 2 - y0;
+  // Head toward the goal; a fish flying left is mirrored instead of turning belly-up.
+  const flip = dx < 0 ? -1 : 1, rise = Math.atan2(-(dy + lift), Math.abs(dx)) * 180 / Math.PI, turn = flip < 0 ? rise : -rise;
+  const pose = (x, y, s) => `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) rotate(${turn.toFixed(1)}deg) scale(${flip * s},${s})`;
+  const icon = document.createElement('canvas'), d = Math.min(window.devicePixelRatio || 1, 3), paint = icon.getContext('2d');
+  icon.className = 'fish-fly'; icon.width = icon.height = Math.round(size * d);
+  icon.style.width = icon.style.height = size + 'px'; icon.style.left = x0 + 'px'; icon.style.top = y0 + 'px';
+  paint.scale(d, d); drawFish(paint, size / 2, size / 2, size * 1.5, 0, 0);
+  document.body.append(icon); flyingFish.add(icon);
+  icon.animate([
+    { transform: pose(0, 0, 0.6), opacity: 0, easing: 'cubic-bezier(.2,.7,.4,1)' },
+    { transform: pose(0, -lift, 1.1), opacity: 1, offset: 0.25, easing: 'cubic-bezier(.55,0,.85,.45)' },
+    { transform: pose(dx, dy, 0.45), opacity: 0.9 },
+  ], { duration: FISH_FLIGHT_MS, fill: 'forwards' }).onfinish = () => {
+    icon.remove();
+    if (!flyingFish.delete(icon)) return;   // dropped meanwhile by clearPlayEffects
+    goalCatchAt = performance.now(); catchGoal();
+  };
+}
+// The goal icon bounce; a HUD re-render during it continues the bounce on the new icon instead of cutting it off.
+function catchGoal() {
+  const age = performance.now() - goalCatchAt;
+  if (!(age >= 0 && age < GOAL_CATCH_MS)) return;
+  const icon = $('stats').querySelector('.goal svg');
+  if (icon && typeof icon.animate === 'function') icon.animate([{ transform: 'none' }, { transform: 'scale(1.35) rotate(-8deg)', offset: 0.4 }, { transform: 'none' }],
+    { duration: GOAL_CATCH_MS, delay: -age, easing: 'ease-out' });
 }
 function pushHistory() {
   st.history.push(copyTurn(st));
@@ -5824,7 +5903,7 @@ function tryMove(d) {
     const [dx, dy] = DIRS[d]; splashAt(st.pos[0] + dx * 0.45, st.pos[1] + dy * 0.45, 5, d, 0.6);
     return;
   }
-  pushHistory();
+  pushHistory(); endDeviceSpot();   // the spotlight has done its job once the player moves
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const eats = [], jets = [];
   r.path.forEach(([x, y], k) => {
@@ -5865,7 +5944,7 @@ function eatFish(fi) {
   }
   ring(fx, fy, 0.9, 0.5);
   if (!reduceMotion) for (let s = 0; s < 7; s++) { const a = s / 7 * Math.PI * 2 + Math.random() * 0.4; particles.push({ kind: 'spark', x: fx, y: fy, vx: Math.cos(a) * 2.4, vy: Math.sin(a) * 2.4, life: 1, rot: Math.random() * 6 }); }
-  updateHud();
+  updateHud(); flyFish(fx, fy);   // after the HUD update so the flight aims at the goal chip just drawn
 }
 function landShark(a) {
   if (a.landed || a.win) return;
@@ -6750,7 +6829,7 @@ function changeMotionPreference(e) {
 function frame(now) {
   frameId = null;
   if (renderSuspended()) return;
-  const active = (!$('app').inert && (anim || bump || settle || pop || exitZoom && exitZoom.t < EXIT_ZOOM.dur)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
+  const active = (!$('app').inert && (anim || bump || settle || pop || deviceSpot || exitZoom && exitZoom.t < EXIT_ZOOM.dur)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
   // Short, interactive motion follows the display. A 60Hz gate quantised 90/144Hz displays to 45/48 updates.
   // Ambient scenes retain a 30Hz budget with the remainder preserved instead of drifting at each skip.
   const rafDelta = Math.max(0, now - lastRafT); lastRafT = now;
@@ -6832,6 +6911,10 @@ function step(dt) {
   if (settle) { settle.t += dt; if (settle.t > 0.6) settle = null; }
   if (pop) { pop.t += dt; if (pop.t > 0.4) pop = null; }
   if (exitZoom) exitZoom.t += dt;   // holds the closer view until the next canal or retry
+  if (deviceSpot) {   // starts once nothing covers the board (the device guide pauses stepping while it is open)
+    if (!deviceSpot.started) startDeviceSpot();
+    deviceSpot.t += dt; if (deviceSpot.t >= DEVICE_SPOT.dur) endDeviceSpot();
+  }
   for (let k = wake.length - 1; k >= 0; k--) { wake[k].age += dt; if (wake[k].age > 0.9) wake.splice(k, 1); }
   for (const [k, v] of jetFlash) { const nv = v - dt * 2.5; if (nv <= 0) jetFlash.delete(k); else jetFlash.set(k, nv); }
   for (const [k, v] of netPop) if (clock - v >= 0.32) netPop.delete(k);
@@ -6908,6 +6991,17 @@ function draw(t) {
       drawGate(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, swimming ? from : from + (to - from) * eased, gatePassage(g, i),
         hit ? clamp01((clock - hit.at) / 0.32) : 0);
     });
+  }
+  // new-device spotlight: three pulses of a gold ring with a soft glow (the coach/hint look-here colour), fading out
+  if (deviceSpot && deviceSpot.started) {
+    const k = deviceSpot.t / DEVICE_SPOT.dur, wave = 0.5 - 0.5 * Math.cos(k * DEVICE_SPOT.pulses * Math.PI * 2), a = Math.min(1, (1 - k) * 4) * (0.35 + 0.65 * wave);
+    ctx.save(); ctx.strokeStyle = C.star;
+    for (const i of deviceSpot.cells) {
+      const x = (i % g.w) * T + T / 2, y = Math.floor(i / g.w) * T + T / 2, r = T * (0.5 + 0.08 * wave);
+      ctx.globalAlpha = a * 0.3; ctx.lineWidth = T * 0.18; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+      ctx.globalAlpha = a; ctx.lineWidth = Math.max(2, T * 0.06); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+    }
+    ctx.restore();
   }
   // surface rings and the wake behind the shark
   for (const p of particles) if (p.kind === 'ring') {

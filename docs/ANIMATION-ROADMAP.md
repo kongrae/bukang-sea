@@ -1,6 +1,6 @@
 # 애니메이션 개선 순서
 
-> 2026-10-08: 실제 게임 사례를 참고한 사운드·연출 보강은 [SOUND-MOTION-HANDOFF.md](SOUND-MOTION-HANDOFF.md)의 FX01–FX06으로 진행했다(2026-10-08 완료: 실제 녹음 효과음 19개, 모래톱 자국, 탈출 확대). 결과는 [SOUND-MOTION.md](SOUND-MOTION.md).
+> 2026-10-08: 실제 게임 사례를 참고한 사운드·연출 보강은 [SOUND-MOTION-HANDOFF.md](SOUND-MOTION-HANDOFF.md)의 FX01–FX06으로 진행했다(2026-10-08 완료: 실제 녹음 효과음 19개, 모래톱 자국, 탈출 확대, 숭어 HUD 비행, 새 장치 칸 강조). 결과는 [SOUND-MOTION.md](SOUND-MOTION.md).
 
 콘텐츠 개선 번호와 별개인 연출 작업 목록이다. 사용자 요청에 따라 1–8번의 코드 작업과 자동/브라우저 검증을 완료했다. 실물 Android 검증은 남아 있다.
 
