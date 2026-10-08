@@ -28,8 +28,10 @@ function scene(stored = {}, reduced = false) {
     const ctx=new Proxy({createLinearGradient:()=>({addColorStop:noop})},{get:(obj,key)=>obj[key]||noop});
     const elements=new Map();
     const $=id=>{
+      const names=new Set();
       if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',innerHTML:'',focus:noop,
-        setAttribute:noop,querySelector:()=>({focus:noop}),querySelectorAll:()=>[],classList:{toggle:noop},
+        setAttribute:noop,querySelector:()=>({focus:noop}),querySelectorAll:()=>[],
+        classList:{toggle:(k,on=!names.has(k))=>(on?names.add(k):names.delete(k),on),contains:k=>names.has(k)},
         getBoundingClientRect:()=>({width:300,height:170}),getContext:()=>ctx});
       return elements.get(id);
     };
@@ -127,6 +129,24 @@ test('chapter 4 leads into the north harbor preview, then chapter 5 leads to the
   const harbor=scene({best:bestThrough(59)});harbor.clear(ORDER[59]);harbor.next();
   assert.equal(harbor.stats().loaded,ORDER[60]);assert.equal(harbor.element('clearRegion').region,'sluice-works');
   assert.equal(harbor.element('clearTitle').textContent,'북항 바깥길 통과!');
+});
+
+test('a chapter with three stars on every canal shows 만점 on the stamp, chapter button and journey, on the clear that completes it', () => {
+  const three = count => Object.fromEntries(ORDER.slice(0, count).map(i => [i, 3]));
+  const end = scene({best: three(11)}); end.clear(ORDER[11], 3);
+  const stamp = end.element('clearChapterStamp');
+  assert.equal(stamp.hidden, false); assert.equal(stamp.textContent, '1장 만점! · ★ 36 / 36'); assert.equal(stamp.classList.contains('perfect'), true);
+  assert.deepEqual([end.progress().chapters[0].stars, end.progress().chapters[0].perfect, end.progress().chapters[1].perfect], [36, true, false]);
+  end.render(); assert.match(end.element('chapterPicker').innerHTML, /chapter-btn perfect" type="button" data-chapter="0"[^>]*만점/);
+  end.journey(); assert.match(end.element('journeyChapters').innerHTML, /journey-stop complete perfect"><span class="journey-number" aria-hidden="true">★/);
+  // raising a middle canal from two to three stars completes the set: stamped there too, not only at the chapter end
+  const middle = scene({best: {...three(12), [ORDER[4]]: 2}}); middle.clear(ORDER[4], 3);
+  assert.equal(middle.element('clearChapterStamp').hidden, false); assert.equal(middle.element('clearChapterStamp').textContent, '1장 만점! · ★ 36 / 36');
+  const again = scene({best: three(12)}); again.clear(ORDER[4], 3);
+  assert.equal(again.element('clearChapterStamp').hidden, true, 'replaying inside a perfect chapter does not stamp again');
+  const partial = scene({best: {...three(11), [ORDER[2]]: 2}}); partial.clear(ORDER[11], 3);
+  assert.equal(partial.element('clearChapterStamp').textContent, '1장 완료 · ★ 35 / 36'); assert.equal(partial.element('clearChapterStamp').classList.contains('perfect'), false);
+  assert.deepEqual(scene({best: {...three(11), [ORDER[3]]: 4}}).progress().chapters[0].stars, 30, 'invalid records add no stars');
 });
 
 test('every chapter has its story lines and an embedded region picture, so added chapters cannot ship half-made', () => {

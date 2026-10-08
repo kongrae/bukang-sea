@@ -251,8 +251,10 @@ function storyProgress() {
   let start = 0;
   const chapters = CHAPTERS.map((ch, ci) => {
     const indices = Array.from({ length: ch.count }, (_, k) => STORY_ORDER[start + k]); start += ch.count;
-    const count = indices.filter(i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3).length;
-    return { ci, start: indices[0], count, total: ch.count, complete: count === ch.count };
+    const kept = indices.filter(i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3), count = kept.length;
+    // stars from valid records only; perfect (만점) = every canal at three stars
+    const stars = kept.reduce((n, i) => n + save.best[i], 0);
+    return { ci, start: indices[0], count, total: ch.count, complete: count === ch.count, stars, perfect: stars === ch.count * 3 };
   });
   const count = chapters.reduce((sum, ch) => sum + ch.count, 0);
   return { chapters, count, complete: count === LEVELS.length };
@@ -265,8 +267,8 @@ function renderJourney() {
   const progress = storyProgress();
   $('journeyCount').textContent = `${progress.count} / ${LEVELS.length}개 수로 구출 완료`;
   $('journeyChapters').innerHTML = progress.chapters.map(ch => {
-    const available = unlocked(ch.start), text = ch.complete ? '통과' : available ? '구출 중' : '앞 장을 통과하면 열려요';
-    return `<li data-journey="${ch.ci}" class="journey-stop${ch.complete ? ' complete' : ''}"><span class="journey-number" aria-hidden="true">${ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
+    const available = unlocked(ch.start), text = ch.perfect ? '만점' : ch.complete ? '통과' : available ? '구출 중' : '앞 장을 통과하면 열려요';
+    return `<li data-journey="${ch.ci}" class="journey-stop${ch.complete ? ' complete' : ''}${ch.perfect ? ' perfect' : ''}"><span class="journey-number" aria-hidden="true">${ch.perfect ? '★' : ch.complete ? '✓' : ch.ci + 1}</span><div><b>${CHAPTERS[ch.ci].name}</b><p>${JOURNEY_STORY[ch.ci].intro}</p><small>${text} · ${ch.count} / ${ch.total} 수로${ch.count ? ` · ★ ${ch.stars} / ${ch.total * 3}` : ''}</small><progress max="${ch.total}" value="${ch.count}" aria-label="${ch.ci + 1}장 ${CHAPTERS[ch.ci].name}, ${ch.count} / ${ch.total} 수로 완료"></progress><button class="btn" type="button" data-journey-chapter="${ch.ci}">${ch.ci + 1}장 ${available ? '수로 보기' : '둘러보기'}</button></div></li>`;
   }).join('');
   $('journeyEndingBtn').hidden = !endingAvailable(progress);
 }
@@ -1530,9 +1532,13 @@ function onClear() {
   $('clearRegion').hidden = !nextRegion;
   if (nextChapter) showRegionPreview($('clearRegion'), nextRegion, `다음 지역 · ${chap.ci + 2}장`, { name: nextChapter.name });
   else if (nextRegion) showRegionPreview($('clearRegion'), nextRegion, '다음 지역');
-  const chapterStars = milestone ? STORY_ORDER.slice(chap.start, chap.end + 1).reduce((n, i) => n + (save.best[i] || 0), 0) : 0;
-  $('clearChapterStamp').hidden = !milestone;
-  $('clearChapterStamp').textContent = `${chap.ci + 1}장 완료 · ★ ${chapterStars} / ${(chap.end - chap.start + 1) * 3}`;
+  // The chapter stamp: at the chapter end, and on whichever clear first brings every canal of the chapter to three
+  // stars (만점). Derived from kept records; nothing new is saved.
+  const chapterRecord = story ? journey.chapters[chap.ci] : null, perfect = !!chapterRecord?.perfect, newlyPerfect = perfect && before.best !== 3;
+  if (newlyPerfect) { rewardPending.chapters.add(chap.ci); rewardPending.journey.add(chap.ci); }
+  $('clearChapterStamp').hidden = !milestone && !newlyPerfect;
+  $('clearChapterStamp').classList.toggle('perfect', perfect);
+  $('clearChapterStamp').textContent = `${chap.ci + 1}장 ${perfect ? '만점!' : '완료'} · ★ ${chapterRecord?.stars ?? 0} / ${(chap.end - chap.start + 1) * 3}`;
   $('clearTitle').classList.toggle('story-title', !!milestone || !!regionEnd);
   const operation = DAILY && Number.isInteger(DAILY.stage), progress = DAILY && dailyProgress(DAILY.date);
   $('clearTitle').classList.toggle('operation-title', !!operation || !!FREE);
@@ -2604,18 +2610,19 @@ function renderLevelGrid(followProgress = false) {
       <span class="n">${STORY_POSITION[i] + 1}</span><span class="nm">${ok ? L.name : '잠김'}</span>${ok ? netLevelBadge(L.nets) : ''}<span class="st">${stars}</span></button>`;
   };
   let start = 0;
+  const journey = storyProgress().chapters;
   $('chapterPicker').innerHTML = CHAPTERS.map((ch, ci) => {
     const idx = Array.from({ length: ch.count }, (_, k) => STORY_ORDER[start + k]); start += ch.count;
-    const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]);
+    const stars = idx.reduce((n, i) => n + (save.best[i] || 0), 0), ok = unlocked(idx[0]), perfect = journey[ci].perfect;
     if (ci === selectedChapter) {
-      const progress = storyProgress().chapters[ci];
-      grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span>★ ${stars} / ${ch.count * 3}</span></div>
+      const progress = journey[ci];
+      grid.innerHTML = `<div class="chapter-head"><h3>${ch.name}</h3><span${perfect ? ' class="perfect"' : ''}>★ ${stars} / ${ch.count * 3}${perfect ? ' · 만점' : ''}</span></div>
         ${ch.region ? '<div class="region-art"><img alt="" width="720" height="480"></div>' : ''}
         <p class="chapter-story">${progress.complete ? JOURNEY_STORY[ci].outro : JOURNEY_STORY[ci].intro}<br><b>${progress.count} / ${ch.count} 수로 구출 완료</b></p>
         <div class="levels">${idx.map((i, k) => button(LEVELS[i], i, k)).join('')}</div>`;
       if (ch.region) setRegionArt(grid.querySelector('.region-art img'), ch.region);
     }
-    return `<button class="chapter-btn" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
+    return `<button class="chapter-btn${perfect ? ' perfect' : ''}" type="button" data-chapter="${ci}" aria-pressed="${ci === selectedChapter}" aria-label="${ci + 1}장 ${ch.name}${ok ? `, 별 ${stars}개${perfect ? ', 만점' : ''}` : ', 잠김'}"><b>${ci + 1}장</b><span>${ok ? `★ ${stars} / ${ch.count * 3}` : '잠김'}</span></button>`;
   }).join('');
   $('levelCount').textContent = `수로 ${LEVELS.length}곳`;
   $('starTotal').textContent = `★ ${total} / ${LEVELS.length * 3}`;

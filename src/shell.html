@@ -254,6 +254,7 @@ h1 .sea { color: var(--title-alert); }
 .journey-stop { display: flex; gap: 12px; }
 .journey-number { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: #ded5c4; color: #435659; font: 20px var(--font-display); }
 .journey-stop.complete .journey-number { background: #286446; color: #fff9e9; }
+.journey-stop.perfect .journey-number { background: #d99a20; color: #fffbea; }
 .journey-stop > div { min-width: 0; flex: 1; padding-bottom: 14px; border-bottom: 1px dashed #b5ad9b; }
 .journey-stop:last-child > div { border-bottom: 0; padding-bottom: 0; }
 .journey-stop b { font-size: 17px; }
@@ -266,6 +267,9 @@ h1 .sea { color: var(--title-alert); }
 .clear-story { padding: 10px 12px; background: #e2ecdf; border-radius: 12px; font-size: 14px; }
 .ending-stamp { font: 22px var(--font-display); color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; }
 .chapter-stamp { font-size: 19px; }
+/* 만점 (every canal of a chapter at three stars): gold on the result stamp, chapter buttons and the journey */
+.chapter-stamp.perfect { color: #845300; border-color: #d99a20; background: #fff3cf; }
+.chapter-btn.perfect span, .chapter-head .perfect { color: #9a6400; font-weight: 700; }
 /* chapter title card: region picture, route to the sea, story and the chapter's new device */
 .overlay.chapter-overlay { align-items: center; padding: 16px; }
 .card.chapter-card { max-width: 420px; max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 26px; padding: 0 0 20px; gap: 0; animation-name: pop; cursor: pointer; }
