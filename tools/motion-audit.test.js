@@ -10,7 +10,8 @@ const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 
 // Draw counters measure work requested, not GPU time or physical-device frame rate.
 function scene() {
   return new Function(`
-    let now=0,sequence=0,reduceMotion=false,anim=null,bump=null,settle=null,pop=null,clock=0;
+    let now=0,sequence=0,reduceMotion=false,anim=null,bump=null,settle=null,pop=null,clock=0,exitZoom=null;
+    const EXIT_ZOOM={scale:.06,dur:.45},sandSeen=new Map();
     let guidePlaying=false,guidePaintTime=0,guideTime=0,heroWake=0,heroTime=0,heroW=300,heroVisible=true,endingElapsed=0;
     let clearReveal=null;
     const document={hidden:false},performance={now:()=>now},callbacks=new Map(),skinPreviewMotion=new Map(),heroRipples=[];

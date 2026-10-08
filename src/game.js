@@ -670,6 +670,19 @@ function drawSand(ctx, x, y, T, seed) {
   }
   ctx.restore();
 }
+// dent left where the shark slid to a stop on sand: a trough behind it and a little ridge ahead (`ang` = arrival heading)
+function drawSandDent(ctx, x, y, T, ang, k) {
+  if (k <= 0) return;
+  ctx.save();
+  ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ang);
+  ctx.fillStyle = `rgba(120,90,50,${(0.22 * k).toFixed(3)})`;
+  ctx.beginPath(); ctx.ellipse(-T * 0.08, 0, T * 0.2, T * 0.085, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = `rgba(105,78,42,${(0.18 * k).toFixed(3)})`;
+  ctx.beginPath(); ctx.ellipse(-T * 0.06, 0, T * 0.13, T * 0.04, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = `rgba(255,250,235,${(0.5 * k).toFixed(3)})`; ctx.lineWidth = Math.max(1, T * 0.03); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(T * 0.06, 0, T * 0.1, -0.9, 0.9); ctx.stroke();
+  ctx.restore();
+}
 // whirlpool: dark eye with three turning spiral arms; `flash` brightens it right after a jump
 function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
   const r = T * 0.46;
@@ -755,6 +768,9 @@ let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
+// Escape push-in toward the exit (Peggle-style closing moment); sand dents remember stops (permanence).
+let exitZoom = null;
+const EXIT_ZOOM = { scale: 0.06, dur: 0.45 }, sandSeen = new Map();
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
 const contactPulse = new Map(), netRetract = new Map();
@@ -883,7 +899,16 @@ const ring = (x, y, size = 1, alpha = 0.55) => { if (!reduceMotion) particles.pu
 function clearPlayEffects() {
   particles.length = 0; wake.length = 0;
   netPop.clear(); jetFlash.clear(); contactPulse.clear(); netRetract.clear();
-  bump = null; settle = null; pop = null;
+  bump = null; settle = null; pop = null; exitZoom = null;
+}
+// Sand cells the shark has stopped on in this attempt, derived from the saved turn history so undo, restart and
+// resume stay consistent: [cell index, arrival direction]. The current stop appears once the shark has landed.
+function sandStops() {
+  const stops = new Map();
+  if (!g.cells.includes('s')) return stops;
+  st.history.slice(1).forEach(h => { if (cellAt(g, h.pos[0], h.pos[1]) === 's') stops.set(h.pos[1] * g.w + h.pos[0], h.dir); });
+  if ((!anim || anim.landed) && cellAt(g, st.pos[0], st.pos[1]) === 's') stops.set(st.pos[1] * g.w + st.pos[0], st.dir);
+  return stops;
 }
 // A portal has its own short phase, so a long/fast swim cannot skip the disappearance and return.
 // Ordinary tiles still follow the existing glide curve; jumps are not counted as swimming distance.
@@ -947,6 +972,7 @@ function enter(level, keep, label, region = level.region, regionPreview = !!leve
   st = keep || freshState(level);
   if (keep) { g = parseLevel(level); if (!st.boats) st.boats = g.boats.map(b => b.slice()); }
   anim = null; hint = null; cleared = false; clearPlayEffects();
+  sandSeen.clear(); for (const cell of sandStops().keys()) sandSeen.set(cell, -Infinity);   // resumed dents show at once
   pop = reduceMotion ? null : { t: 0 }; queued = null;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
   setBoardRegion(region, regionPreview);
@@ -1951,7 +1977,7 @@ function changeMotionPreference(e) {
 function frame(now) {
   frameId = null;
   if (renderSuspended()) return;
-  const active = (!$('app').inert && (anim || bump || settle || pop)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
+  const active = (!$('app').inert && (anim || bump || settle || pop || exitZoom && exitZoom.t < EXIT_ZOOM.dur)) || skinPreviewMotion.size || (guideOpen() && guidePlaying);
   // Short, interactive motion follows the display. A 60Hz gate quantised 90/144Hz displays to 45/48 updates.
   // Ambient scenes retain a 30Hz budget with the remainder preserved instead of drifting at each skip.
   const rafDelta = Math.max(0, now - lastRafT); lastRafT = now;
@@ -2010,6 +2036,7 @@ function step(dt) {
       a.exitFx = true; const [ex, ey] = a.pts[a.steps];
       ring(ex, ey, 1.6, 0.7); ring(ex, ey, 0.9, 0.5); splashAt(ex, ey, 16, a.dirs[a.steps], 1.3);
       sfx.exit(); haptic('success');
+      if (!reduceMotion) exitZoom = { t: 0, x: ex, y: ey };
     }
     const swimming = a.t < a.dur && !a.warps.has(i + 1);
     // Keep trail density bounded when interactive drawing follows a high-refresh display.
@@ -2031,6 +2058,7 @@ function step(dt) {
   if (bump) { bump.t += dt; if (bump.t > 0.25) bump = null; }
   if (settle) { settle.t += dt; if (settle.t > 0.6) settle = null; }
   if (pop) { pop.t += dt; if (pop.t > 0.4) pop = null; }
+  if (exitZoom) exitZoom.t += dt;   // holds the closer view until the next canal or retry
   for (let k = wake.length - 1; k >= 0; k--) { wake[k].age += dt; if (wake[k].age > 0.9) wake.splice(k, 1); }
   for (const [k, v] of jetFlash) { const nv = v - dt * 2.5; if (nv <= 0) jetFlash.delete(k); else jetFlash.set(k, nv); }
   for (const [k, v] of netPop) if (clock - v >= 0.32) netPop.delete(k);
@@ -2046,9 +2074,12 @@ function step(dt) {
 }
 function draw(t) {
   if (reduceMotion) t = 0;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // After an escape the whole board eases slightly toward the exit (identity otherwise).
+  const zs = exitZoom ? 1 + EXIT_ZOOM.scale * (1 - Math.pow(1 - clamp01(exitZoom.t / EXIT_ZOOM.dur), 3)) : 1;
+  const zx = exitZoom ? (OX + (exitZoom.x + 0.5) * T) * (1 - zs) : 0, zy = exitZoom ? (OY + (exitZoom.y + 0.5) * T) * (1 - zs) : 0;
+  ctx.setTransform(zs, 0, 0, zs, zx * dpr, zy * dpr);
   ctx.drawImage(staticLayer, 0, 0);
-  ctx.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);   // from here on: grid coordinates
+  ctx.setTransform(dpr * zs, 0, 0, dpr * zs, (OX * zs + zx) * dpr, (OY * zs + zy) * dpr);   // from here on: grid coordinates
   const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
   // light on the water
   ctx.save(); ctx.clip(waterPath);
@@ -2071,6 +2102,13 @@ function draw(t) {
     ctx.beginPath();
     for (let k = 0; k <= 8; k++) { const qx = px + T * 0.18 + k * T * 0.08, qy = py + T * (0.35 + hash(x + y * 3) * 0.3) + Math.sin(ph + k * 0.8) * T * 0.035; k ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); }
     ctx.stroke();
+  }
+  // dents on sand the shark has stopped on; a new one settles in over 0.25s
+  const stops = sandStops();
+  for (const cell of sandSeen.keys()) if (!stops.has(cell)) sandSeen.delete(cell);
+  for (const [cell, d] of stops) {
+    if (!sandSeen.has(cell)) sandSeen.set(cell, clock);
+    drawSandDent(ctx, (cell % g.w) * T, Math.floor(cell / g.w) * T, T, ANG[d] ?? 0, reduceMotion ? 1 : clamp01((clock - sandSeen.get(cell)) / 0.25));
   }
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = cellAt(g, x, y), px = x * T, py = y * T;

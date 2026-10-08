@@ -35,8 +35,10 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null, PILOT = null;
     const localStorage = {setItem: (key, value) => {if (storageFails) throw Error('quota'); written = value;}};
     const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map();
-    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null;
-    let cleared = false, clock = 0, hintRequest = 0, deco = 0, boatsDrawn = [], sharkDrawn, netsDrawn = [];
+    let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, exitZoom = null;
+    const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map();
+    let cleared = false, clock = 0, hintRequest = 0, deco = 0, boatsDrawn = [], sharkDrawn, netsDrawn = [], dentsDrawn = [];
+    const drawSandDent = (ctx, x, y, T, ang, k) => dentsDrawn.push([x / T, y / T, +ang.toFixed(3), +k.toFixed(3)]);
     const drawShark = (...args) => sharkDrawn = args.slice(1), drawNet = (...args) => netsDrawn.push(args.slice(1));
     const drawBoat = (ctx, x, y) => boatsDrawn.push([x / T - 0.5, y / T - 0.5]);
     const onClear = () => {cleared = true;};
@@ -53,9 +55,9 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
       stored: () => written,
       netStatus: () => ({title: $('netTitle').textContent, help: $('netHelp').textContent, disabled: $('netStatus').disabled, guideHidden: $('netGuideLabel').hidden}),
       restore: (record, otherLevel = level, id = LVL) => restoreSession(record, otherLevel, id),
-      render: () => {boatsDrawn = []; netsDrawn = []; draw(0); return boatsDrawn;},
+      render: () => {boatsDrawn = []; netsDrawn = []; dentsDrawn = []; draw(0); return boatsDrawn;}, dents: () => dentsDrawn.slice(),
       sounds: () => sounds.slice(), shark: () => sharkDrawn, nets: () => netsDrawn,
-      effects: () => JSON.parse(JSON.stringify({particles, wake, contacts:[...contactPulse], retract:[...netRetract], netPop:[...netPop], settle,
+      effects: () => JSON.parse(JSON.stringify({particles, wake, contacts:[...contactPulse], retract:[...netRetract], netPop:[...netPop], settle, zoom: exitZoom,
         anim:anim && {t:anim.t,dur:anim.dur,swimDur:anim.swimDur,portals:anim.portals,p:anim.p,landed:anim.landed,warpScale:anim.warpScale}})),
       state: () => JSON.parse(JSON.stringify({pos: st.pos, boats: st.boats, nets: st.nets, moves: st.moves, fish: st.fish, cleared, animating: !!anim, view: [view.x, view.y]}))
     };
@@ -394,4 +396,34 @@ test('reduced motion keeps gameplay and cues with no shrink, stretch, trail or d
   assert.deepEqual(scene.state().pos,[11,3]); assert.deepEqual(scene.state().fish,[0,1]);
   const net=game({index:11,reduced:true}); net.tap(3,8); net.tap(3,8);
   assert.deepEqual(net.effects().retract,[]); assert.deepEqual(net.effects().netPop,[]);
+});
+
+test('sand stops leave dents from the turn history: after landing, through undo, and at once in reduced motion', () => {
+  const level = { par: 3, map: ['#######E#', '#.......#', '#S..s...#', '#########'] };
+  const scene = game({ level });
+  scene.move('R'); scene.tick(0.02);
+  assert.deepEqual(scene.state().pos, [4, 2]); assert.equal(scene.state().animating, true);
+  scene.render(); assert.deepEqual(scene.dents(), [], 'no dent before the shark arrives');
+  finishTurn(scene); scene.render();
+  assert.equal(scene.dents().length, 1); assert.deepEqual(scene.dents()[0].slice(0, 3), [4, 2, 0], 'dent faces the arrival heading');
+  scene.move('U'); finishTurn(scene); scene.render();
+  assert.deepEqual(scene.dents().map(d => d.slice(0, 2)), [[4, 2]], 'earlier stops stay marked');
+  scene.undo(); scene.render(); assert.deepEqual(scene.dents().map(d => d.slice(0, 2)), [[4, 2]]);
+  scene.undo(); scene.render(); assert.deepEqual(scene.dents(), [], 'undoing the stop removes its dent');
+  const reduced = game({ level, reduced: true });
+  reduced.move('R'); finishTurn(reduced); reduced.render();
+  assert.equal(reduced.dents().length, 1); assert.equal(reduced.dents()[0][3], 1, 'reduced motion shows the dent without fading in');
+});
+
+test('escape eases the board toward the exit only with motion enabled; pausing resets it', () => {
+  const level = { par: 2, map: ['#######E#', '#S....f.#', '#########'] };
+  const scene = game({ level });
+  scene.move('R'); finishTurn(scene); assert.equal(scene.effects().zoom, null);
+  scene.move('U'); finishTurn(scene);
+  assert.equal(scene.state().cleared, true); assert.deepEqual([scene.effects().zoom.x, scene.effects().zoom.y], [7, 0]);
+  scene.tick(0.3); assert.ok(scene.effects().zoom.t > 0);
+  scene.pause(); assert.equal(scene.effects().zoom, null, 'leaving the board drops the closer view');
+  const reduced = game({ level, reduced: true });
+  reduced.move('R'); finishTurn(reduced); reduced.move('U'); finishTurn(reduced);
+  assert.equal(reduced.state().cleared, true); assert.equal(reduced.effects().zoom, null);
 });
