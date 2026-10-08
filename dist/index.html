@@ -5172,11 +5172,10 @@ function createGameAudio({ enabled = () => true, active = () => true,
   // Target levels (dB on the -24 reference) for each recorded layer, matched by offline render to the loudness of the
   // synthesized cue it replaces (first 300 ms; broadband water 1 dB under) so the tuned balance between events holds.
   // Each effect uses its recordings only when all of them decoded; otherwise the synthesized cue plays unchanged.
-  const lv = { bump: -34, drop: -32, note: -34, bell: -34, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
+  const lv = { bump: -34, bite: -30, gulp: -32, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
     pressNote: -40, creak: -41, gateWater: -46, boat: -47, crateKnock: -36, crateWater: -43, crateCreak: -45, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
     unlock: -31, unlockBell: -36, chapter: -31, chapterBell: -36, chapterWater: -44, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
   const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'], DROPS = ['waterDrop', 'waterDrop2'];
-  const CHAIN = ['A4', 'B4', 'C#5', 'E5', 'F#5', 'A5'];
   const effects = {
     bump: effect('bump', 'motion', 1, .18, v => {
       if (ready(...IMPACTS)) sample(v, turn('bump', IMPACTS), { lvl: lv.bump, dur: .14, rate: wobble() });
@@ -5186,16 +5185,20 @@ function createGameAudio({ enabled = () => true, active = () => true,
       const v = begin('eat', 'pickup', complete ? 3 : 2, complete ? 0 : .055); if (!v) return;
       // Coarse frames may collect several fish at once; spread only a bounded 120ms.
       const delay = Math.min(.12, Math.max(0, nextPickup - v.at)); nextPickup = v.at + delay + .055;
-      if (ready(...DROPS, ...MALLETS, ...BELLS)) {
-        // Each fish in one swipe rises a step in the scale (Peggle); the last fish adds a bell.
-        sample(v, turn('eat', DROPS), { lvl: lv.drop, dur: .22, delay, rate: wobble() });
-        note(v, CHAIN[Math.min(CHAIN.length - 1, Math.max(0, chain))], { lvl: lv.note, dur: .5, delay: delay + .01, fade: .2 });
-        if (complete) note(v, 'A5', { bell: true, lvl: lv.bell, dur: .8, delay: delay + .09, fade: .3 });
+      // A cute chomp, not a chime (2026-10-09): two quick toy bites ("nom-nom") from the soft impacts sped up, then a small
+      // water gulp. Each fish in one swipe bites a semitone higher (up to five); the last fish adds a third bite and a rounder gulp.
+      const up = Math.pow(2, Math.min(5, Math.max(0, chain)) / 12);
+      if (ready(...IMPACTS, ...DROPS)) {
+        sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite, dur: .07, delay, rate: 1.75 * up * wobble() });
+        sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite - 2, dur: .08, delay: delay + .075, rate: 1.5 * up * wobble() });
+        if (complete) sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite - 1, dur: .08, delay: delay + .15, rate: 1.9 * up * wobble() });
+        sample(v, turn('eatGulp', DROPS), { lvl: lv.gulp, dur: complete ? .24 : .17, delay: delay + (complete ? .22 : .13), rate: (complete ? 1.15 : 1.35) * up, glide: true });
         return;
       }
-      const hz = [440, 523.25, 587.33, 659.25][Math.min(3, Math.max(0, chain))];
-      drop(v, hz * 1.18, .15, .2, delay, hz);
-      if (complete) { drop(v, 659.25, .18, .13, delay + .09, 659.25); drop(v, 880, .2, .09, delay + .16, 880); }
+      drop(v, 620 * up, .06, .16, delay, 470 * up, true);
+      drop(v, 540 * up, .07, .14, delay + .075, 400 * up, true);
+      if (complete) drop(v, 680 * up, .07, .14, delay + .15, 500 * up, true);
+      drop(v, 330 * up, .14, .12, delay + (complete ? .22 : .13), 560 * up);
     },
     net: effect('net', 'device', 1, .075, (v, remove = false) => {
       if (ready('cloth1', 'cloth3', ...MALLETS)) {
