@@ -1,5 +1,8 @@
 ﻿# 소스 master와 www 빌드를 각각 GitHub / GitHub Pages에 배포한다.
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1이 UTF-8 콘솔(코드 페이지 65001)에서는 git 표준 입력 앞에 BOM을 붙여 credential 요청이 거부된다.
+# 같은 코드 페이지의 BOM 없는 UTF-8로 바꾼다.
+if ($PSVersionTable.PSVersion.Major -lt 6 -and [Console]::InputEncoding.CodePage -eq 65001) { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false }
 $projectDir = Split-Path -Parent $PSScriptRoot
 $repoUrl = 'https://github.com/kongrae/bukang-sea.git'
 $apiUrl = 'https://api.github.com/repos/kongrae/bukang-sea'
