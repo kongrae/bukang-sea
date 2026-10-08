@@ -934,15 +934,19 @@ function migratePilotToStory() {
 }
 // 2026-10-07 장 재구성: the play order changed while LEVELS indices and every saved record stayed put.
 // Keep each canal the previous sequential rule had opened, and remember a rescue completed before the new canals.
+// 2026-10-08 early-curve reorder (storyOrder 3): the order moved again; canals the 2026-10-07 order had opened stay open.
 function migrateStoryOrder() {
-  if (save.storyOrder === 2) return;
-  const previousCount = 60, cleared = i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+  if (save.storyOrder === 3) return;
   const access = new Set(Array.isArray(save.storyAccess) ? save.storyAccess : []);
-  for (let i = 0; i < previousCount; i++) {
-    if (i === 0 || save.best[i - 1] != null || i >= 48 && (access.has(i) || cleared(i))) access.add(i);
+  if (save.storyOrder !== 2) {
+    const previousCount = 60, cleared = i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+    for (let i = 0; i < previousCount; i++) {
+      if (i === 0 || save.best[i - 1] != null || i >= 48 && (access.has(i) || cleared(i))) access.add(i);
+    }
+    if (Array.from({ length: previousCount }, (_, i) => i).every(cleared)) save.storyRescued = 1;
   }
-  if (Array.from({ length: previousCount }, (_, i) => i).every(cleared)) save.storyRescued = 1;
-  save.storyAccess = [...access]; save.storyOrder = 2; persist();
+  STORY_ORDER_V2.forEach((i, position) => { if (position === 0 || save.best[STORY_ORDER_V2[position - 1]] != null) access.add(i); });
+  save.storyAccess = [...access]; save.storyOrder = 3; persist();
 }
 function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
 function dailySessionRecord(daily) {

@@ -82,7 +82,7 @@ test('all twelve old story sessions resume and retry their old board, while new 
     return {resume:()=>loadLevel(index,storySession(index)),retry:replay,fresh:()=>loadLevel(index),
       state:()=>st,level:()=>entered,save:()=>save};
   `);
-  assert.equal(Object.keys(LEGACY_STORY_LEVELS).length,12);
+  assert.equal(Object.keys(LEGACY_STORY_LEVELS).length,16);
   for(const [key,level] of Object.entries(LEGACY_STORY_LEVELS)) {
     const index=+key,g=E.parseLevel(level),plan=E.plan(g,g.start,0,new Set(),g.nets,true),step=plan.steps[0];
     const r=E.slide(g,g.start,step.dir,new Set(step.nets),g.boats);
@@ -101,7 +101,7 @@ test('authored story boards retain required device learning order and add divers
   // First appearance in play order: one new device per chapter (docs/CHAPTER-RESTRUCTURE.md).
   const played = STORY_ORDER.map(i=>LEVELS[i]);
   const first = pattern => played.findIndex(l=>l.map.some(row=>pattern.test(row)))+1;
-  assert.equal(first(/[<>^v]/),7);assert.equal(first(/[bB]/),13);assert.equal(played.findIndex(l=>l.nets)+1,25);
+  assert.equal(first(/[<>^v]/),4);assert.equal(first(/[bB]/),13);assert.equal(played.findIndex(l=>l.nets)+1,25);
   assert.equal(first(/s/),37);assert.equal(first(/w/),49);assert.equal(first(/[pGg]/),61);
   assert.ok(new Set(LEVELS.map(l=>shapeKey(l.map))).size>=29);
   for(const i of [42,45]) {

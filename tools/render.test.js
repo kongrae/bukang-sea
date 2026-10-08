@@ -556,13 +556,13 @@ function storyLoader() {
 
 test('only the canal introducing a device spotlights it: one per chapter, before the first move, until cleared', () => {
   const scene = storyLoader();
-  const firsts = { jet: 6, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60 };
+  const firsts = { jet: 3, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60 };
   for (const [kind, position] of Object.entries(firsts)) {
     assert.deepEqual(scene.introduced(position), [kind]);
     assert.equal(Math.floor(position / 12), Object.keys(firsts).indexOf(kind), 'one new device per chapter');
   }
   assert.deepEqual(scene.introduced(7), []);
-  assert.ok(scene.load(6).cells.every(c => '<>^v'.includes(c)));
+  assert.ok(scene.load(3).cells.every(c => '<>^v'.includes(c)));
   assert.deepEqual(scene.load(12).cells.length, scene.boats().length);
   assert.equal(scene.load(24).net, true);
   assert.ok(scene.load(36).cells.length && scene.load(36).cells.every(c => c === 's'));
@@ -570,7 +570,7 @@ test('only the canal introducing a device spotlights it: one per chapter, before
   assert.ok(scene.load(60).cells.includes('p') && scene.load(60).cells.every(c => 'pGg'.includes(c)));
   assert.equal(scene.load(7), null, 'later canals of the chapter stay plain');
   assert.equal(scene.load(36, true), null, 'an older definition of the canal is not the introduction');
-  scene.set(6, 1); assert.equal(scene.load(6), null, 'cleared');
+  scene.set(3, 1); assert.equal(scene.load(3), null, 'cleared');
   scene.set('shown', 12); assert.equal(scene.load(12), null, 'already shown in this app session');
   scene.set('moves', 2); assert.equal(scene.load(24), null, 'resumed after moving'); scene.set('moves', 0);
   scene.set('reduced', true); assert.equal(scene.load(48), null, 'reduced motion');

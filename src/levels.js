@@ -16,28 +16,26 @@ const LEVELS = [
     '#S....#',
     '#######',
   ] },
-  { par: 7, role: 'learn', name: '휘어진 수로', tip: '부표는 벽처럼 상어를 멈춰 세워요.', map: [
-    '#####E#',
+  // 2026-10-08 early curve: canals 2 and 3 redesigned as small boards that need one idea (docs/EARLY-CURVE-PLAN.md). Previous boards: LEGACY_STORY_LEVELS.
+  { par: 8, role: 'learn', name: '부표 계단', tip: '부표는 벽처럼 상어를 멈춰 세워요. 부표 앞에서 멈춘 뒤 방향을 바꿔 보세요.', map: [
+    '#######',
+    '#...o.E',
     '#.....#',
     '#.o...#',
-    '#..####',
-    '#.o####',
-    '#.....#',
+    '#....o#',
     '#.....#',
     '#.....#',
     '##S####',
   ] },
-  { par: 7, role: 'learn', name: '숭어 한 마리', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요.', map: [
-    '#E#####',
+  { par: 8, role: 'learn', name: '숭어 마중', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요. 숭어가 있는 줄에 멈춰 서 보세요.', map: [
+    '#####E#',
+    '#..o..#',
     '#.....#',
-    '#...o.#',
-    '#.....#',
-    '#.o..f#',
-    '#...o.#',
-    '#.....#',
+    '#...f.#',
+    '#....o#',
     '#.....#',
     '#.....#',
-    '####S##',
+    '###S###',
   ] },
   {
     "par": 7,
@@ -342,16 +340,16 @@ const LEVELS = [
     '#f....o.#',
     '####S####',
   ] },
-  { par: 12, name: '석호의 숭어', tip: '숭어 세 마리, 물줄기 두 개.', map: [
+  { par: 8, name: '석호 한 바퀴', tip: '잠깐 쉬어 가는 수로예요. 물줄기를 타면 숭어 줄을 한 번에 지나가요.', map: [
     '#######E#',
     '#.......#',
-    '#.......#',
+    '#v......#',
     '#.##....#',
-    '#.##o..>#',
-    '#.vf....#',
+    '#f##o...#',
+    '#f......#',
+    '#>...##.#',
     '#....##.#',
-    '#.o..##.#',
-    '#...f..f#',
+    '#......o#',
     '#S#######',
   ] },
   { par: 15, name: '거센 물살', tip: '물줄기 세 개가 얽혀 있어요. 천천히 따져 봐요.', map: [
@@ -433,17 +431,17 @@ const LEVELS = [
     '#......#',
     '######S#',
   ] },
-  { par: 15, name: '방파제 길', tip: '세로로 오가는 구조정이 길을 열었다 닫았다 해요.', map: [
+  { par: 12, name: '방파제 순찰로', tip: '세로로 오가는 구조정은 길을 막기도 하고, 멈출 자리가 되기도 해요.', map: [
     '########',
-    'E....f>#',
-    '#...o..#',
-    '####...#',
-    '#f..b..#',
+    'E.....B#',
+    '#o.....#',
+    '####.<.#',
     '#......#',
+    '#..f.fv#',
     '#...####',
-    '#.^..B.#',
-    '#...f..#',
-    '#.v....#',
+    '#......#',
+    '#......#',
+    '#......#',
     '#..o...#',
     '######S#',
   ] },
@@ -969,6 +967,17 @@ const CHAPTERS = [
 // Play order: position (수로 번호 - 1) → LEVELS index. Saves, sessions and hints stay keyed by the LEVELS index,
 // so LEVELS remains append-only and records survive any change of play order.
 const STORY_ORDER = [
+  0, 1, 2, 6, 7, 48, 3, 16, 14, 4, 49, 8,
+  5, 12, 18, 60, 61, 51, 20, 22, 26, 31, 15, 28,
+  9, 17, 29, 34, 23, 50, 10, 19, 11, 33, 13, 35,
+  36, 37, 62, 63, 64, 21, 65, 44, 66, 67, 24, 38,
+  68, 39, 42, 69, 41, 30, 40, 45, 46, 43, 25, 47,
+  52, 53, 56, 54, 55, 32, 57, 58, 70, 71, 27, 59,
+];
+const STORY_POSITION = [];
+STORY_ORDER.forEach((index, position) => { STORY_POSITION[index] = position; });
+// The 2026-10-07 order (storyOrder 2), kept only so the 2026-10-08 early-curve reorder leaves every canal it had opened open.
+const STORY_ORDER_V2 = [
   0, 1, 2, 48, 3, 4, 6, 7, 16, 14, 49, 8,
   5, 12, 18, 60, 61, 51, 15, 22, 26, 31, 20, 28,
   9, 17, 29, 34, 23, 50, 10, 19, 11, 33, 13, 35,
@@ -976,11 +985,43 @@ const STORY_ORDER = [
   39, 68, 42, 69, 41, 30, 40, 45, 46, 43, 25, 47,
   52, 53, 56, 54, 55, 32, 57, 58, 70, 71, 27, 59,
 ];
-const STORY_POSITION = [];
-STORY_ORDER.forEach((index, position) => { STORY_POSITION[index] = position; });
 
 // Exact pre-redesign definitions: only matching in-progress saves may resume these routes.
+// 1, 2, 25, 31: 2026-10-08 early-curve redesign (docs/EARLY-CURVE-PLAN.md).
 const LEGACY_STORY_LEVELS = {
+  "1": {
+    "par": 7,
+    "name": "휘어진 수로",
+    "tip": "부표는 벽처럼 상어를 멈춰 세워요.",
+    "map": [
+      "#####E#",
+      "#.....#",
+      "#.o...#",
+      "#..####",
+      "#.o####",
+      "#.....#",
+      "#.....#",
+      "#.....#",
+      "##S####"
+    ]
+  },
+  "2": {
+    "par": 7,
+    "name": "숭어 한 마리",
+    "tip": "숭어를 모두 먹고 나가면 별을 하나 더 받아요.",
+    "map": [
+      "#E#####",
+      "#.....#",
+      "#...o.#",
+      "#.....#",
+      "#.o..f#",
+      "#...o.#",
+      "#.....#",
+      "#.....#",
+      "#.....#",
+      "####S##"
+    ]
+  },
   "3": {
     "par": 7,
     "name": "S자 물길",
@@ -1085,6 +1126,23 @@ const LEGACY_STORY_LEVELS = {
       "#S#####"
     ]
   },
+  "25": {
+    "par": 12,
+    "name": "석호의 숭어",
+    "tip": "숭어 세 마리, 물줄기 두 개.",
+    "map": [
+      "#######E#",
+      "#.......#",
+      "#.......#",
+      "#.##....#",
+      "#.##o..>#",
+      "#.vf....#",
+      "#....##.#",
+      "#.o..##.#",
+      "#...f..f#",
+      "#S#######"
+    ]
+  },
   "27": {
     "par": 14,
     "name": "잔잔한 석호",
@@ -1119,6 +1177,25 @@ const LEGACY_STORY_LEVELS = {
       "#.....o#",
       "#......#",
       "#......#",
+      "######S#"
+    ]
+  },
+  "31": {
+    "par": 15,
+    "name": "방파제 길",
+    "tip": "세로로 오가는 구조정이 길을 열었다 닫았다 해요.",
+    "map": [
+      "########",
+      "E....f>#",
+      "#...o..#",
+      "####...#",
+      "#f..b..#",
+      "#......#",
+      "#...####",
+      "#.^..B.#",
+      "#...f..#",
+      "#.v....#",
+      "#..o...#",
       "######S#"
     ]
   },
@@ -1194,4 +1271,4 @@ const LEGACY_STORY_LEVELS = {
   }
 };
 
-if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS, STORY_CHAPTER_LEVELS };
+if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_ORDER_V2, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS, STORY_CHAPTER_LEVELS };

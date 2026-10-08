@@ -72,7 +72,7 @@ async function cdp() {
       await send('Page.navigate', { url: game }); await sleep(800);
       // guides already seen so no coach/device popup covers the scene
       const seenDevices = ['buoy', 'boat', 'jet', 'net', 'sand', 'whirl'];
-      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, storyOrder: 2, sound: false, coachSwipe: true, coachNet: true, seenDevices }))}); location.reload();`).catch(() => {});
+      await ev(`localStorage.setItem('bukang-sea-v1', ${JSON.stringify(JSON.stringify({ ...s.save, storyOrder: 3, sound: false, coachSwipe: true, coachNet: true, seenDevices }))}); location.reload();`).catch(() => {});
       await sleep(1200);
       await ev(`(async () => {
         const $ = id => document.getElementById(id), sleep = ms => new Promise(r => setTimeout(r, ms));
