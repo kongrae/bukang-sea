@@ -188,7 +188,7 @@ function normalizeJournal() {
     if (journalDateValid(date) && Number.isInteger(stars) && stars >= 1 && stars <= 3) days[date] = Math.max(days[date] || 0, 1);
   }
   for (const [date, record] of Object.entries(save.dailyOps)) {
-    if (!journalDateValid(date) || ![1, DAILY_OPERATION_VERSION].includes(record?.version) || !Array.isArray(record.stars)) continue;
+    if (!journalDateValid(date) || !DAILY_OPERATION_VERSIONS.includes(record?.version) || !Array.isArray(record.stars)) continue;
     const cleared = record.stars.slice(0, 3).filter(n => Number.isInteger(n) && n >= 1 && n <= 3).length;
     if (cleared) days[date] = Math.max(days[date] || 0, cleared === 3 ? 2 : 1);
   }
@@ -218,6 +218,12 @@ function introducedDevices(i) {
   }
   return Object.keys(firstDeviceAt).filter(kind => firstDeviceAt[kind] === STORY_POSITION[i]);
 }
+// Devices the player has learned: the story canal introducing them is cleared. Daily operation v3 and free v3 use only these.
+function learnedDevices() {
+  introducedDevices(0);
+  return Object.keys(firstDeviceAt).filter(kind => save.best[STORY_ORDER[firstDeviceAt[kind]]] >= 1);
+}
+const learningDevices = () => Object.keys(VARIETY_FAMILIES).some(family => !varietyFamilyKnown(family, learnedDevices()));
 // Device kinds that first appear in chapter ci (one per chapter since the 2026-10-07 restructure).
 function chapterDevices(ci) {
   let start = 0; for (let k = 0; k < ci; k++) start += CHAPTERS[k].count;
@@ -1643,23 +1649,31 @@ function recordDaily(date, stars) {
 }
 function dailyProgress(date) {
   const record = save.dailyOps[date];
-  const stars = DAILY_STAGES.map((_, i) => [1, DAILY_OPERATION_VERSION].includes(record?.version) && Number.isInteger(record.stars?.[i])
+  const stars = DAILY_STAGES.map((_, i) => DAILY_OPERATION_VERSIONS.includes(record?.version) && Number.isInteger(record.stars?.[i])
     ? Math.max(0, Math.min(3, record.stars[i])) : 0);
   return { stars, count: stars.filter(Boolean).length, next: stars.findIndex(n => !n), total: stars.reduce((a, b) => a + b, 0) };
+}
+// Operation v3 uses the devices learned when the date's first canal was prepared, so a device learned in the story
+// later that day never changes canals already offered.
+function dailyLearned(date) {
+  const saved = save.dailyDevices;
+  if (saved?.date === date && Array.isArray(saved.devices) && saved.devices.every(d => typeof d === 'string')) return saved.devices;
+  save.dailyDevices = { date, devices: learnedDevices() }; persist();
+  return save.dailyDevices.devices;
 }
 // A started date stays on its original generator, even before its first clear.
 function dailyOperationVersion(date) {
   const record = save.dailyOps[date];
-  if ([1, DAILY_OPERATION_VERSION].includes(record?.version)) return record.version;
+  if (DAILY_OPERATION_VERSIONS.includes(record?.version)) return record.version;
   const packets = [save.sessions.daily, ...Object.values(save.sessions.dailyStages)];
-  for (const packet of packets) for (const version of [1, DAILY_OPERATION_VERSION]) {
+  for (const packet of packets) for (const version of DAILY_OPERATION_VERSIONS) {
     if (DAILY_STAGES.some((_, stage) => packet?.id === dailyStageId({ date, stage, version }))) return version;
   }
   return DAILY_OPERATION_VERSION;
 }
 function recordDailyStage(daily, stars) {
   if (!journalDateValid(daily.date) || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
-  if (Number.isInteger(daily.stage) && [1, DAILY_OPERATION_VERSION].includes(daily.version) && DAILY_STAGES[daily.stage]) {
+  if (Number.isInteger(daily.stage) && DAILY_OPERATION_VERSIONS.includes(daily.version) && DAILY_STAGES[daily.stage]) {
     if (save.dailyOps[daily.date] && save.dailyOps[daily.date].version !== daily.version) return;
     const progress = dailyProgress(daily.date);
     progress.stars[daily.stage] = Math.max(progress.stars[daily.stage], stars);
@@ -1704,7 +1718,7 @@ function renderDaily() {
 function renderOperation() {
   const date = dailyDate(), progress = dailyProgress(date), version = dailyOperationVersion(date);
   shownDailyDate = date;
-  $('operationDate').textContent = `${dateLabel(date)} · ${version === 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
+  $('operationDate').textContent = `${dateLabel(date)} · ${version >= 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
   $('operationNote').textContent = progress.count === 3 ? '오늘의 작전을 마쳤어요! 별을 더 모으거나 내일 새 수로에 도전해요.'
     : save.daily[date] ? (progress.count ? '오늘 참여가 인정됐어요. 나머지 수로도 이어서 도전해요.' : '이전 수로의 참여 기록은 유지돼요. 새 작전에도 도전해 보세요.')
     : '한 수로만 완료해도 연속 기록이 이어져요.';
@@ -1717,6 +1731,7 @@ function renderOperation() {
     return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" aria-label="${stage + 1}번째 ${tier.name} ${tier.label}, ${state}" ${locked ? 'disabled' : ''}>
       <span class="stage-number" aria-hidden="true">${stars ? '✓' : stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
   }).join('');
+  $('operationLearnNote').hidden = version !== DAILY_OPERATION_VERSION || !learningDevices();
   $('dailyLegacyBtn').hidden = !save.sessions.dailyLegacy;
   $('dailyLegacyBtn').disabled = false;
   $('operationStatus').textContent = '';
@@ -1748,7 +1763,7 @@ async function startDaily(stage) {
     if (dailyCacheDate !== `${date}:v${version}`) { dailyCacheDate = `${date}:v${version}`; dailyCache = new Map(); }
     let daily = dailyCache.get(stage);
     if (!daily) {
-      const search = makeDailyStageSearch(date, stage, version);
+      const search = makeDailyStageSearch(date, stage, version, version === DAILY_OPERATION_VERSION ? dailyLearned(date) : null);
       let step;
       do {
         if (request !== dailyRequest) return;
@@ -1914,7 +1929,7 @@ let freeRequest = 0;
 const freeCache = new Map(), freeOpen = () => !$('freeOverlay').hidden;
 function freeRecord(difficulty) {
   const run = save.free.runs[difficulty];
-  return run && [1, FREE_VERSION].includes(run.version) && run.difficulty === difficulty
+  return run && FREE_VERSIONS.includes(run.version) && run.difficulty === difficulty
     && Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
     && Number.isSafeInteger(run.serial) && run.serial > 0
     && Number.isInteger(run.stars) && run.stars >= 0 && run.stars <= 3
@@ -1942,6 +1957,7 @@ function renderFree() {
       <div class="free-actions"><button class="btn primary" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'new' : 'resume'}" aria-label="${tier.label} ${action}">${action}</button>
       ${run ? `<button class="btn" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'replay' : 'new'}" aria-label="${tier.label} ${action === '새 수로' ? '다시 풀기' : '새 수로'}">${action === '새 수로' ? '다시 풀기' : '새 수로'}</button>` : ''}</div></div>`;
   }).join('');
+  $('freeLearnNote').hidden = !learningDevices();
   $('freeStatus').textContent = '';
 }
 function openFree() {
@@ -1969,7 +1985,8 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       const serial = create ? (previous?.serial || 0) + 1 : previous.serial;
       if (!Number.isSafeInteger(serial)) throw new Error('free serial exhausted');
       for (let attempt = 0; attempt < (create ? 12 : 1); attempt++) {
-        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version);
+        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version,
+          learnedDevices(), create ? null : previous.family);
         let step;
         do {
           if (request !== freeRequest) return;
@@ -1993,7 +2010,7 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId };
       save.free.recent[difficulty] = [...save.free.recent[difficulty], varietyLayoutKey(run.level)].slice(-6);
       delete save.sessions['free' + difficulty];
-      for (const key of Object.keys(save.hintUsage)) if ([1, FREE_VERSION].some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
+      for (const key of Object.keys(save.hintUsage)) if (FREE_VERSIONS.some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
       if (previous) freeCache.delete(freeId(previous));
       persist();
     }
@@ -3069,7 +3086,8 @@ function start(data) {
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); drawLegendIcon($('netToolIcon')); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
-    ? [1, DAILY_OPERATION_VERSION].includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion) : makeDaily(data.daily));
+    ? DAILY_OPERATION_VERSIONS.includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion,
+      data.dailyVersion === DAILY_OPERATION_VERSION ? dailyLearned(data.daily) : null) : makeDaily(data.daily));
   const level = resumeDaily ? resumeDaily.level : data && storyLevel(data.lvl);
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }

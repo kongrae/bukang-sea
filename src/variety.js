@@ -46,6 +46,12 @@ const VARIETY_DAILY_THEMES = [
   {label:'갈림길 작전',families:['pockets','current','net']},
   {label:'다시 만나는 길',families:['branches','patrol','warp']},
 ];
+// Daily operation v3 / free v3: a family is offered only after the story taught its device (learned = story device keys
+// such as 'jet', 'whirl'; null = every device). Families without a device are always known.
+function varietyFamilyKnown(family, learned) {
+  const device = VARIETY_FAMILIES[family]?.device;
+  return !learned || !device || learned.includes(device === 'warp' ? 'whirl' : device);
+}
 // Compare static layout including devices under mirror/rotation, but never claim boat phase equivalence.
 // Boat axes/directions are kept in the exact key; only boat-free boards are symmetry-normalized.
 function varietyLayoutKey(level) {
@@ -96,4 +102,4 @@ function* variedCanalSearch(seed, family, tier, deps, reserves = [], maxAttempts
   const reserve=pool[seed%pool.length];
   return {...reserve,map:reserve.map.slice(),par:reserve.minimum+tier.slack,fallback:true,tip:profile.tip,idea:profile.label,attempts:maxAttempts};
 }
-if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyLayoutKey,varietyRouteUse,variedCanalSearch};
+if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyFamilyKnown,varietyLayoutKey,varietyRouteUse,variedCanalSearch};

@@ -54,7 +54,7 @@ test('every reserve replays with its recorded minimum; active devices and requir
 test('published v2 free layouts and star targets have a stable compatibility fingerprint', () => {
   const digest=crypto.createHash('sha256');
   for(let seed=0;seed<90;seed++)for(let difficulty=0;difficulty<3;difficulty++) {
-    const {level}=F.makeFree(seed,difficulty);digest.update(JSON.stringify([level.map,level.nets||0,level.par]));
+    const {level}=F.makeFree(seed,difficulty,2);digest.update(JSON.stringify([level.map,level.nets||0,level.par]));
   }
   assert.equal(digest.digest('hex'),'2c7a08742e29bbdcd93e4b76cd38ccc1b40862144e7f159121d2477d85688311');
 });

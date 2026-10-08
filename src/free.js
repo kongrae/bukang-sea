@@ -1,9 +1,11 @@
 /* ---------- Free canals: seeded puzzles, independent of calendar dates ---------- */
-const FREE_VERSION = 2;
+const FREE_VERSION = 3;
+const FREE_VERSIONS = [1, 2, 3];   // every version a kept run may still be on
 const FE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel };
 const FD = typeof module !== 'undefined' && typeof require === 'function' ? require('./daily.js')
   : { MASKS, rng, place, dailySeed, operationPlan, DAILY_STAGES, DAILY_FALLBACKS };
-const FV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js') : { VARIETY_FREE_TIERS, variedCanalSearch };
+const FV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
+  : { VARIETY_FAMILIES, VARIETY_FREE_TIERS, variedCanalSearch, varietyFamilyKnown };
 const FREE_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
 const FREE_LEGACY_TIERS = FD.DAILY_STAGES.map((tier, difficulty) => ({ ...tier,
   name: ['느긋한 물길', '굽이진 물길', '거센 물길'][difficulty],
@@ -38,17 +40,25 @@ function* makeFreeV1Search(seed, difficulty) {
   return { version: 1, seed, difficulty, fallback: true,
     level: { ...fallback, map: fallback.map.slice(), name: tier.name, tip: tier.tip } };
 }
-function* makeFreeSearch(seed, difficulty, version = FREE_VERSION) {
+// v3 (2026-10-08): only families whose device the story has taught (learned: story device keys, null = all). Fewer than
+// two left adds the device-free families. With every device learned v3 equals v2. A kept run passes its saved family.
+const FREE_BASE_FAMILIES = ['branches', 'loop', 'pockets'];
+function freeFamilies(tier, learned) {
+  const known = tier.families.filter(family => FV.varietyFamilyKnown(family, learned));
+  return known.length >= 2 ? known : [...new Set([...known, ...FREE_BASE_FAMILIES])];
+}
+function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
   if (version === 1) return yield* makeFreeV1Search(seed, difficulty);
   const tier = FREE_TIERS[difficulty];
-  if (version !== 2 || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
-  const mixed = FD.dailySeed(`shark-sos-free-v2-${difficulty}-${seed}`), family = tier.families[mixed % tier.families.length];
-  const level = yield* FV.variedCanalSearch(mixed, family, tier, FD, FREE_RESERVES);
+  if (![2, 3].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  const mixed = FD.dailySeed(`shark-sos-free-v2-${difficulty}-${seed}`), families = version === 2 ? tier.families : freeFamilies(tier, learned);
+  const chosen = version === 3 && FV.VARIETY_FAMILIES[family] ? family : families[mixed % families.length];
+  const level = yield* FV.variedCanalSearch(mixed, chosen, tier, FD, FREE_RESERVES);
   return level ? { version, seed, difficulty, fallback: !!level.fallback, level: { ...level, name: level.idea } } : null;
 }
-function makeFree(seed, difficulty, version = FREE_VERSION) {
-  const search = makeFreeSearch(seed, difficulty, version); let step;
+function makeFree(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
+  const search = makeFreeSearch(seed, difficulty, version, learned, family); let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
-if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_TIERS, FREE_LEGACY_TIERS, freeId, makeFreeSearch, makeFree };
+if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_VERSIONS, FREE_BASE_FAMILIES, freeFamilies, FREE_TIERS, FREE_LEGACY_TIERS, freeId, makeFreeSearch, makeFree };

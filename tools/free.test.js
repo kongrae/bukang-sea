@@ -24,7 +24,9 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     ${read('variety-reserves')}
     ${read('daily')}
     ${read('free')}
-    let written=stored,hook=null,FREE=null,DAILY=null,PILOT=null,LVL=0,g,st,anim=null,cleared=false,deco=0;
+    let written=stored,hook=null,FREE=null,DAILY=null,PILOT=null,LVL=0,g,st,anim=null,cleared=false,deco=0,learned=['jet','boat','net','sand','whirl','gate'];
+    const learnedDevices=()=>learned.slice();
+    ${source.match(/^const learningDevices = .*$/m)[0]}
     const elements=new Map(),noop=()=>{},localStorage={getItem:()=>written,setItem:(key,value)=>written=value};
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:true,textContent:'',innerHTML:'',inert:false,
       focus:noop,setAttribute:noop,querySelectorAll:()=>[],classList:{toggle:noop}});return elements.get(id);};
@@ -45,7 +47,7 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     ${free}
     return {open:openFree,close:closeFree,start:startFree,record:recordFreeClear,element:$,
       saved:()=>written,save:()=>JSON.parse(JSON.stringify(save)),run:()=>FREE,state:()=>JSON.parse(JSON.stringify(st)),
-      hook:fn=>{hook=fn;},generator:fn=>{makeFreeSearch=fn;freeCache.clear();},
+      hook:fn=>{hook=fn;},generator:fn=>{makeFreeSearch=fn;freeCache.clear();},learn:list=>{learned=list;},
       hint:()=>{save.hintUsage[freeId(FREE)]={count:2,lastUsed:123456};persist();},
       replay:()=>loadFree(FREE),
       move:step=>{st.history.push(copyTurn(st));st.nets=step.nets.slice();
@@ -123,8 +125,26 @@ test('a v1 run resumes its exact board and turns; requesting a new run upgrades 
   const game=scene();game.generator(function*(){return old;});game.open();await game.start(0);game.move(plan.steps[0]);game.hint();
   const reload=scene(game.saved(),Array(12).fill(97));reload.open();await reload.start(0);
   assert.equal(reload.run().version,1);assert.deepEqual(reload.run().level.map,old.level.map);assert.deepEqual(reload.state(),game.state());
-  reload.open();await reload.start(0,true);assert.equal(reload.run().version,2);assert.equal(reload.run().serial,2);
+  reload.open();await reload.start(0,true);assert.equal(reload.run().version,F.FREE_VERSION);assert.equal(reload.run().serial,2);
   assert.equal(reload.save().hintUsage[F.freeId(old)],undefined);
+});
+
+test('v3 offers only story-taught devices, equals v2 once every device is learned, and a kept run keeps its family', async () => {
+  const devices=level=>{const s=level.map.join(''),d=[];if(/[<>^v]/.test(s))d.push('jet');if(/[bB]/.test(s))d.push('boat');
+    if(/s/.test(s))d.push('sand');if(/w/.test(s))d.push('whirl');if(level.nets)d.push('net');return d;};
+  for(const learned of [[],['jet'],['jet','boat'],['jet','boat','net'],['jet','boat','net','sand']])
+    for(let difficulty=0;difficulty<3;difficulty++)for(let seed=0;seed<20;seed++) {
+      const run=F.makeFree(seed,difficulty,3,learned),tier=F.FREE_TIERS[difficulty],g=E.parseLevel(run.level),full=E.plan(g,g.start,0,new Set(),g.nets,true);
+      assert.deepEqual(devices(run.level).filter(d=>!learned.includes(d)),[],learned.join()+' '+seed);
+      assert.ok(full.moves>=tier.min&&full.moves<=tier.max);assert.equal(run.level.par,full.moves+tier.slack);
+      assert.deepEqual(F.makeFree(seed,difficulty,3,['jet','boat','net','sand','whirl'],run.level.family),run,'a kept run regenerates from its family');
+    }
+  for(let difficulty=0;difficulty<3;difficulty++)for(let seed=0;seed<30;seed++)
+    assert.deepEqual(F.makeFree(seed,difficulty,3),{...F.makeFree(seed,difficulty,2),version:3});
+  const game=scene(null,[7,8,9]);game.learn(['jet']);game.open();assert.equal(game.element('freeLearnNote').hidden,false);await game.start(2,true);
+  const first=game.run();assert.equal(first.version,3);assert.deepEqual(devices(first.level).filter(d=>d!=='jet'),[]);
+  const reload=scene(game.saved());reload.learn(['jet','boat','net','sand','whirl','gate']);reload.open();assert.equal(reload.element('freeLearnNote').hidden,true);await reload.start(2);
+  assert.deepEqual(reload.run().level.map,first.level.map,'learning more devices never changes a kept run');
 });
 
 test('successive free requests avoid six recent boards and prefer a different idea, including after reload', async () => {

@@ -27,7 +27,9 @@ function operation(stored = null) {
     ${engineSource}
     ${varietySource}
     ${dailySource}
-    let today = '2026-09-30', written = stored, tickHook = null;
+    let today = '2026-09-30', written = stored, tickHook = null, learned = ['jet','boat','net','sand','whirl','gate'];
+    const learnedDevices = () => learned.slice();
+    ${source.match(/^const learningDevices = .*$/m)[0]}
     const Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [today + 'T12:00:00'])); } };
     const elements = new Map();
     const $ = id => {
@@ -61,7 +63,7 @@ function operation(stored = null) {
       journal:openJournal,journalClose:closeJournal,month:month=>{journalMonth=month;renderJournal();},
       save:()=>JSON.parse(JSON.stringify(save)),element:id=>$ (id),
       active:()=>DAILY,state:()=>st,load:loadDaily,
-      date:d=>{today=d;},onYield:hook=>{tickHook=hook;},
+      date:d=>{today=d;},onYield:hook=>{tickHook=hook;},learn:list=>{learned=list;},
       clear:(stars=3)=>{st.fish=stars>=2?g.fish.map((_,i)=>i):[];st.moves=DAILY.level.par+(stars===2?1:0);onClear();},
       move:d=>{const r=slide(g,st.pos,d,new Set(st.nets),st.boats);if(!r.path.length||r.win)return;
         st.history.push(copyTurn(st));st.pos=r.end;st.dir=d;st.moves++;
@@ -112,7 +114,7 @@ test('v2: 90 dates replay three thematic, distinct stages with meaningful device
   for(let day=0;day<90;day++) {
     const date=new Date(Date.UTC(2026,9,2+day)).toISOString().slice(0,10),layouts=new Set();let previous=0;
     for(let stage=0;stage<3;stage++) {
-      const daily=D.makeDailyStage(date,stage),g=E.parseLevel(daily.level),full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
+      const daily=D.makeDailyStage(date,stage,2),g=E.parseLevel(daily.level),full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
       hash.update(JSON.stringify([daily.level.map,daily.level.nets||0,daily.level.par]));
       replayPlan(g,full);replayPlan(g,escape,{needAll:false});
       const tier=D.DAILY_STAGES[stage],family=V.VARIETY_FAMILIES[daily.level.family];
@@ -122,11 +124,47 @@ test('v2: 90 dates replay three thematic, distinct stages with meaningful device
       if(family.device)assert.ok(V.varietyRouteUse(g,full).used.has(family.device));
       if(g.nets)assert.equal(E.plan(g,g.start,0,new Set(),0,true),null);
       layouts.add(V.varietyLayoutKey(daily.level));
-      if(day<7)assert.deepEqual(D.makeDailyStage(date,stage),daily);
+      if(day<7)assert.deepEqual(D.makeDailyStage(date,stage,2),daily);
     }
     assert.equal(layouts.size,3);
   }
   assert.equal(hash.digest('hex'),'707163b8153e86c3997c58f15b08d73a831d1e476c18e9713feeb3ab811a75ad','bump the generator version before changing published v2 maps');
+});
+
+test('v3: each learning stage gets in-band canals with only learned devices; a full learner gets v2 except former reserve days', () => {
+  const V=require('../src/variety'),devices=level=>{const s=level.map.join(''),d=[];if(/[<>^v]/.test(s))d.push('jet');if(/[bB]/.test(s))d.push('boat');
+    if(/s/.test(s))d.push('sand');if(/w/.test(s))d.push('whirl');if(level.nets)d.push('net');return d;};
+  for(const learned of [[],['jet'],['jet','boat'],['jet','boat','net'],['jet','boat','net','sand'],null])
+    for(let day=0;day<21;day++) {
+      const date=new Date(Date.UTC(2026,9,8+day)).toISOString().slice(0,10);let previous=0;
+      for(let stage=0;stage<3;stage++) {
+        const daily=D.makeDailyStage(date,stage,3,learned),tier=D.DAILY_STAGES[stage],g=E.parseLevel(daily.level);
+        const full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
+        replayPlan(g,full);assert.equal(daily.version,3);
+        if(learned)assert.deepEqual(devices(daily.level).filter(d=>!learned.includes(d)),[],learned.join()+' '+date+' '+stage);
+        assert.ok(full.moves>=tier.min&&full.moves<=tier.max&&full.moves>previous);previous=full.moves;
+        assert.ok(escape.moves>=tier.escape&&escape.moves<full.moves);assert.equal(daily.level.par,full.moves+tier.slack);
+        const profile=V.VARIETY_FAMILIES[daily.level.family];if(profile.device)assert.ok(V.varietyRouteUse(g,full).used.has(profile.device));
+        if(g.nets)assert.equal(E.plan(g,g.start,0,new Set(),0,true),null);
+        if(!learned){const old=D.makeDailyStage(date,stage,2);
+          if(old.fallback)assert.equal(daily.fallback,false,date+' no longer reuses a reserve route');
+          else assert.deepEqual(daily.level,old.level,date+' keeps the v2 canal');}
+      }
+    }
+});
+
+test('a date started on v2 stays on v2; a v3 date keeps the devices learned when its first canal was prepared', async () => {
+  const old=D.makeDailyStage('2026-10-08',0,2),setup=operation();setup.date('2026-10-08');setup.load(old);setup.move(E.plan(E.parseLevel(old.level),E.parseLevel(old.level).start,0,new Set(),0,true).seq[0]);
+  const game=operation(setup.saved());game.date('2026-10-08');game.open();await game.start(0);
+  assert.equal(game.active().version,2);assert.deepEqual(game.state(),setup.state());game.clear(1);
+  game.open();await game.start(1);assert.equal(game.active().version,2,'later stages of a v2 date stay on v2');
+  // 2026-10-20 plans a net canal last; the morning's devices decide it even after the story teaches nets
+  const fresh=operation();fresh.date('2026-10-20');fresh.learn(['jet']);fresh.open();await fresh.start(0);fresh.clear(1);
+  fresh.learn(['jet','boat','net','sand','whirl']);fresh.open();await fresh.start(1);fresh.clear(1);
+  fresh.open();await fresh.start(2);assert.equal(D.dailyTheme('2026-10-20').families[2],'net');
+  assert.equal(fresh.active().version,3);assert.equal(fresh.active().level.nets,0);assert.notEqual(fresh.active().level.family,'net');
+  assert.deepEqual(fresh.save().dailyDevices,{date:'2026-10-20',devices:['jet']});
+  fresh.date('2026-10-27');fresh.open();await fresh.start(0);assert.deepEqual(fresh.save().dailyDevices.devices,['jet','boat','net','sand','whirl']);
 });
 
 test('unfinished v1 operation keeps its layout, hints, stars and generator for the entire date', async () => {
@@ -138,7 +176,7 @@ test('unfinished v1 operation keeps its layout, hints, stars and generator for t
   assert.deepEqual(game.save().hintUsage,saved.hintUsage);game.clear(3);
   for(const stage of [1,2]){game.open();await game.start(stage);assert.equal(game.active().version,1);game.clear(1);}
   assert.deepEqual(game.progress().stars,[3,1,1]);assert.equal(game.totals().operations,1);
-  game.date('2026-10-01');game.open();await game.start(0);assert.equal(game.active().version,2);
+  game.date('2026-10-01');game.open();await game.start(0);assert.equal(game.active().version,D.DAILY_OPERATION_VERSION);
   assert.deepEqual(game.progress('2026-09-30').stars,[3,1,1]);
 });
 
