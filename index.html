@@ -793,6 +793,7 @@ button:disabled:active { transform: none; }
     <p class="sub" id="operationDate"></p>
     <div class="operation-stages" id="dailyStages"></div>
     <p class="operation-note" id="operationNote"></p>
+    <p class="operation-note" id="operationLearnNote" hidden>스토리에서 배운 장치만 나와요. 새 장치는 스토리에서 먼저 만나요.</p>
     <p class="operation-status" id="operationStatus" role="status" aria-live="polite"></p>
     <button class="btn" id="dailyLegacyBtn" type="button" hidden>이전 수로 이어하기</button>
     <button class="btn" id="dailyJournalBtn" type="button">구조일지 · 누적 보상</button>
@@ -811,6 +812,7 @@ button:disabled:active { transform: none; }
       <div class="operation-stages" id="freeTiers"></div>
       <p class="operation-note">난이도별로 한 판씩 이어 할 수 있어요.<br>새 수로를 뽑으면 해당 난이도의 진행 중인 판이 바뀌어요. 완료 기록은 남아요.</p>
       <p class="operation-note">별과 완료 기록은 자유 수로 안에서 따로 모아요.</p>
+      <p class="operation-note" id="freeLearnNote" hidden>스토리에서 배운 장치만 나와요. 새 장치는 스토리에서 먼저 만나요.</p>
     </div>
   </div>
 </div>
@@ -2773,6 +2775,12 @@ const VARIETY_DAILY_THEMES = [
   {label:'갈림길 작전',families:['pockets','current','net']},
   {label:'다시 만나는 길',families:['branches','patrol','warp']},
 ];
+// Daily operation v3 / free v3: a family is offered only after the story taught its device (learned = story device keys
+// such as 'jet', 'whirl'; null = every device). Families without a device are always known.
+function varietyFamilyKnown(family, learned) {
+  const device = VARIETY_FAMILIES[family]?.device;
+  return !learned || !device || learned.includes(device === 'warp' ? 'whirl' : device);
+}
 // Compare static layout including devices under mirror/rotation, but never claim boat phase equivalence.
 // Boat axes/directions are kept in the exact key; only boat-free boards are symmetry-normalized.
 function varietyLayoutKey(level) {
@@ -2823,7 +2831,7 @@ function* variedCanalSearch(seed, family, tier, deps, reserves = [], maxAttempts
   const reserve=pool[seed%pool.length];
   return {...reserve,map:reserve.map.slice(),par:reserve.minimum+tier.slack,fallback:true,tip:profile.tip,idea:profile.label,attempts:maxAttempts};
 }
-if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyLayoutKey,varietyRouteUse,variedCanalSearch};
+if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyFamilyKnown,varietyLayoutKey,varietyRouteUse,variedCanalSearch};
 
 /* Verified reserve routes. Regenerate deliberately, then bump the generator version. */
 const VARIETY_RESERVES = [
@@ -4228,9 +4236,10 @@ function makeDaily(date) {
   return null;
 }
 /* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
-const DAILY_OPERATION_VERSION = 2;
+const DAILY_OPERATION_VERSION = 3;
+const DAILY_OPERATION_VERSIONS = [1, 2, 3];   // every version a started date may still be on
 const DV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
-  : { VARIETY_DAILY_THEMES, variedCanalSearch };
+  : { VARIETY_DAILY_THEMES, variedCanalSearch, varietyFamilyKnown };
 const DAILY_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
 const DAILY_STAGES = [
   { name: '첫 물길', label: '쉬움', min: 5, max: 7, slack: 2, escape: 3,
@@ -4292,30 +4301,47 @@ function dailyTheme(date) {
   const day = Math.floor(Date.parse(date + 'T12:00:00Z') / 86400000);
   return Number.isFinite(day) ? DV.VARIETY_DAILY_THEMES[((day % 7) + 7) % 7] : null;
 }
-function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION) {
+// v3 (2026-10-08): a stage whose device the story has not taught yet (learned: story device keys, null = all) uses a known
+// family below at the same move targets, rotated by date and preferring a generated canal over a reserve route. Net stages
+// search longer instead of falling back to the two reserve routes. v3 keeps the v2 seeds, so with every device learned it
+// matches v2 apart from those former reserve days.
+const DAILY_SUBSTITUTES = ['sand', 'patrol', 'current', 'branches', 'pockets', 'loop'];
+function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION, learned = null) {
   if (version === 1) return yield* makeDailyStageV1Search(date, stage);
   const tier = DAILY_STAGES[stage], theme = dailyTheme(date);
-  if (version !== 2 || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
-  const level = yield* DV.variedCanalSearch(dailySeed(`shark-sos-operation-v2-${date}-${stage}`), theme.families[stage], tier,
-    { rng, MASKS, place, operationPlan }, DAILY_RESERVES, 240);
-  if (!level) return null;
-  return { date, stage, version, tier, theme: theme.label, fallback: !!level.fallback, level: { ...level, name: level.idea } };
+  if (![2, 3].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  const seed = dailySeed(`shark-sos-operation-v2-${date}-${stage}`), planned = theme.families[stage];
+  let families = [planned];
+  if (version === 3 && !DV.varietyFamilyKnown(planned, learned)) {
+    const known = DAILY_SUBSTITUTES.filter(family => DV.varietyFamilyKnown(family, learned)), first = seed % known.length;
+    families = [...known.slice(first), ...known.slice(0, first)];
+  }
+  let chosen = null;
+  for (const family of families) {
+    const level = yield* DV.variedCanalSearch(seed, family, tier, { rng, MASKS, place, operationPlan }, DAILY_RESERVES,
+      version === 3 && family === 'net' ? 960 : 240);
+    if (level && !level.fallback) { chosen = level; break; }
+    chosen = chosen || level;   // a reserve route only when no family generates a canal
+  }
+  return chosen ? { date, stage, version, tier, theme: theme.label, fallback: !!chosen.fallback, level: { ...chosen, name: chosen.idea } } : null;
 }
-function makeDailyStage(date, stage, version = DAILY_OPERATION_VERSION) {
-  const search = makeDailyStageSearch(date, stage, version);
+function makeDailyStage(date, stage, version = DAILY_OPERATION_VERSION, learned = null) {
+  const search = makeDailyStageSearch(date, stage, version, learned);
   let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
 if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
-  DAILY_OPERATION_VERSION, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, dailyTheme };
+  DAILY_OPERATION_VERSION, DAILY_OPERATION_VERSIONS, DAILY_SUBSTITUTES, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, dailyTheme };
 
 /* ---------- Free canals: seeded puzzles, independent of calendar dates ---------- */
-const FREE_VERSION = 2;
+const FREE_VERSION = 3;
+const FREE_VERSIONS = [1, 2, 3];   // every version a kept run may still be on
 const FE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel };
 const FD = typeof module !== 'undefined' && typeof require === 'function' ? require('./daily.js')
   : { MASKS, rng, place, dailySeed, operationPlan, DAILY_STAGES, DAILY_FALLBACKS };
-const FV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js') : { VARIETY_FREE_TIERS, variedCanalSearch };
+const FV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
+  : { VARIETY_FAMILIES, VARIETY_FREE_TIERS, variedCanalSearch, varietyFamilyKnown };
 const FREE_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
 const FREE_LEGACY_TIERS = FD.DAILY_STAGES.map((tier, difficulty) => ({ ...tier,
   name: ['느긋한 물길', '굽이진 물길', '거센 물길'][difficulty],
@@ -4350,20 +4376,28 @@ function* makeFreeV1Search(seed, difficulty) {
   return { version: 1, seed, difficulty, fallback: true,
     level: { ...fallback, map: fallback.map.slice(), name: tier.name, tip: tier.tip } };
 }
-function* makeFreeSearch(seed, difficulty, version = FREE_VERSION) {
+// v3 (2026-10-08): only families whose device the story has taught (learned: story device keys, null = all). Fewer than
+// two left adds the device-free families. With every device learned v3 equals v2. A kept run passes its saved family.
+const FREE_BASE_FAMILIES = ['branches', 'loop', 'pockets'];
+function freeFamilies(tier, learned) {
+  const known = tier.families.filter(family => FV.varietyFamilyKnown(family, learned));
+  return known.length >= 2 ? known : [...new Set([...known, ...FREE_BASE_FAMILIES])];
+}
+function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
   if (version === 1) return yield* makeFreeV1Search(seed, difficulty);
   const tier = FREE_TIERS[difficulty];
-  if (version !== 2 || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
-  const mixed = FD.dailySeed(`shark-sos-free-v2-${difficulty}-${seed}`), family = tier.families[mixed % tier.families.length];
-  const level = yield* FV.variedCanalSearch(mixed, family, tier, FD, FREE_RESERVES);
+  if (![2, 3].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  const mixed = FD.dailySeed(`shark-sos-free-v2-${difficulty}-${seed}`), families = version === 2 ? tier.families : freeFamilies(tier, learned);
+  const chosen = version === 3 && FV.VARIETY_FAMILIES[family] ? family : families[mixed % families.length];
+  const level = yield* FV.variedCanalSearch(mixed, chosen, tier, FD, FREE_RESERVES);
   return level ? { version, seed, difficulty, fallback: !!level.fallback, level: { ...level, name: level.idea } } : null;
 }
-function makeFree(seed, difficulty, version = FREE_VERSION) {
-  const search = makeFreeSearch(seed, difficulty, version); let step;
+function makeFree(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
+  const search = makeFreeSearch(seed, difficulty, version, learned, family); let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
 }
-if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_TIERS, FREE_LEGACY_TIERS, freeId, makeFreeSearch, makeFree };
+if (typeof module !== 'undefined') module.exports = { FREE_VERSION, FREE_VERSIONS, FREE_BASE_FAMILIES, freeFamilies, FREE_TIERS, FREE_LEGACY_TIERS, freeId, makeFreeSearch, makeFree };
 
 /* ---------- Isolated, reader-paced device examples using the real movement rules ---------- */
 const DEMO_ENGINE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, pressSwitch };
@@ -5122,7 +5156,7 @@ function normalizeJournal() {
     if (journalDateValid(date) && Number.isInteger(stars) && stars >= 1 && stars <= 3) days[date] = Math.max(days[date] || 0, 1);
   }
   for (const [date, record] of Object.entries(save.dailyOps)) {
-    if (!journalDateValid(date) || ![1, DAILY_OPERATION_VERSION].includes(record?.version) || !Array.isArray(record.stars)) continue;
+    if (!journalDateValid(date) || !DAILY_OPERATION_VERSIONS.includes(record?.version) || !Array.isArray(record.stars)) continue;
     const cleared = record.stars.slice(0, 3).filter(n => Number.isInteger(n) && n >= 1 && n <= 3).length;
     if (cleared) days[date] = Math.max(days[date] || 0, cleared === 3 ? 2 : 1);
   }
@@ -5152,6 +5186,12 @@ function introducedDevices(i) {
   }
   return Object.keys(firstDeviceAt).filter(kind => firstDeviceAt[kind] === STORY_POSITION[i]);
 }
+// Devices the player has learned: the story canal introducing them is cleared. Daily operation v3 and free v3 use only these.
+function learnedDevices() {
+  introducedDevices(0);
+  return Object.keys(firstDeviceAt).filter(kind => save.best[STORY_ORDER[firstDeviceAt[kind]]] >= 1);
+}
+const learningDevices = () => Object.keys(VARIETY_FAMILIES).some(family => !varietyFamilyKnown(family, learnedDevices()));
 // Device kinds that first appear in chapter ci (one per chapter since the 2026-10-07 restructure).
 function chapterDevices(ci) {
   let start = 0; for (let k = 0; k < ci; k++) start += CHAPTERS[k].count;
@@ -6577,23 +6617,31 @@ function recordDaily(date, stars) {
 }
 function dailyProgress(date) {
   const record = save.dailyOps[date];
-  const stars = DAILY_STAGES.map((_, i) => [1, DAILY_OPERATION_VERSION].includes(record?.version) && Number.isInteger(record.stars?.[i])
+  const stars = DAILY_STAGES.map((_, i) => DAILY_OPERATION_VERSIONS.includes(record?.version) && Number.isInteger(record.stars?.[i])
     ? Math.max(0, Math.min(3, record.stars[i])) : 0);
   return { stars, count: stars.filter(Boolean).length, next: stars.findIndex(n => !n), total: stars.reduce((a, b) => a + b, 0) };
+}
+// Operation v3 uses the devices learned when the date's first canal was prepared, so a device learned in the story
+// later that day never changes canals already offered.
+function dailyLearned(date) {
+  const saved = save.dailyDevices;
+  if (saved?.date === date && Array.isArray(saved.devices) && saved.devices.every(d => typeof d === 'string')) return saved.devices;
+  save.dailyDevices = { date, devices: learnedDevices() }; persist();
+  return save.dailyDevices.devices;
 }
 // A started date stays on its original generator, even before its first clear.
 function dailyOperationVersion(date) {
   const record = save.dailyOps[date];
-  if ([1, DAILY_OPERATION_VERSION].includes(record?.version)) return record.version;
+  if (DAILY_OPERATION_VERSIONS.includes(record?.version)) return record.version;
   const packets = [save.sessions.daily, ...Object.values(save.sessions.dailyStages)];
-  for (const packet of packets) for (const version of [1, DAILY_OPERATION_VERSION]) {
+  for (const packet of packets) for (const version of DAILY_OPERATION_VERSIONS) {
     if (DAILY_STAGES.some((_, stage) => packet?.id === dailyStageId({ date, stage, version }))) return version;
   }
   return DAILY_OPERATION_VERSION;
 }
 function recordDailyStage(daily, stars) {
   if (!journalDateValid(daily.date) || !Number.isInteger(stars) || stars < 1 || stars > 3) return;
-  if (Number.isInteger(daily.stage) && [1, DAILY_OPERATION_VERSION].includes(daily.version) && DAILY_STAGES[daily.stage]) {
+  if (Number.isInteger(daily.stage) && DAILY_OPERATION_VERSIONS.includes(daily.version) && DAILY_STAGES[daily.stage]) {
     if (save.dailyOps[daily.date] && save.dailyOps[daily.date].version !== daily.version) return;
     const progress = dailyProgress(daily.date);
     progress.stars[daily.stage] = Math.max(progress.stars[daily.stage], stars);
@@ -6638,7 +6686,7 @@ function renderDaily() {
 function renderOperation() {
   const date = dailyDate(), progress = dailyProgress(date), version = dailyOperationVersion(date);
   shownDailyDate = date;
-  $('operationDate').textContent = `${dateLabel(date)} · ${version === 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
+  $('operationDate').textContent = `${dateLabel(date)} · ${version >= 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
   $('operationNote').textContent = progress.count === 3 ? '오늘의 작전을 마쳤어요! 별을 더 모으거나 내일 새 수로에 도전해요.'
     : save.daily[date] ? (progress.count ? '오늘 참여가 인정됐어요. 나머지 수로도 이어서 도전해요.' : '이전 수로의 참여 기록은 유지돼요. 새 작전에도 도전해 보세요.')
     : '한 수로만 완료해도 연속 기록이 이어져요.';
@@ -6651,6 +6699,7 @@ function renderOperation() {
     return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" aria-label="${stage + 1}번째 ${tier.name} ${tier.label}, ${state}" ${locked ? 'disabled' : ''}>
       <span class="stage-number" aria-hidden="true">${stars ? '✓' : stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
   }).join('');
+  $('operationLearnNote').hidden = version !== DAILY_OPERATION_VERSION || !learningDevices();
   $('dailyLegacyBtn').hidden = !save.sessions.dailyLegacy;
   $('dailyLegacyBtn').disabled = false;
   $('operationStatus').textContent = '';
@@ -6682,7 +6731,7 @@ async function startDaily(stage) {
     if (dailyCacheDate !== `${date}:v${version}`) { dailyCacheDate = `${date}:v${version}`; dailyCache = new Map(); }
     let daily = dailyCache.get(stage);
     if (!daily) {
-      const search = makeDailyStageSearch(date, stage, version);
+      const search = makeDailyStageSearch(date, stage, version, version === DAILY_OPERATION_VERSION ? dailyLearned(date) : null);
       let step;
       do {
         if (request !== dailyRequest) return;
@@ -6848,7 +6897,7 @@ let freeRequest = 0;
 const freeCache = new Map(), freeOpen = () => !$('freeOverlay').hidden;
 function freeRecord(difficulty) {
   const run = save.free.runs[difficulty];
-  return run && [1, FREE_VERSION].includes(run.version) && run.difficulty === difficulty
+  return run && FREE_VERSIONS.includes(run.version) && run.difficulty === difficulty
     && Number.isInteger(run.seed) && run.seed >= 0 && run.seed <= 0xffffffff
     && Number.isSafeInteger(run.serial) && run.serial > 0
     && Number.isInteger(run.stars) && run.stars >= 0 && run.stars <= 3
@@ -6876,6 +6925,7 @@ function renderFree() {
       <div class="free-actions"><button class="btn primary" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'new' : 'resume'}" aria-label="${tier.label} ${action}">${action}</button>
       ${run ? `<button class="btn" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'replay' : 'new'}" aria-label="${tier.label} ${action === '새 수로' ? '다시 풀기' : '새 수로'}">${action === '새 수로' ? '다시 풀기' : '새 수로'}</button>` : ''}</div></div>`;
   }).join('');
+  $('freeLearnNote').hidden = !learningDevices();
   $('freeStatus').textContent = '';
 }
 function openFree() {
@@ -6903,7 +6953,8 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       const serial = create ? (previous?.serial || 0) + 1 : previous.serial;
       if (!Number.isSafeInteger(serial)) throw new Error('free serial exhausted');
       for (let attempt = 0; attempt < (create ? 12 : 1); attempt++) {
-        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version);
+        const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version,
+          learnedDevices(), create ? null : previous.family);
         let step;
         do {
           if (request !== freeRequest) return;
@@ -6927,7 +6978,7 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId };
       save.free.recent[difficulty] = [...save.free.recent[difficulty], varietyLayoutKey(run.level)].slice(-6);
       delete save.sessions['free' + difficulty];
-      for (const key of Object.keys(save.hintUsage)) if ([1, FREE_VERSION].some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
+      for (const key of Object.keys(save.hintUsage)) if (FREE_VERSIONS.some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
       if (previous) freeCache.delete(freeId(previous));
       persist();
     }
@@ -8003,7 +8054,8 @@ function start(data) {
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); drawLegendIcon($('netToolIcon')); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
-    ? [1, DAILY_OPERATION_VERSION].includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion) : makeDaily(data.daily));
+    ? DAILY_OPERATION_VERSIONS.includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion,
+      data.dailyVersion === DAILY_OPERATION_VERSION ? dailyLearned(data.daily) : null) : makeDaily(data.daily));
   const level = resumeDaily ? resumeDaily.level : data && storyLevel(data.lvl);
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
