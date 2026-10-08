@@ -98,8 +98,8 @@ function makeDaily(date) {
   return null;
 }
 /* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
-const DAILY_OPERATION_VERSION = 3;
-const DAILY_OPERATION_VERSIONS = [1, 2, 3];   // every version a started date may still be on
+const DAILY_OPERATION_VERSION = 4;
+const DAILY_OPERATION_VERSIONS = [1, 2, 3, 4];   // every version a started date may still be on
 const DV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
   : { VARIETY_DAILY_THEMES, variedCanalSearch, varietyFamilyKnown };
 const DAILY_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
@@ -122,8 +122,9 @@ function dailyStageId(daily) {
 }
 // Deterministic work limits, never elapsed-time limits: slower devices must get the same map.
 // Each yield lets the browser paint and cancel preparation; tools consume this same generator synchronously.
-function* operationPlan(g, nets, needAll) {
-  const search = DE.planSearch(g, g.start, 0, new Set(), nets, needAll);
+// pickup: v1–v3 were generated and rated when a net could be picked up and set again; v4 keeps a set net in place.
+function* operationPlan(g, nets, needAll, pickup = true) {
+  const search = DE.planSearch(g, g.start, 0, new Set(), nets, needAll, undefined, undefined, pickup);
   for (let batches = 0; batches < 256; batches++) {
     const step = search.next();
     if (step.done) return step.value;
@@ -131,6 +132,7 @@ function* operationPlan(g, nets, needAll) {
   }
   return undefined; // budget exhausted; this is not proof that no route exists
 }
+function* placedOperationPlan(g, nets, needAll) { return yield* operationPlan(g, nets, needAll, false); }
 function* makeDailyStageV1Search(date, stage) {
   const tier = DAILY_STAGES[stage];
   if (!tier || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
@@ -167,21 +169,26 @@ function dailyTheme(date) {
 // family below at the same move targets, rotated by date and preferring a generated canal over a reserve route. Net stages
 // search longer instead of falling back to the two reserve routes. v3 keeps the v2 seeds, so with every device learned it
 // matches v2 apart from those former reserve days.
+// v4 (2026-10-08 net rule): a set net stays until undo/restart. Net stages are generated and rated with that rule and
+// never use the reserves rated with net pickup; when the planned family yields nothing, a known substitute is generated.
+// Without nets the two rules agree, so v4 matches v3 except for net stages and former reserve days.
 const DAILY_SUBSTITUTES = ['sand', 'patrol', 'current', 'branches', 'pockets', 'loop'];
 function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION, learned = null) {
   if (version === 1) return yield* makeDailyStageV1Search(date, stage);
   const tier = DAILY_STAGES[stage], theme = dailyTheme(date);
-  if (![2, 3].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
-  const seed = dailySeed(`shark-sos-operation-v2-${date}-${stage}`), planned = theme.families[stage];
+  if (![2, 3, 4].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  const seed = dailySeed(`shark-sos-operation-v2-${date}-${stage}`), planned = theme.families[stage], placed = version >= 4;
   let families = [planned];
-  if (version === 3 && !DV.varietyFamilyKnown(planned, learned)) {
-    const known = DAILY_SUBSTITUTES.filter(family => DV.varietyFamilyKnown(family, learned)), first = seed % known.length;
-    families = [...known.slice(first), ...known.slice(0, first)];
+  if (version >= 3) {
+    const known = DAILY_SUBSTITUTES.filter(family => family !== planned && DV.varietyFamilyKnown(family, learned)), first = seed % known.length;
+    const rotated = [...known.slice(first), ...known.slice(0, first)];
+    if (!DV.varietyFamilyKnown(planned, learned)) families = rotated;
+    else if (placed) families = [planned, ...rotated];
   }
+  const deps = placed ? { rng, MASKS, place, operationPlan: placedOperationPlan, placedNets: true } : { rng, MASKS, place, operationPlan };
   let chosen = null;
   for (const family of families) {
-    const level = yield* DV.variedCanalSearch(seed, family, tier, { rng, MASKS, place, operationPlan }, DAILY_RESERVES,
-      version === 3 && family === 'net' ? 960 : 240);
+    const level = yield* DV.variedCanalSearch(seed, family, tier, deps, DAILY_RESERVES, version >= 3 && family === 'net' ? 960 : 240);
     if (level && !level.fallback) { chosen = level; break; }
     chosen = chosen || level;   // a reserve route only when no family generates a canal
   }
@@ -194,4 +201,4 @@ function makeDailyStage(date, stage, version = DAILY_OPERATION_VERSION, learned 
   return step.value;
 }
 if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
-  DAILY_OPERATION_VERSION, DAILY_OPERATION_VERSIONS, DAILY_SUBSTITUTES, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, dailyTheme };
+  DAILY_OPERATION_VERSION, DAILY_OPERATION_VERSIONS, DAILY_SUBSTITUTES, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, placedOperationPlan, dailyTheme };

@@ -86,7 +86,8 @@ test('nets never go on switches or gates, and plans never ask for that', () => {
   }
 });
 
-// Exhaustive oracle with gates: every legal net placement before every swipe, the full turn() order, no pruning.
+// Exhaustive oracle with gates (net pickup rule of daily/free v1–v3): every legal net placement before every swipe,
+// the full turn() order, no pruning.
 function exhaustive(g, needAll) {
   const key = s => s.pos + '|' + s.mask + '|' + E.boatsKey(s.boats) + '|' + s.gate;
   let q = [{ pos: g.start, mask: 0, boats: g.boats, gate: 0 }], depth = 0;
@@ -114,7 +115,34 @@ function exhaustive(g, needAll) {
   }
   return null;
 }
-test('the reusable-net solver matches an exhaustive search that includes switch parity', () => {
+// Exhaustive oracle for the placed-net rule (2026-10-08): set nets stay; any remaining net may be set before any swipe.
+function exhaustivePlaced(g, needAll) {
+  const key = s => s.pos + '|' + s.mask + '|' + E.boatsKey(s.boats) + '|' + s.gate + '|' + s.nets.join(',');
+  let q = [{ pos: g.start, mask: 0, boats: g.boats, gate: 0, nets: [] }], depth = 0;
+  const seen = new Set(q.map(key)), full = (1 << g.fish.length) - 1;
+  while (q.length) {
+    depth++; const nq = [];
+    for (const s of q) {
+      const configs = [s.nets];
+      if (s.nets.length < g.nets) g.cells.forEach((c, i) => {
+        if (c === '.' && i !== s.pos[1] * g.w + s.pos[0] && !s.nets.includes(i) && !s.boats.some(b => b[0] === i)
+          && !g.fish.some(([x, y], fi) => y * g.w + x === i && !(s.mask & (1 << fi)))) configs.push([...s.nets, i].sort((a, b) => a - b));
+      });
+      for (const cfg of configs) for (const d of 'UDLR') {
+        const r = E.turn(g, s.pos, d, new Set(cfg), s.boats, s.gate);
+        if (!r.path.length) continue;
+        let m = s.mask;
+        for (const [x, y] of r.path) g.fish.forEach(([fx, fy], fi) => { if (x === fx && y === fy) m |= 1 << fi; });
+        if (r.win) { if (!needAll || m === full) return depth; continue; }
+        const n = { pos: r.end, mask: m, boats: r.boats, gate: r.gate, nets: cfg };
+        if (!seen.has(key(n))) { seen.add(key(n)); nq.push(n); }
+      }
+    }
+    q = nq;
+  }
+  return null;
+}
+test('both net rules match their exhaustive search, including switch parity', () => {
   const rand = (s => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(4242);
   const masks = [['##E###', '##G###', '#....#', '#.##.#', '#....#', '#S####'], ['#######', '#....GE', '#.##.##', '#....##', '#S#####']];
   let checked = 0;
@@ -126,9 +154,12 @@ test('the reusable-net solver matches an exhaustive search that includes switch 
     let g;
     try { g = E.parseLevel({ name: 'oracle ' + i, map: rows.map(r => r.join('')), nets: i % 2 }); } catch (e) { continue; }
     for (const needAll of [true, false]) {
-      const p = E.plan(g, g.start, 0, new Set(), g.nets, needAll);
+      const p = E.plan(g, g.start, 0, new Set(), g.nets, needAll, undefined, undefined, true);
       assert.equal(p ? p.moves : null, exhaustive(g, needAll), JSON.stringify({ map: rows.map(r => r.join('')), needAll }));
-      if (p) replayPlan(g, p, { needAll });
+      if (p) replayPlan(g, p, { needAll, pickup: true });
+      const placed = E.plan(g, g.start, 0, new Set(), g.nets, needAll);
+      assert.equal(placed ? placed.moves : null, exhaustivePlaced(g, needAll), 'placed rule ' + JSON.stringify({ map: rows.map(r => r.join('')), needAll }));
+      if (placed) replayPlan(g, placed, { needAll });
     }
     checked++;
   }
@@ -196,6 +227,7 @@ function game({ level, reduced = false, stored = null, id = 'p05' } = {}) {
     const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map(), DEVICE_SPOT = { dur: 1.8, pulses: 3 }, flyFish = noop;
     const onClear = () => { cleared = true; };
     ${effects}
+    ${source.match(/^const netPickup = .*$/m)[0]}
     ${functions}
     st = freshState(level);
     const resumed = restoreSession(save.sessions.pilot, level, pilotId);
@@ -326,6 +358,7 @@ test('hints search from the current gate state and never spend allowance on a ca
     const fishMask = () => st.fish.reduce((m, i) => m | 1 << i, 0);
     const DAILY = null, FREE = null, LVL = 0, PILOT = {level: {id: 'p08'}};
     const setTimeout = cb => { if (cancel) { hintRequest++; cancel = false; } cb(); };
+    ${source.match(/^const netPickup = .*$/m)[0]}
     ${hintSource}
     return showHint().then(() => ({tip, usage: save.hintUsage, hint}));
   `)(PILOT_LEVELS[7], state, cancel);

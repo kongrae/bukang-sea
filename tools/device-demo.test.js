@@ -40,15 +40,16 @@ test('every reader-paced demo uses legal taps and actual slide/boat outcomes wit
   }
 });
 
-test('examples teach stopping, jet turns, boat reversal, reusable nets and sand departures', () => {
+test('examples teach stopping, jet turns, boat reversal, nets that stay where they are set and sand departures', () => {
   const moves = key => D.createDeviceDemo(key).phases.filter(p=>p.kind==='move');
   assert.deepEqual(moves('buoy').map(p=>p.to.pos),[[3,2],[3,1]]);
   assert.deepEqual(moves('sand').map(p=>p.to.pos),[[3,2],[5,2]]);
   assert.deepEqual(moves('jet')[0].path.map(p=>p.slice(0,2)),[[2,1],[3,1],[3,2],[3,3]]);
   assert.deepEqual(D.createDeviceDemo('boat').phases.filter(p=>p.kind==='boat').map(p=>p.to.boats[0]),[[19,'R'],[18,'L']]);
   const net=D.createDeviceDemo('net'), taps=net.phases.filter(p=>p.kind==='tap');
-  assert.deepEqual(taps.map(p=>p.to.nets),[[18],[],[10]]);
-  assert.equal(D.sampleDeviceDemo(net,net.duration).moves,1);
+  assert.deepEqual(taps.map(p=>p.to.nets),[[18]],'a set net is never picked up');
+  assert.deepEqual(net.phases.filter(p=>p.kind==='move').map(p=>[p.to.pos,p.to.nets]),[[[3,2],[18]],[[3,1],[18]]]);
+  assert.equal(D.sampleDeviceDemo(net,net.duration).moves,2);
 });
 
 test('whirlpool animation shrinks and jumps between the pair without swimming through land', () => {

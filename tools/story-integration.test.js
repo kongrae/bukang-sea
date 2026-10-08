@@ -35,10 +35,13 @@ test('saved LEVELS indices keep the original 60 canals in place while 72 canals 
   // 2026-10-08 early curve: 1, 2, 25 and 31 were redesigned in place; their previous boards live on unchanged as legacy definitions.
   const redesigned=[1,2,25,31],before=LEVELS.slice(0,48).map((l,i)=>redesigned.includes(i)?{...LEGACY_STORY_LEVELS[i],role:l.role}:l);
   for(const i of redesigned) assert.notDeepEqual(LEVELS[i].map,LEGACY_STORY_LEVELS[i].map,'level index '+i);
-  assert.equal(sha(before.map(l=>[l.name,l.map,l.nets||0])),'1b08e6cf43f45b3e1872730ee4e86043052f01f9bf2accde3e0340dcebfa84c6','original layouts never move');
+  // The set-net rule (2026-10-08, docs/NET-RULE.md) redesigned 11, 29, 33 and 47 and gave 21, 30 and 32 a second net.
+  const netRule=[11,21,29,30,32,33,47],kept=before.filter((_,i)=>!netRule.includes(i));
+  assert.equal(sha(kept.map(l=>[l.name,l.map,l.nets||0])),'3884dab30c7f8598f96b36580cf8d3498e0fa1e5a8f77059778968b955924425','original layouts never move');
   // 2026-10-07: roles follow the new slots; nine targets rise by one and none fall (docs/CHAPTER-RESTRUCTURE.md).
-  assert.equal(sha(before.map(l=>[l.name,l.map,l.nets||0,l.par,l.role||'regular'])),'caebf6c95a7d15b9f27745cb14d2194395e283ab5412acf3412e36439d163a63');
-  const retargeted={11:['regular',10],12:['learn',9],17:['learn',8],20:['regular',13],23:['regular',11],33:['regular',11],37:['learn',9],43:['regular',17],46:['regular',12]};
+  // 2026-10-08: star targets of net canals follow the set-net minimum.
+  assert.equal(sha(before.map(l=>[l.name,l.map,l.nets||0,l.par,l.role||'regular'])),'d488393e46d5d0005734f05566ccd75f53c81e3f0066032ba6469161952fd411');
+  const retargeted={11:['regular',10],12:['learn',9],17:['learn',8],20:['regular',13],23:['regular',11],33:['regular',10],37:['learn',9],43:['regular',17],46:['regular',13]};
   for(const [i,[role,par]] of Object.entries(retargeted)) assert.deepEqual([LEVELS[i].role||'regular',LEVELS[i].par],[role,par],'level index '+i);
   assert.deepEqual(LEVELS.slice(48,60),PILOT_LEVELS);assert.equal(PILOT_LEVELS,STORY_EXTENSION_LEVELS);
   assert.ok(!fs.readFileSync(path.join(__dirname,'../src/shell.html'),'utf8').includes('id="pilotBtn"'));

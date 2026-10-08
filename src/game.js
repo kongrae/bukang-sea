@@ -1122,7 +1122,7 @@ function setupCoach() {
     const p = plan(g, st.pos, 0, new Set(), 0, true, st.boats, st.gate);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
-    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats, st.gate);
+    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats, st.gate, netPickup());
     if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
   }
 }
@@ -1310,6 +1310,9 @@ function undo() {
 }
 function restart() { if (anim) return; replay(); haptic('light'); }
 
+// 2026-10-08: a set net stays until undo/restart. Daily operations v1–v3 and free canals v1–v3 (and the old single daily)
+// were generated and rated when nets could be picked up and set again, so those canals keep that rule.
+const netPickup = () => DAILY ? !(DAILY.version >= 4) : FREE ? FREE.version < 4 : false;
 function tapTile(gx, gy) {
   if (anim || cleared) return;
   const device = cellAt(g, gx, gy);
@@ -1319,6 +1322,7 @@ function tapTile(gx, gy) {
   const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
   const at = st.nets.indexOf(idx);
   if (at >= 0) {
+    if (!netPickup()) { setTip('한 번 친 그물은 걷을 수 없어요. 되돌리기로 무를 수 있어요.'); haptic('light'); ring(gx, gy, 0.5, 0.3); return; }
     hintRequest++; pushHistory(); st.nets.splice(at, 1); netPop.delete(idx);
     contactPulse.delete(idx); if (!reduceMotion) netRetract.set(idx, clock);
     sfx.net(true); haptic('tick'); ring(gx, gy, 0.6, 0.35); updateHud(); checkpoint();
@@ -1326,7 +1330,7 @@ function tapTile(gx, gy) {
     return;
   }
   if (c !== '.' || hasFish || (gx === st.pos[0] && gy === st.pos[1])) { setTip('그물은 비어 있는 물 위에만 칠 수 있어요.'); haptic('light'); return; }
-  if (st.nets.length >= g.nets) { setTip('그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.'); haptic('light'); return; }
+  if (st.nets.length >= g.nets) { setTip(netPickup() ? '그물을 다 썼어요. 쳐 둔 그물을 누르면 다시 걷을 수 있어요.' : '그물을 다 썼어요. 되돌리기로 무르면 다시 칠 수 있어요.'); haptic('light'); return; }
   hintRequest++; pushHistory(); st.nets.push(idx); netRetract.delete(idx);
   if (!reduceMotion) netPop.set(idx, clock);
   sfx.net(); haptic('medium'); coachDone('tap');
@@ -1422,7 +1426,7 @@ async function showHint() {
     if (!current()) return;
     const ns = netSet(), left = g.nets - st.nets.length;
     const find = async needAll => {
-      const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats, st.gate);
+      const search = planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats, st.gate, netPickup());
       while (current()) {
         const step = search.next();
         if (step.done) return step.value;
@@ -2732,9 +2736,9 @@ function drawLegendIcon(c) {
 const DEVICE_GUIDES = [
   // light: a simple device introduced on the board (its tiles glow, the tip explains) instead of opening this sheet
   { key: 'buoy', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o'), light: /o/ },
-  { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 치거나 회수할 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
+  { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 칠 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
   { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
-  { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
+  { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 한 번 친 그물은 걷을 수 없으니 칠 자리를 먼저 생각해요. 되돌리기로는 무를 수 있고, 설치는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
   { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
   { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },

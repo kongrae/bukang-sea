@@ -31,11 +31,11 @@ test('v1 free seeds preserve the 270 pre-update layout fingerprints', () => {
   }
 });
 
-test('every reserve replays with its recorded minimum; active devices and required net reuse are verified', () => {
+test('every reserve replays with its recorded minimum (net pickup rule); active devices and required net reuse are verified', () => {
   assert.equal(new Set(reserves.map(V.varietyLayoutKey)).size,reserves.length);
   for (const level of reserves) {
-    const g=E.parseLevel(level),full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
-    replayPlan(g,full);replayPlan(g,escape,{needAll:false});
+    const g=E.parseLevel(level),full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false,undefined,undefined,true);
+    replayPlan(g,full,{pickup:true});replayPlan(g,escape,{needAll:false,pickup:true});
     assert.equal(full.moves,level.minimum);assert.equal(escape.moves,level.escape);assert.ok(full.moves>escape.moves);
     const active=V.varietyRouteUse(g,full),profile=V.VARIETY_FAMILIES[level.family];
     if(profile.device)assert.ok(active.used.has(profile.device),level.family);
@@ -48,6 +48,9 @@ test('every reserve replays with its recorded minimum; active devices and requir
   for(const {tier,family} of cases) {
     const search=V.variedCanalSearch(123,family,tier,deps,reserves,0),level=search.next().value;
     assert.ok(level?.fallback,family);assert.ok(level.minimum>=tier.min&&level.minimum<=tier.max&&level.escape>=tier.escape);
+    // reserves were rated with net pickup, so the set-net rule (v4) never falls back to a net reserve
+    const placed=V.variedCanalSearch(123,family,tier,{...deps,placedNets:true},reserves,0).next().value;
+    if(family==='net')assert.equal(placed,null);else assert.deepEqual(placed,level);
   }
 });
 

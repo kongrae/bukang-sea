@@ -82,8 +82,8 @@ test('legacy v1: 90 days keep their exact maps, targets and replayable solutions
       const daily=D.makeDailyStage(date,stage,1), tier=D.DAILY_STAGES[stage];
       assert.ok(daily, `${date} stage ${stage}`);
       hash.update(JSON.stringify([daily.date,daily.stage,daily.version,daily.level.map,daily.level.nets,daily.level.par]));
-      const g=E.parseLevel(daily.level), full=E.plan(g,g.start,0,new Set(),g.nets,true), escape=E.plan(g,g.start,0,new Set(),g.nets,false);
-      replayPlan(g,full); replayPlan(g,escape,{needAll:false});
+      const g=E.parseLevel(daily.level), full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true), escape=E.plan(g,g.start,0,new Set(),g.nets,false,undefined,undefined,true);
+      replayPlan(g,full,{pickup:true}); replayPlan(g,escape,{needAll:false,pickup:true});
       assert.ok(full.moves>=tier.min&&full.moves<=tier.max);
       assert.ok(full.moves>previous&&full.moves>escape.moves); previous=full.moves;
       assert.ok(escape.moves>=tier.escape);
@@ -100,8 +100,8 @@ test('legacy v1: 90 days keep their exact maps, targets and replayable solutions
 test('reserve routes satisfy the same stage difficulty and star rules', () => {
   D.DAILY_FALLBACKS.forEach((level,stage)=>{
     const g=E.parseLevel(level), tier=D.DAILY_STAGES[stage];
-    const full=E.plan(g,g.start,0,new Set(),g.nets,true), escape=E.plan(g,g.start,0,new Set(),g.nets,false);
-    replayPlan(g,full);
+    const full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true), escape=E.plan(g,g.start,0,new Set(),g.nets,false,undefined,undefined,true);
+    replayPlan(g,full,{pickup:true});
     assert.ok(full.moves>=tier.min&&full.moves<=tier.max);
     assert.ok(escape.moves>=tier.escape&&full.moves>escape.moves);
     assert.equal(level.par,full.moves+tier.slack);
@@ -114,9 +114,9 @@ test('v2: 90 dates replay three thematic, distinct stages with meaningful device
   for(let day=0;day<90;day++) {
     const date=new Date(Date.UTC(2026,9,2+day)).toISOString().slice(0,10),layouts=new Set();let previous=0;
     for(let stage=0;stage<3;stage++) {
-      const daily=D.makeDailyStage(date,stage,2),g=E.parseLevel(daily.level),full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
+      const daily=D.makeDailyStage(date,stage,2),g=E.parseLevel(daily.level),full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false,undefined,undefined,true);
       hash.update(JSON.stringify([daily.level.map,daily.level.nets||0,daily.level.par]));
-      replayPlan(g,full);replayPlan(g,escape,{needAll:false});
+      replayPlan(g,full,{pickup:true});replayPlan(g,escape,{needAll:false,pickup:true});
       const tier=D.DAILY_STAGES[stage],family=V.VARIETY_FAMILIES[daily.level.family];
       assert.ok(full.moves>=tier.min&&full.moves<=tier.max&&full.moves>previous&&full.moves>escape.moves);previous=full.moves;
       assert.ok(escape.moves>=tier.escape);assert.equal(daily.level.par,full.moves+tier.slack);
@@ -131,7 +131,7 @@ test('v2: 90 dates replay three thematic, distinct stages with meaningful device
   assert.equal(hash.digest('hex'),'707163b8153e86c3997c58f15b08d73a831d1e476c18e9713feeb3ab811a75ad','bump the generator version before changing published v2 maps');
 });
 
-test('v3: each learning stage gets in-band canals with only learned devices; a full learner gets v2 except former reserve days', () => {
+test('v3 (net pickup rule): each learning stage gets in-band canals with only learned devices; a full learner gets v2 except former reserve days', () => {
   const V=require('../src/variety'),devices=level=>{const s=level.map.join(''),d=[];if(/[<>^v]/.test(s))d.push('jet');if(/[bB]/.test(s))d.push('boat');
     if(/s/.test(s))d.push('sand');if(/w/.test(s))d.push('whirl');if(level.nets)d.push('net');return d;};
   for(const learned of [[],['jet'],['jet','boat'],['jet','boat','net'],['jet','boat','net','sand'],null])
@@ -139,8 +139,8 @@ test('v3: each learning stage gets in-band canals with only learned devices; a f
       const date=new Date(Date.UTC(2026,9,8+day)).toISOString().slice(0,10);let previous=0;
       for(let stage=0;stage<3;stage++) {
         const daily=D.makeDailyStage(date,stage,3,learned),tier=D.DAILY_STAGES[stage],g=E.parseLevel(daily.level);
-        const full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
-        replayPlan(g,full);assert.equal(daily.version,3);
+        const full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false,undefined,undefined,true);
+        replayPlan(g,full,{pickup:true});assert.equal(daily.version,3);
         if(learned)assert.deepEqual(devices(daily.level).filter(d=>!learned.includes(d)),[],learned.join()+' '+date+' '+stage);
         assert.ok(full.moves>=tier.min&&full.moves<=tier.max&&full.moves>previous);previous=full.moves;
         assert.ok(escape.moves>=tier.escape&&escape.moves<full.moves);assert.equal(daily.level.par,full.moves+tier.slack);
@@ -153,6 +153,28 @@ test('v3: each learning stage gets in-band canals with only learned devices; a f
     }
 });
 
+test('v4 (set nets stay): net stages are generated and rated with that rule, other stages match v3, no learning stage fails', () => {
+  const V=require('../src/variety'),devices=level=>{const t=level.map.join(''),d=[];if(/[<>^v]/.test(t))d.push('jet');if(/[bB]/.test(t))d.push('boat');
+    if(/s/.test(t))d.push('sand');if(/w/.test(t))d.push('whirl');if(level.nets)d.push('net');return d;};
+  let netStages=0;
+  for(const learned of [[],['jet','boat'],null])
+    for(let day=0;day<21;day++) {
+      const date=new Date(Date.UTC(2026,9,8+day)).toISOString().slice(0,10);let previous=0;
+      for(let stage=0;stage<3;stage++) {
+        const daily=D.makeDailyStage(date,stage,4,learned),tier=D.DAILY_STAGES[stage],g=E.parseLevel(daily.level);
+        const full=E.plan(g,g.start,0,new Set(),g.nets,true),escape=E.plan(g,g.start,0,new Set(),g.nets,false);
+        replayPlan(g,full);replayPlan(g,escape,{needAll:false});assert.equal(daily.version,4);
+        if(learned)assert.deepEqual(devices(daily.level).filter(d=>!learned.includes(d)),[]);
+        assert.ok(full.moves>=tier.min&&full.moves<=tier.max&&full.moves>previous);previous=full.moves;
+        assert.ok(escape.moves>=tier.escape&&escape.moves<full.moves);assert.equal(daily.level.par,full.moves+tier.slack);
+        if(g.nets){netStages++;assert.equal(E.plan(g,g.start,0,new Set(),0,true),null);assert.equal(daily.fallback,false,'no reserve rated with pickup');
+          assert.match(daily.level.tip,/걷을 수 없어요/);}
+        else {const old=D.makeDailyStage(date,stage,3,learned);if(!old.fallback&&!old.level.nets)assert.deepEqual(daily.level,old.level,date+' '+stage+' matches v3');}
+      }
+    }
+  assert.ok(netStages>=6,'full learners still meet net stages');
+});
+
 test('a date started on v2 stays on v2; a v3 date keeps the devices learned when its first canal was prepared', async () => {
   const old=D.makeDailyStage('2026-10-08',0,2),setup=operation();setup.date('2026-10-08');setup.load(old);setup.move(E.plan(E.parseLevel(old.level),E.parseLevel(old.level).start,0,new Set(),0,true).seq[0]);
   const game=operation(setup.saved());game.date('2026-10-08');game.open();await game.start(0);
@@ -162,7 +184,7 @@ test('a date started on v2 stays on v2; a v3 date keeps the devices learned when
   const fresh=operation();fresh.date('2026-10-20');fresh.learn(['jet']);fresh.open();await fresh.start(0);fresh.clear(1);
   fresh.learn(['jet','boat','net','sand','whirl']);fresh.open();await fresh.start(1);fresh.clear(1);
   fresh.open();await fresh.start(2);assert.equal(D.dailyTheme('2026-10-20').families[2],'net');
-  assert.equal(fresh.active().version,3);assert.equal(fresh.active().level.nets,0);assert.notEqual(fresh.active().level.family,'net');
+  assert.equal(fresh.active().version,D.DAILY_OPERATION_VERSION);assert.equal(fresh.active().level.nets,0);assert.notEqual(fresh.active().level.family,'net');
   assert.deepEqual(fresh.save().dailyDevices,{date:'2026-10-20',devices:['jet']});
   fresh.date('2026-10-27');fresh.open();await fresh.start(0);assert.deepEqual(fresh.save().dailyDevices.devices,['jet','boat','net','sand','whirl']);
 });

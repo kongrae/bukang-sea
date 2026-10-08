@@ -7,7 +7,7 @@ const E = require('../src/engine.js');
 const { makeDaily, rng, place } = require('../src/daily.js');
 const { replayPlan } = require('./replay-plan.js');
 const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8') + '; return LEVELS;')();
-// Keep the original bug repros independent of later level balancing.
+// Keep the original bug repros independent of later level balancing (net pickup rule, kept for daily/free v1–v3).
 const NET_REGRESSIONS = [
   { number: 11, moves: 6, map: ['#E#####','#.f...#','#..f..#','#.....#','#..o<.#','#.....#','#^....#','#.....#','#o....#','####S##'] },
   { number: 34, moves: 6, map: ['#######E#','#vf...o.#','#.......#','#f##....#','#.##....#','#..^....#','#....##.#','#..o.##.#','#....f..#','#S#######'] },
@@ -58,24 +58,26 @@ test('all story plans replay legally; balanced star targets remain achievable', 
   }
 });
 
-test('regression: original 11/34/47/48 use the actual reusable-net minimum', () => {
+test('regression: original 11/34/47/48 use the actual reusable-net minimum under the pickup rule', () => {
   for (const { number, moves, map } of NET_REGRESSIONS) {
-    const g = E.parseLevel({ name: 'original ' + number, nets: 1, map }), p = E.plan(g, g.start, 0, new Set(), g.nets, true);
+    const g = E.parseLevel({ name: 'original ' + number, nets: 1, map }), p = E.plan(g, g.start, 0, new Set(), g.nets, true, undefined, undefined, true);
     assert.equal(p.moves, moves, 'level ' + number);
-    replayPlan(g, p);
+    replayPlan(g, p, { pickup: true });
   }
 });
 
 test('representative canals retain fish detours and the revised finale routes', () => {
-  for (const [n, minimum, escapeMoves] of [[6,7,5],[12,9,5],[24,10,7],[34,10,5],[36,11,6],[47,11,7],[48,12,6]]) {
+  // 2026-10-08 net rule: 12, 34 and 48 were redesigned; 36 and 47 were re-rated with set nets that stay.
+  for (const [n, minimum, escapeMoves] of [[6,7,5],[12,9,4],[24,10,7],[34,9,6],[36,11,7],[47,12,7],[48,12,9]]) {
     const g = E.parseLevel(LEVELS[n - 1]);
     assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, true).moves, minimum, 'full route ' + n);
     assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, false).moves, escapeMoves, 'escape route ' + n);
   }
   assert.ok(E.parseLevel(LEVELS[46]).fish.some(([x,y]) => x >= 3 && x <= 5 && y >= 4 && y <= 5), 'fish inside the moat');
-  const final = E.parseLevel(LEVELS[47]);
+  const final = E.parseLevel(LEVELS[47]), route = E.plan(final, final.start, 0, new Set(), final.nets, true);
   assert.equal(final.fish.length, 4);
-  assert.ok(final.fish.some(([x]) => x < 4) && final.fish.some(([x]) => x > 4), 'fish in both final waterways');
+  assert.ok(final.fish.every(([x]) => x < 4) && LEVELS[47].map[0].indexOf('E') > 4, 'fish on the left, the sea beyond the whirlpool on the right');
+  assert.ok(route.steps.some(s => s.nets.length), 'the finale needs its one net');
 });
 
 test('fish completion gates the move star at and above the target', () => {
@@ -85,17 +87,24 @@ test('fish completion gates the move star at and above the target', () => {
   assert.equal(E.starsForClear(true, true), 3, 'all fish at target');
 });
 
-test('level 10 recovers from a wrong placed net with no unused inventory', () => {
+test('a wrong set net stays: level 10 then has no route and the hint points to undo', () => {
+  const g = E.parseLevel(LEVELS[9]), nets = new Set([g.w + 4]);
+  assert.equal(E.plan(g, g.start, 0, nets, 0, true), null);
+  assert.equal(E.plan(g, g.start, 0, nets, 0, false), null);
+  assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, true).moves, 5);
+});
+
+test('level 10 recovers from a wrong placed net with no unused inventory under the pickup rule', () => {
   const g = E.parseLevel(LEVELS[9]), nets = new Set([g.w + 4]);
   assert.equal(E.fixedNetPlan(g, g.start, 0, nets, 0, false), null);
-  const p = E.plan(g, g.start, 0, nets, 0, true);
+  const p = E.plan(g, g.start, 0, nets, 0, true, undefined, undefined, true);
   assert.equal(p.moves, 5);
   assert.ok(p.steps.some(s => !s.nets.includes(g.w + 4)), 'wrong net is eventually recovered');
-  replayPlan(g, p, { nets });
+  replayPlan(g, p, { nets, pickup: true });
   assert.deepEqual([...nets], [g.w + 4], 'search mutates caller nets');
-  const blocking = new Set([7 * g.w + 2]), recovery = E.plan(g, g.start, 0, blocking, 0, true);
+  const blocking = new Set([7 * g.w + 2]), recovery = E.plan(g, g.start, 0, blocking, 0, true, undefined, undefined, true);
   assert.deepEqual(recovery.remove, [...blocking], 'net blocking the first swipe must be recovered first');
-  replayPlan(g, recovery, { nets: blocking });
+  replayPlan(g, recovery, { nets: blocking, pickup: true });
 });
 
 test('a harmless existing net can stay in place when the remaining route needs no edits', () => {
@@ -133,16 +142,48 @@ test('replan from every state of a two-net / two-boat route', () => {
   }
 });
 
-test('pruned search matches exhaustive placements, including consumed fish and moving boats', () => {
+// Exhaustive oracle for the placed-net rule: set nets stay and are part of the state; any remaining net may be set before any swipe.
+function exhaustivePlaced(g, { mask = 0, needAll = true } = {}) {
+  const key = s => s.pos + '|' + s.mask + '|' + E.boatsKey(s.boats) + '|' + s.nets.join(',');
+  let q = [{ pos: g.start, mask, boats: g.boats, nets: [] }], depth = 0;
+  const seen = new Set(q.map(key)), full = (1 << g.fish.length) - 1;
+  while (q.length) {
+    depth++; const nq = [];
+    for (const s of q) {
+      const configs = [s.nets];
+      const free = i => g.cells[i] === '.' && i !== s.pos[1] * g.w + s.pos[0] && !s.nets.includes(i) && !s.boats.some(b => b[0] === i)
+        && !g.fish.some(([x, y], fi) => y * g.w + x === i && !(s.mask & (1 << fi)));
+      const spots = g.cells.map((_, i) => i).filter(free);
+      if (s.nets.length < g.nets) spots.forEach(i => configs.push([...s.nets, i].sort((a, b) => a - b)));
+      if (g.nets - s.nets.length >= 2) for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) configs.push([spots[i], spots[j]]);
+      for (const cfg of configs) for (const d of 'UDLR') {
+        const nets = new Set(cfg), r = E.slide(g, s.pos, d, nets, s.boats);
+        if (!r.path.length) continue;
+        let m = s.mask;
+        for (const [x, y] of r.path) g.fish.forEach(([fx, fy], fi) => { if (x === fx && y === fy) m |= 1 << fi; });
+        if (r.win) { if (!needAll || m === full) return depth; continue; }
+        const n = { pos: r.end, mask: m, boats: E.stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], nets), nets: cfg };
+        const k = key(n); if (!seen.has(k)) { seen.add(k); nq.push(n); }
+      }
+    }
+    q = nq;
+  }
+  return null;
+}
+
+test('pruned search matches exhaustive placements for both net rules, including consumed fish and moving boats', () => {
   const rand = rng(90210), mask = ['##E###', '#....#', '#....#', '#....#', '#S####'];
   for (let i = 0; i < 48; i++) {
     const map = place(mask, { buoys: i % 2, boats: +(i % 4 === 0), vboats: +(i % 7 === 0), fish: 2,
       jets: i % 3 === 0 ? 1 : 0, sand: +(i % 4 === 1), whirls: +(i % 5 === 0) }, rand);
     const g = E.parseLevel({ name: 'oracle ' + i, map, nets: i % 3 });
     for (const eaten of [0, 1, 3]) for (const needAll of [true, false]) {
-      const p = E.plan(g, g.start, eaten, new Set(), g.nets, needAll);
+      const p = E.plan(g, g.start, eaten, new Set(), g.nets, needAll, undefined, undefined, true);
       assert.equal(p ? p.moves : null, exhaustive(g, { mask: eaten, needAll }), JSON.stringify({ map, eaten, needAll, nets: g.nets }));
-      if (p) replayPlan(g, p, { mask: eaten, needAll });
+      if (p) replayPlan(g, p, { mask: eaten, needAll, pickup: true });
+      const placed = E.plan(g, g.start, eaten, new Set(), g.nets, needAll);
+      assert.equal(placed ? placed.moves : null, exhaustivePlaced(g, { mask: eaten, needAll }), 'placed ' + JSON.stringify({ map, eaten, needAll, nets: g.nets }));
+      if (placed) replayPlan(g, placed, { mask: eaten, needAll });
     }
   }
 });

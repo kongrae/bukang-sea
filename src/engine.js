@@ -169,14 +169,77 @@ function fixedNetPlan(g, pos, mask, nets, netsLeft, needAll, boats) {
   return best;
 }
 
-// Minimum SWIPES under the live rules. Nets can be removed/replaced for free BETWEEN moves.
+// Minimum SWIPES under the live rules (2026-10-08): a net, once set, stays until undo/restart; more of the
+// remaining nets can be set for free before any swipe. The placed nets are part of the search node.
+// A new net is only tried on this swipe's free path or next to a boat: any other net can wait until the
+// swipe it affects, since setting it later keeps every option open (a tile placeable then is placeable now).
+// Returns the same shape as the relocating search; `remove` is always empty.
+function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
+  boats = boats || g.boats;
+  const capacity = nets.size + netsLeft;
+  if (capacity > 2) throw new Error('plan supports at most 2 nets');
+  const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
+  const full = (1 << g.fish.length) - 1, start = [...nets].sort((a, b) => a - b);
+  const keyOf = (pos, mask, boats, gate, placed) => pos + '|' + mask + '|' + boatsKey(boats) + gateKey(g, gate) + '|' + placed.join(',');
+  const root = { pos, mask, boats, gate, placed: start, parent: null }, seen = new Set([keyOf(pos, mask, boats, gate, start)]);
+  const result = (parent, dir, placed) => {
+    const steps = [{ dir, nets: [...placed] }];
+    for (let s = parent; s.parent; s = s.parent) steps.push(s.step);
+    steps.reverse();
+    return { moves: steps.length, seq: steps.map(s => s.dir).join(''), steps,
+      add: steps[0].nets.filter(i => !nets.has(i)), remove: [] };
+  };
+  let q = [root], visited = 0;
+  while (q.length) {
+    const nq = [];
+    for (const s of q) {
+      if (++visited % 32 === 0) yield;
+      const here = s.pos[1] * g.w + s.pos[0], occupied = new Set(s.boats.map(b => b[0])), left = capacity - s.placed.length;
+      const canPlace = i => g.cells[i] === '.' && i !== here && !occupied.has(i) && !s.placed.includes(i)
+        && (!fishIdx.has(i) || (s.mask & (1 << fishIdx.get(i))));
+      const boatSpots = new Set();
+      if (left) for (const b of s.boats) for (const d of [b[1], OPP[b[1]]]) {
+        const [dx, dy] = DIRS[d], x = b[0] % g.w + dx, y = Math.floor(b[0] / g.w) + dy;
+        if (x >= 0 && y >= 0 && x < g.w && y < g.h && canPlace(y * g.w + x)) boatSpots.add(y * g.w + x);
+      }
+      const current = new Set(s.placed);
+      for (const dir of 'UDLR') {
+        const plain = slide(g, s.pos, dir, current, s.boats, s.gate), relevant = new Set(boatSpots);
+        if (left) for (const [x, y] of plain.path) if (canPlace(y * g.w + x)) relevant.add(y * g.w + x);
+        const spots = [...relevant], adds = [[]];
+        for (const i of spots) adds.push([i]);
+        // Only the first net hit stops the shark; two new nets at once matter only when one affects a boat.
+        if (left >= 2) for (let a = 0; a < spots.length; a++) for (let b = a + 1; b < spots.length; b++) {
+          if (boatSpots.has(spots[a]) || boatSpots.has(spots[b])) adds.push([spots[a], spots[b]]);
+        }
+        for (const add of adds) {
+          const placed = add.length ? [...s.placed, ...add].sort((a, b) => a - b) : s.placed;
+          const set = add.length ? new Set(placed) : current, r = add.length ? slide(g, s.pos, dir, set, s.boats, s.gate) : plain;
+          if (!r.path.length) continue;
+          let m = s.mask;
+          for (const [x, y] of r.path) { const fi = fishIdx.get(y * g.w + x); if (fi != null) m |= 1 << fi; }
+          if (r.win) { if (!needAll || m === full) return result(s, dir, placed); continue; }
+          const ng = pressSwitch(g, r.end, s.gate);
+          const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], set, ng), key = keyOf(r.end, m, nb, ng, placed);
+          if (seen.has(key)) continue;
+          seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, gate: ng, placed, parent: s, step: { dir, nets: placed } });
+        }
+      }
+    }
+    q = nq;
+  }
+  return null;
+}
+// pickup = true: the rules before 2026-10-08, kept for daily operations / free canals v1–v3 that were generated and
+// rated with them. Nets can be removed/replaced for free BETWEEN moves.
 // Thus a search node needs only (position, fish mask, boats, gates): every legal net configuration is
 // reachable from every other one without moving the shark or boats. Each edge records the nets
 // to have on the board before its swipe; keeping that recipe is essential when replaying a plan.
 // Switches are pressed only by moves, so the recipe stays complete: replaying it with turn() presses them.
 // `netsLeft` retains its old meaning (unused inventory); placed nets are also reusable.
 // Returns {moves, seq, add, remove, steps:[{dir, nets:[idx]}]} or null. add/remove concern step 1 only.
-function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
+function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false) {
+  if (!pickup) return yield* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate);
   boats = boats || g.boats;
   const capacity = nets.size + netsLeft;
   if (capacity > 2) throw new Error('plan supports at most 2 nets');
@@ -241,8 +304,8 @@ function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
   }
   return null;
 }
-function plan(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
-  const search = planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate);
+function plan(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false) {
+  const search = planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup);
   let step;
   do { step = search.next(); } while (!step.done);
   return step.value;

@@ -26,6 +26,7 @@ function hints({ stored = null, daily = null, free = null, pilot = null, index =
     const st = {pos:g.start.slice(),nets:[],boats:g.boats,moves:0};
     const anim = null, cleared = false, netSet = () => new Set(st.nets), fishMask = () => 0;
     const setTimeout = cb => {if(cancel){hintRequest++;cancel=false;} cb();};
+    ${source.match(/^const netPickup = .*$/m)[0]}
     ${hintSource}
     updateHintButton();
     return {show:showHint, wait:hintWait, saved:()=>written, usage:()=>hintUsageRecord(), tip:()=>tip,
@@ -135,6 +136,7 @@ function nudger({ par = 5, nets = 0 } = {}) {
     const $ = id => elements[id], setTip = (text, isHint) => { tip = [text, isHint]; };
     let st = {moves: 0, history: [], nets: []};
     const curLevel = () => ({par}), g = {nets};
+    ${source.match(/^const netPickup = .*$/m)[0]}
     ${hintSource}
     return { tick: seconds => { for (let t = 0; t < seconds; t += 0.05) tickHintNudge(0.05); }, tip: () => tip, pulses: () => pulses, netPulses: () => netPulses,
       move: () => { st.moves++; st.history.push({nets: st.nets.slice()}); }, edit: () => { st.history.push({nets: st.nets.slice()}); st.nets = st.nets.length ? [] : [7]; },

@@ -8,7 +8,8 @@ const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.
 
 // Run the production movement/frame/render functions with a silent canvas and sound output.
 // Capturing drawBoat coordinates tests visible turn order; this does not test sprite pixels or device touch.
-function game({ reduced = false, index = 5, level = LEVELS[index], stored = null, daily = null, storageFails = false } = {}) {
+// pickup: true plays the net rule of daily operations / free canals v1–v3 (a set net can be picked up again).
+function game({ reduced = false, index = 5, level = LEVELS[index], stored = null, daily = null, storageFails = false, pickup = false } = {}) {
   const functionSource = name => {
     const found = source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))
       || source.match(new RegExp(`function ${name}\\([^]*?\\n}`));
@@ -19,7 +20,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
   const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw', 'updateNetStatus'].map(functionSource).join('\n');
   const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
-  return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', `
+  return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', 'pickupRule', `
     ${engine}
     ${easing}
     ${source.match(/^const ANG = .*$/m)[0]}
@@ -45,7 +46,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const drawSandDent = (ctx, x, y, T, ang, k) => dentsDrawn.push([x / T, y / T, +ang.toFixed(3), +k.toFixed(3)]);
     const drawShark = (...args) => sharkDrawn = args.slice(1), drawNet = (...args) => netsDrawn.push(args.slice(1));
     const drawBoat = (ctx, x, y) => boatsDrawn.push([x / T - 0.5, y / T - 0.5]);
-    const onClear = () => {cleared = true;};
+    const onClear = () => {cleared = true;}, netPickup = () => pickupRule;
     ${source.match(/^function markDevicesSeen\(.*$/m)[0]}
     ${source.match(/^let netCallout = .*$/m)[0]}
     ${source.match(/^const netsKnown = .*$/m)[0]}
@@ -72,8 +73,10 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
         anim:anim && {t:anim.t,dur:anim.dur,swimDur:anim.swimDur,portals:anim.portals,p:anim.p,landed:anim.landed,warpScale:anim.warpScale}})),
       state: () => JSON.parse(JSON.stringify({pos: st.pos, boats: st.boats, nets: st.nets, moves: st.moves, fish: st.fish, cleared, animating: !!anim, view: [view.x, view.y]}))
     };
-  `)(level, reduced, index, stored, daily && {date: daily, stage: 0, version: 1}, storageFails, dailyStageId);
+  `)(level, reduced, index, stored, daily && {date: daily, stage: 0, version: 1}, storageFails, dailyStageId, pickup);
 }
+
+const PICKUP_LEVEL = {par: 10, nets: 2, map: ['###E###','#.....#','#.oo..#','#f.bf.#','#.>...#','#.....#','#.....#','#..v..#','#...bf#','#.....#','###S###']};
 
 function finishTurn(scene) {
   for (let i = 0; scene.state().animating && i < 40; i++) scene.tick(0.05);
@@ -168,7 +171,7 @@ test('reload during a swim keeps the committed position, all fish on its path an
 });
 
 test('pickup pitch index resets each move; net install and retrieval report only successful edits', () => {
-  const level={par:5,nets:1,map:['#######E#','#S.ff...#','#.......#','#########']},scene=game({level});
+  const level={par:5,nets:1,map:['#######E#','#S.ff...#','#.......#','#########']},scene=game({level,pickup:true});
   scene.tap(3,1);assert.equal(scene.sounds().filter(s=>s.name==='net').length,0,'fish blocks installation');
   scene.tap(3,2);scene.tap(4,2);scene.tap(3,2);
   assert.deepEqual(scene.sounds().filter(s=>s.name==='net').map(s=>s.args[0]),[undefined,true]);
@@ -186,9 +189,10 @@ test('net tool: nets left through placement, exhaustion, undo and reload; grey �
   assert.equal(scene.state().moves, 0);
   const resumed = game({level, stored:scene.stored()});
   assert.deepEqual(resumed.netTool(), scene.netTool(), 'a resumed attempt that already edited shows no callout');
-  resumed.tap(3, 2); assert.equal(resumed.netTool().left, '1');
-  resumed.undo(); assert.equal(resumed.netTool().left, '0');
-  resumed.undo(); resumed.undo(); assert.equal(resumed.netTool().callout, false, 'undoing back to the start does not bring it back');
+  resumed.tap(3, 2); assert.equal(resumed.netTool().left, '0', 'a set net stays');
+  resumed.undo(); assert.equal(resumed.netTool().left, '1');
+  resumed.undo(); assert.equal(resumed.netTool().left, '2');
+  assert.equal(resumed.netTool().callout, false, 'undoing back to the start does not bring it back');
   const before = game({index:0});
   assert.deepEqual([before.netTool().shown, before.netTool().wide], [false, false], 'hidden until the player has met nets');
   before.tap(3, 3); assert.match(before.tips().at(-1), /화면을 밀어서/);
@@ -197,16 +201,16 @@ test('net tool: nets left through placement, exhaustion, undo and reload; grey �
   known.tap(3, 3); assert.equal(known.tips().at(-1), '이 수로에는 그물이 없어요. 화면을 밀어서 길을 찾아요.');
 });
 
-test('installed and removed nets, and their undo history, survive a reload', () => {
-  const scene = game({index: 11});
+test('installed and removed nets (v1–v3 rule), and their undo history, survive a reload', () => {
+  const scene = game({level: PICKUP_LEVEL, pickup: true});
   scene.tap(3, 8);
   let packet = JSON.parse(scene.stored()).sessions.story;
   assert.deepEqual(packet.state.nets, [59]);
-  const resumed = game({index: 11, stored: scene.stored()});
+  const resumed = game({level: PICKUP_LEVEL, pickup: true, stored: scene.stored()});
   resumed.tap(3, 8);
   packet = JSON.parse(resumed.stored()).sessions.story;
   assert.deepEqual(packet.state.nets, []);
-  const reloaded = game({index: 11, stored: resumed.stored()});
+  const reloaded = game({level: PICKUP_LEVEL, pickup: true, stored: resumed.stored()});
   reloaded.undo();
   assert.deepEqual(JSON.parse(reloaded.stored()).sessions.story.state.nets, [59]);
   reloaded.undo();
@@ -363,8 +367,22 @@ test('coarse frames retain portal and pickup events once; pickups stay near thei
   assert.deepEqual(fine.state().fish, []);
   assert.equal(fine.effects().particles.some(p=>['fish','text','grain'].includes(p.kind)), false);
 });
-test('net removal shrinks visually but changes the board immediately; replacing or undoing cancels stale effects', () => {
-  const scene = game({index:11}); scene.tap(3,8); scene.tick(0.1); scene.tap(3,8);
+test('a set net stays in story canals: tapping it explains, undo takes it back, and an empty stock points to undo', () => {
+  const scene = game({level: PICKUP_LEVEL});
+  scene.tap(3,8); scene.tap(3,8);
+  assert.deepEqual(scene.state().nets, [59]); assert.match(scene.tips().at(-1), /걷을 수 없어요/);
+  assert.deepEqual(scene.effects().retract, [], 'no pickup animation');
+  scene.tap(2,8); scene.tap(4,7);
+  assert.deepEqual(scene.state().nets, [59, 58]); assert.match(scene.tips().at(-1), /되돌리기로 무르면/);
+  scene.undo(); assert.deepEqual(scene.state().nets, [59]);
+  scene.undo(); assert.deepEqual(scene.state().nets, []);
+  const netPickup = new Function('DAILY', 'FREE', source.match(/^const netPickup = .*$/m)[0] + '; return netPickup();');
+  assert.deepEqual([netPickup(null, null), netPickup({date: '2026-10-08'}, null), netPickup({version: 3}, null), netPickup({version: 4}, null),
+    netPickup(null, {version: 3}), netPickup(null, {version: 4})], [false, true, true, false, true, false], 'story and v4 keep set nets; older dated and free canals keep pickup');
+});
+
+test('net removal (v1–v3 rule) shrinks visually but changes the board immediately; replacing or undoing cancels stale effects', () => {
+  const scene = game({level: PICKUP_LEVEL, pickup: true}); scene.tap(3,8); scene.tick(0.1); scene.tap(3,8);
   assert.deepEqual(scene.state().nets, []);
   assert.equal(scene.effects().retract.length, 1);
   scene.render(); assert.equal(scene.nets().length, 1, 'removed net is drawn briefly');
@@ -375,12 +393,12 @@ test('net removal shrinks visually but changes the board immediately; replacing 
   assert.deepEqual(scene.state().nets, []);
   assert.equal(scene.effects().retract.length, 0); assert.equal(scene.effects().netPop.length, 0);
   scene.tap(3,8); scene.tap(3,8); scene.move('U'); finishTurn(scene);
-  const {parseLevel,slide}=require('../src/engine'); const grid=parseLevel(LEVELS[11]);
+  const {parseLevel,slide}=require('../src/engine'); const grid=parseLevel(PICKUP_LEVEL);
   assert.deepEqual(scene.state().pos,slide(grid,grid.start,'U',new Set(),grid.boats).end,'a retracting net cannot block a new swipe');
   assert.equal(scene.effects().retract.length, 0);
 });
 test('net catches and buoy contacts react at the blocking tile without changing logical state', () => {
-  const scene=game({index:11}); scene.tap(3,8); scene.move('U'); finishTurn(scene);
+  const scene=game({level: PICKUP_LEVEL}); scene.tap(3,8); scene.move('U'); finishTurn(scene);
   assert.equal(scene.state().moves,1); assert.deepEqual(scene.state().nets,[59]);
   assert.equal(scene.effects().contacts[0][0],59);
   const buoy=game({level:{name:'buoy contact',par:2,map:['######','#S.oE#','######']}});
@@ -408,7 +426,7 @@ test('reduced motion keeps gameplay and cues with no shrink, stretch, trail or d
     assert.deepEqual(scene.effects().particles,[]); assert.deepEqual(scene.effects().wake,[]);
   }
   assert.deepEqual(scene.state().pos,[11,3]); assert.deepEqual(scene.state().fish,[0,1]);
-  const net=game({index:11,reduced:true}); net.tap(3,8); net.tap(3,8);
+  const net=game({level: PICKUP_LEVEL,reduced:true,pickup:true}); net.tap(3,8); net.tap(3,8);
   assert.deepEqual(net.effects().retract,[]); assert.deepEqual(net.effects().netPop,[]);
 });
 

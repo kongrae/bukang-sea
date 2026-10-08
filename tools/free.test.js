@@ -134,15 +134,22 @@ test('v3 offers only story-taught devices, equals v2 once every device is learne
     if(/s/.test(s))d.push('sand');if(/w/.test(s))d.push('whirl');if(level.nets)d.push('net');return d;};
   for(const learned of [[],['jet'],['jet','boat'],['jet','boat','net'],['jet','boat','net','sand']])
     for(let difficulty=0;difficulty<3;difficulty++)for(let seed=0;seed<20;seed++) {
-      const run=F.makeFree(seed,difficulty,3,learned),tier=F.FREE_TIERS[difficulty],g=E.parseLevel(run.level),full=E.plan(g,g.start,0,new Set(),g.nets,true);
+      const run=F.makeFree(seed,difficulty,3,learned),tier=F.FREE_TIERS[difficulty],g=E.parseLevel(run.level),full=E.plan(g,g.start,0,new Set(),g.nets,true,undefined,undefined,true);
       assert.deepEqual(devices(run.level).filter(d=>!learned.includes(d)),[],learned.join()+' '+seed);
       assert.ok(full.moves>=tier.min&&full.moves<=tier.max);assert.equal(run.level.par,full.moves+tier.slack);
       assert.deepEqual(F.makeFree(seed,difficulty,3,['jet','boat','net','sand','whirl'],run.level.family),run,'a kept run regenerates from its family');
     }
   for(let difficulty=0;difficulty<3;difficulty++)for(let seed=0;seed<30;seed++)
     assert.deepEqual(F.makeFree(seed,difficulty,3),{...F.makeFree(seed,difficulty,2),version:3});
+  // v4: set nets stay. Net canals are rated with that rule; boards without nets are the v3 boards.
+  let nets=0;
+  for(let seed=0;seed<60;seed++){const run=F.makeFree(seed,2,4),g=E.parseLevel(run.level),full=E.plan(g,g.start,0,new Set(),g.nets,true),tier=F.FREE_TIERS[2];
+    assert.ok(full.moves>=tier.min&&full.moves<=tier.max);assert.equal(run.level.par,full.moves+tier.slack);replayPlan(g,full);
+    if(g.nets){nets++;assert.equal(run.fallback,false);assert.match(run.level.tip,/걷을 수 없어요/);}
+    else{const old=F.makeFree(seed,2,3);if(!old.level.nets)assert.deepEqual(run.level,old.level);}}
+  assert.ok(nets>=5,'v4 still offers net canals');
   const game=scene(null,[7,8,9]);game.learn(['jet']);game.open();assert.equal(game.element('freeLearnNote').hidden,false);await game.start(2,true);
-  const first=game.run();assert.equal(first.version,3);assert.deepEqual(devices(first.level).filter(d=>d!=='jet'),[]);
+  const first=game.run();assert.equal(first.version,F.FREE_VERSION);assert.deepEqual(devices(first.level).filter(d=>d!=='jet'),[]);
   const reload=scene(game.saved());reload.learn(['jet','boat','net','sand','whirl','gate']);reload.open();assert.equal(reload.element('freeLearnNote').hidden,true);await reload.start(2);
   assert.deepEqual(reload.run().level.map,first.level.map,'learning more devices never changes a kept run');
 });

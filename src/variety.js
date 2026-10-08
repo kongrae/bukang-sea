@@ -29,7 +29,8 @@ const VARIETY_FAMILIES = {
   current: { label:'물살의 방향', tip:'같은 물줄기도 들어가는 방향에 따라 다음 길이 달라져요.', masks:['cross','steps','bridge','pocket','elbows','lagoon'], spec:{buoys:2,fish:2,jets:2}, device:'jet' },
   patrol: { label:'움직이는 정지점', tip:'한 번 움직인 뒤 구조정이 어디에 멈추는지 살펴보세요.', masks:['rooms','orbit','comb','balcony','lanes','harbor'], spec:{buoys:2,fish:2,boats:1}, device:'boat' },
   sand: { label:'멈추고 방향 바꾸기', tip:'모래톱에서 멈춘 다음, 벽에서는 갈 수 없던 방향을 찾아요.', masks:['cross','rooms','pocket','bridge','courts','shoal'], spec:{buoys:2,fish:2,sand:2}, device:'sand' },
-  net: { label:'옮겨 쓰는 그물', tip:'그물을 회수해 다른 곳에 옮기면 새로운 정지점을 만들 수 있어요.', masks:['rooms','cross','orbit','comb','courts','offset','lanes'], spec:{buoys:2,fish:3}, nets:1, device:'net' },
+  net: { label:'옮겨 쓰는 그물', tip:'그물을 회수해 다른 곳에 옮기면 새로운 정지점을 만들 수 있어요.',
+    placed: { label:'그물 자리 고르기', tip:'그물은 한 번 치면 걷을 수 없어요. 어디서 멈춰야 할지 먼저 생각해 보세요.' }, masks:['rooms','cross','orbit','comb','courts','offset','lanes'], spec:{buoys:2,fish:3}, nets:1, device:'net' },
   warp: { label:'떨어진 물길', tip:'소용돌이를 건넌 뒤에도 같은 방향으로 헤엄친다는 점을 이용해요.', masks:['portals','islands','twin','moat'], spec:{buoys:3,fish:3,whirls:1}, device:'warp' },
 };
 const VARIETY_FREE_TIERS = [
@@ -80,6 +81,7 @@ function varietyRouteUse(g, full) {
 function* variedCanalSearch(seed, family, tier, deps, reserves = [], maxAttempts = 100) {
   const profile=VARIETY_FAMILIES[family],rand=deps.rng(seed),masks={...deps.MASKS,...VARIETY_MASKS};
   if(!profile)return null;
+  const words=deps.placedNets&&profile.placed||profile;
   for(let attempt=0;attempt<maxAttempts;attempt++) {
     yield;
     // Cycle templates from a seeded offset so unsuccessful shapes cannot dominate selection.
@@ -94,12 +96,13 @@ function* variedCanalSearch(seed, family, tier, deps, reserves = [], maxAttempts
     if(!escape||escape.moves<tier.escape||full.moves<=escape.moves)continue;
     const active=varietyRouteUse(g,full);
     if(profile.device&&!active.used.has(profile.device))continue;
-    if(nets&&((yield* deps.operationPlan(g,0,true))!==null||active.edits<2))continue;
-    return {map,nets,par:full.moves+tier.slack,family,idea:profile.label,tip:profile.tip,maskId,attempts:attempt+1};
+    // deps.placedNets (2026-10-08 rule): a set net stays, so one placement is the decision; v1–v3 required two layouts.
+    if(nets&&((yield* deps.operationPlan(g,0,true))!==null||active.edits<(deps.placedNets?1:2)))continue;
+    return {map,nets,par:full.moves+tier.slack,family,idea:words.label,tip:words.tip,maskId,attempts:attempt+1};
   }
-  const pool=reserves.filter(r=>r.family===family && r.minimum>=tier.min && r.minimum<=tier.max && r.escape>=tier.escape);
+  const pool=reserves.filter(r=>r.family===family && r.minimum>=tier.min && r.minimum<=tier.max && r.escape>=tier.escape && !(deps.placedNets&&r.nets));
   if(!pool.length)return null;
   const reserve=pool[seed%pool.length];
-  return {...reserve,map:reserve.map.slice(),par:reserve.minimum+tier.slack,fallback:true,tip:profile.tip,idea:profile.label,attempts:maxAttempts};
+  return {...reserve,map:reserve.map.slice(),par:reserve.minimum+tier.slack,fallback:true,tip:words.tip,idea:words.label,attempts:maxAttempts};
 }
 if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyFamilyKnown,varietyLayoutKey,varietyRouteUse,variedCanalSearch};

@@ -1,25 +1,28 @@
-// Independently check every recipe against the playable rules (including free net edits and switch presses).
+// Independently check every recipe against the playable rules (net placement and switch presses).
+// Since 2026-10-08 a set net stays until undo/restart; pickup: true replays plans of the earlier rule (daily/free v1–v3).
 const assert = require('node:assert/strict');
 const E = require('../src/engine.js');
 
-function replayPlan(g, p, { pos = g.start, mask = 0, boats = g.boats, nets = new Set(), capacity = g.nets, needAll = true, gate = 0 } = {}) {
+function replayPlan(g, p, { pos = g.start, mask = 0, boats = g.boats, nets = new Set(), capacity = g.nets, needAll = true, gate = 0, pickup = false } = {}) {
   assert.ok(p, 'no plan');
   assert.equal(p.moves, p.steps.length);
   assert.equal(p.seq, p.steps.map(s => s.dir).join(''));
   assert.deepEqual([...p.add].sort((a, b) => a - b), p.steps[0].nets.filter(i => !nets.has(i)).sort((a, b) => a - b));
   assert.deepEqual([...p.remove].sort((a, b) => a - b), [...nets].filter(i => !p.steps[0].nets.includes(i)).sort((a, b) => a - b));
-  return replaySteps(g, p.steps, { pos, mask, boats, capacity, needAll, gate });
+  return replaySteps(g, p.steps, { pos, mask, boats, capacity, needAll, gate, pickup, set: nets });
 }
 // Replays [{dir, nets}] (nets = the whole placement before that swipe) and counts switch presses.
-function replaySteps(g, steps, { pos = g.start, mask = 0, boats = g.boats, capacity = g.nets, needAll = true, gate = 0 } = {}) {
-  let win = false, presses = 0, nets = new Set();
+function replaySteps(g, steps, { pos = g.start, mask = 0, boats = g.boats, capacity = g.nets, needAll = true, gate = 0, pickup = false, set = new Set() } = {}) {
+  let win = false, presses = 0, nets = new Set(set);
   for (const step of steps) {
     assert.ok(!win, 'plan continues after escape');
     assert.ok(E.DIRS[step.dir], 'invalid direction');
     const placed = new Set(step.nets);
     assert.equal(placed.size, step.nets.length, 'duplicate net');
+    if (!pickup) for (const i of nets) assert.ok(placed.has(i), 'a set net is never picked up');
     assert.ok(placed.size <= capacity, 'too many nets');
     for (const i of placed) {
+      if (nets.has(i)) continue;   // already set before an earlier swipe
       assert.ok(Number.isInteger(i) && i >= 0 && i < g.cells.length, 'net out of bounds');
       assert.equal(g.cells[i], '.', 'net must be on water');
       assert.notEqual(i, pos[1] * g.w + pos[0], 'net on shark');

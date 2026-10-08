@@ -19,11 +19,11 @@ for (let i = 0; i < days; i++) {
     const t0 = Date.now(), daily = legacy ? makeDaily(date) : makeDailyStage(date, stage, DAILY_OPERATION_VERSION, learned), ms = Date.now() - t0;
     slowest = Math.max(slowest, ms);
     if (!daily) { failed++; console.log(`FAIL ${date}`); continue; }
-    const g = E.parseLevel(daily.level), t1 = Date.now(), p = E.plan(g, g.start, 0, new Set(), g.nets, true);
+    const g = E.parseLevel(daily.level), t1 = Date.now(), p = E.plan(g, g.start, 0, new Set(), g.nets, true, undefined, undefined, legacy);
     slowestSolve = Math.max(slowestSolve, Date.now() - t1);
     let ok = p && p.moves <= daily.level.par;
     if (legacy && p && p.moves < daily.level.par) targetsToReview++;
-    if (p) { try { replayPlan(g, p); } catch (e) { ok = false; console.log(`FAIL ${date} replay: ${e.message}`); } }
+    if (p) { try { replayPlan(g, p, { pickup: legacy }); } catch (e) { ok = false; console.log(`FAIL ${date} replay: ${e.message}`); } }
     if (!legacy) {
       const tier = DAILY_STAGES[stage], escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
       ok = ok && p.moves >= tier.min && p.moves <= tier.max && daily.level.par === p.moves + tier.slack
