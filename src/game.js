@@ -1364,7 +1364,7 @@ function tickHintNudge(dt) {
   if (hint || hintWait() || (hintSearching !== 0 && hintSearching === hintRequest)) return;
   hintNudge.done = true;
   pulseRewardMark($('hintBtn'), 'nudge');
-  setTip(over ? '기준보다 많이 움직였어요. 힌트로 가장 짧은 길을 볼 수 있어요.' : '막히면 힌트를 눌러 보세요. 다음 한 수를 알려 줘요.', true);
+  setTip(over ? '이동이 기준을 넘었어요. 힌트로 가장 짧은 길을 볼 수 있어요.' : '막히면 힌트를 눌러 보세요. 다음 한 수를 보여 줘요.', true);
 }
 
 // Keep the same next-move recipe while the player performs its free net edits. Replanning after

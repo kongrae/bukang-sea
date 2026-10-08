@@ -153,7 +153,7 @@ test('stuck nudge: 40 s without a move or edit pulses the hint button once and i
 
 test('stuck nudge: passing the star target invites a hint at once; covered, finished, guided or cooling-down play waits', () => {
   const over = nudger({ par: 3 }); for (let k = 0; k < 4; k++) over.move(); over.tick(0.1);
-  assert.equal(over.pulses(), 1); assert.match(over.tip()[0], /기준보다 많이 움직였어요/);
+  assert.equal(over.pulses(), 1); assert.match(over.tip()[0], /이동이 기준을 넘었어요/);
   const covered = nudger(); covered.set('inert', true); covered.tick(60); assert.equal(covered.pulses(), 0, 'time under a sheet does not count');
   covered.set('inert', false); covered.tick(41); assert.equal(covered.pulses(), 1);
   const guided = nudger(); guided.set('coach', {kind: 'swipe'}); guided.tick(60); assert.equal(guided.pulses(), 0, 'the first-play finger is already guiding');
