@@ -9,7 +9,8 @@ const { replayPlan, replaySteps, parseRoute } = require('./replay-plan.js');
 const { PILOT_LEVELS, PILOT_REGIONS } = require('../src/pilot.js');
 const { shapeKey } = require('./variety-audit.js');
 
-const LIMITS = { width: 9, height: 11, switches: [1, 2], gates: [1, 3], nets: 2 };
+// 2026-10-08 chapter 6 redesign: boards up to 10x12 (35px tiles on a 360x640 phone), boats may meet gates in the combos.
+const LIMITS = { width: 10, height: 12, switches: [1, 2], gates: [1, 3], nets: 2 };
 function frozen(level) { const g = E.parseLevel(level); g.switches = []; return g; }
 
 function verifyPilot(log = console.log) {
@@ -43,7 +44,6 @@ function verifyPilot(log = console.log) {
         if (g.gates.length < LIMITS.gates[0] || g.gates.length > LIMITS.gates[1]) problems.push('gate count ' + g.gates.length);
       }
       if (sluice !== g.gates.length > 0) problems.push(sluice ? 'sluice canals need switches and gates' : 'gates belong to the sluice region');
-      if (g.boats.length && g.gates.length) problems.push('pilot keeps boats away from gates (rule defined, not taught here)');
       const key = shapeKey(lvl.map);
       if (storyShapes.has(key)) problems.push('same wall layout as story ' + storyShapes.get(key));
       if (shapes.has(key)) problems.push('same wall layout as ' + shapes.get(key));

@@ -30,6 +30,7 @@ npm run build:playtest   # playtest/ 관찰용 빌드. 기본 정상 진행, ?te
 npm run serve:playtest   # localhost:5175 (?tester=P01로 이용자별 기록, --host는 tools/serve.js로 실행)
 npm run playtest:report -- attempts.csv survey.csv --out results.md # 수동 실제 관찰 CSV만 분석
 npm run gen -- basin '{"buoys":3,"jets":2,"fish":2}' 8 42   # 레벨 자동 생성기 (spec에 "bits":16 을 넣으면 목표 난이도로 탐색)
+node tools/gen-sluice.js '{"masks":["airlock"],"min":[10,12],"presses":2}' 1 300000 out.json   # 큰 수문 판(10×12, 스위치 여러 번) 후보 생성기, 6장 재설계에 사용
 npm run difficulty       # 실제 규칙의 최소 이동·탈출 이동·역할별 이동 여유 출력 (--fixed-nets로 보조 bits)
 npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·난이도·생성 시간 확인 (--legacy는 이전 단일 수로, --learned=jet,boat는 배운 장치별 v3)
 ```
@@ -108,7 +109,7 @@ www/           build:web 결과 (gitignore)
 
 **정식 수로 통합**(2026-10-03): 이전 시험 코스 12개를 정식 49–60번(현재 저장 인덱스 48–59, 화면 번호는 아래 장 재구성 기준)에 추가하고 별도 메뉴를 제거했다. ID `p01`–`p12`는 이전 기록 이전용이므로 바꾸거나 재사용하지 않는다. `migratePilotToStory()`가 별·진행·힌트를 한 번 이전하며, 기존 스토리와 시험 코스가 동시에 진행 중이면 시험 코스를 `sessions.importedStory`에 보관했다가 해당 수로 진입 시 복원한다. 이전 별도 원본은 보존한다. 별은 이제 스킨 조건에 합산하며 총 216개(장 재구성 전 180개), 황금 상어 기준은 144개 그대로다. 현재 기준은 `docs/STORY-INTEGRATION.md`, 초기 설계 기록은 `docs/CONTENT-PILOT.md`. 맵을 고치면 `npm run verify:pilot`의 장치·해법 검사도 통과해야 한다.
 
-**장 재구성**(2026-10-07): 장마다 새 장치 하나, 장당 12개(총 72개)로 바꿨다. 장 구성: 1장 북항 수로(1–12, 기본 → 4번 물줄기) · 2장 친수공원 운하(13–24, 구조정) · 3장 방파제 너머(25–36, 그물) · 4장 외항 물길(37–48, 모래톱) · 5장 북항 바깥길(49–60, 소용돌이) · 6장 수문 시설(61–72, 스위치·수문). 장 안은 1–2 연습 → 3–5 응용 → 6 쉬어 가기(이전 장치만) → 7–10 조합 → 11 숨 고르기·복습 → 12 도전이다. 화면의 수로 번호는 `STORY_ORDER`의 위치이고, 별·세션·힌트·해금 기록은 계속 `LEVELS` 인덱스로 저장한다. `migrateStoryOrder()`(`storyOrder: 2`, 2026-10-08 초반 곡선 조정 후 `storyOrder: 3`·`STORY_ORDER_V2`)가 이전 순서에서 열려 있던 수로를 `storyAccess`로 유지하고, 60개를 이미 모두 구출한 기록은 `storyRescued: 1`로 엔딩 다시 보기를 유지한다. 판 색과 지역 미리보기는 수로가 아니라 장(`CHAPTERS[].region`) 기준이다. 상세 배치·결정은 `docs/CHAPTER-RESTRUCTURE.md`. 2026-10-08 초반 곡선 조정(1장 물줄기 4번, 2장 19↔23, 5장 49↔50, 저장 인덱스 1·2·25·31 다시 설계, 이전 판은 `LEGACY_STORY_LEVELS`)은 `docs/EARLY-CURVE-PLAN.md`.
+**장 재구성**(2026-10-07): 장마다 새 장치 하나, 장당 12개(총 72개)로 바꿨다. 장 구성: 1장 북항 수로(1–12, 기본 → 4번 물줄기) · 2장 친수공원 운하(13–24, 구조정) · 3장 방파제 너머(25–36, 그물) · 4장 외항 물길(37–48, 모래톱) · 5장 북항 바깥길(49–60, 소용돌이) · 6장 수문 시설(61–72, 스위치·수문, 2026-10-08 큰 판 재설계: 최대 10×12, 63–65·67–70·72번은 스위치를 두 번 이상 눌러야 함, `docs/CHAPTER6-REDESIGN.md`). 장 안은 1–2 연습 → 3–5 응용 → 6 쉬어 가기(이전 장치만) → 7–10 조합 → 11 숨 고르기·복습 → 12 도전이다. 화면의 수로 번호는 `STORY_ORDER`의 위치이고, 별·세션·힌트·해금 기록은 계속 `LEVELS` 인덱스로 저장한다. `migrateStoryOrder()`(`storyOrder: 2`, 2026-10-08 초반 곡선 조정 후 `storyOrder: 3`·`STORY_ORDER_V2`)가 이전 순서에서 열려 있던 수로를 `storyAccess`로 유지하고, 60개를 이미 모두 구출한 기록은 `storyRescued: 1`로 엔딩 다시 보기를 유지한다. 판 색과 지역 미리보기는 수로가 아니라 장(`CHAPTERS[].region`) 기준이다. 상세 배치·결정은 `docs/CHAPTER-RESTRUCTURE.md`. 2026-10-08 초반 곡선 조정(1장 물줄기 4번, 2장 19↔23, 5장 49↔50, 저장 인덱스 1·2·25·31 다시 설계, 이전 판은 `LEGACY_STORY_LEVELS`)은 `docs/EARLY-CURVE-PLAN.md`.
 **장과 수로는 앞으로 계속 늘어난다**(사용자 방침, 2026-10-08). 장 수·마지막 장·전체 수로 수를 화면 문구나 코드에 고정하지 말고 `CHAPTERS`·`LEVELS`에서 계산한다. 장을 더할 때 맞출 것은 `docs/CHAPTER-TRANSITION.md`의 '장을 늘릴 때'.
 레벨은 `LEVELS` 배열 끝에만 추가한다(진행 상황이 인덱스로 저장되므로 중간 삽입·순서 변경 금지). 플레이 위치는 `STORY_ORDER`에 넣고 `CHAPTERS`의 count도 맞춘다(verify가 순서표·장 수·장별 새 장치·장 끝 도전을 검사). 출시 후에는 화면 번호가 바뀌므로 플레이 순서도 바꾸지 않는다.
 

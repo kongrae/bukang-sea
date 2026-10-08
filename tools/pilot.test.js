@@ -363,16 +363,25 @@ test('hints search from the current gate state and never spend allowance on a ca
     return showHint().then(() => ({tip, usage: save.hintUsage, hint}));
   `)(PILOT_LEVELS[7], state, cancel);
   const level = PILOT_LEVELS[7], grid = E.parseLevel(level);
-  // After collecting the fish and pressing (gate 1), the remaining route is R U from the switch.
-  const pressed = { pos: [1, 2], fish: [0], nets: [], boats: [], moves: 6, gate: 1, history: [] };
+  // Walk the best route to just after its first press; the hint continues from that tile and gate state.
+  const route = E.plan(grid, grid.start, 0, new Set(), grid.nets, true);
+  let pos = grid.start, boats = grid.boats, gate = 0, moves = 0; const fish = [];
+  for (const step of route.steps) {
+    const r = E.turn(grid, pos, step.dir, new Set(step.nets), boats, gate); moves++;
+    for (const [x, y] of r.path) grid.fish.forEach(([fx, fy], i) => { if (x === fx && y === fy && !fish.includes(i)) fish.push(i); });
+    pos = r.end; boats = r.boats; gate = r.gate;
+    if (r.pressed) break;
+  }
+  const mask = fish.reduce((m, i) => m | 1 << i, 0), rest = E.plan(grid, pos, mask, new Set(), grid.nets, true, boats, gate);
+  const pressed = { pos, fish, nets: [], boats, moves, gate, history: [] };
   const done = await run(pressed);
-  assert.match(done.tip, /오른쪽으로 밀어 보세요\. 앞으로 2번이면 나가요\./);
+  assert.equal(done.hint.dir, rest.seq[0]); assert.match(done.tip, new RegExp(`앞으로 ${rest.moves}번이면 나가요`));
   assert.equal(done.usage['pilot:p08'].count, 1);
-  // Same tile without the press: the hint must send the shark to press first (not toward the closed exit).
-  const fresh = await run({ ...pressed, gate: 0, fish: [0] });
-  const expected = E.plan(grid, [1, 2], 1, new Set(), 0, true, [], 0);
-  assert.equal(fresh.hint.dir, expected.seq[0]); assert.equal(fresh.hint.moves, expected.moves);
-  assert.notEqual(expected.moves, 2);
+  // Same tile with the other gate state is a different search state, and the hint follows it.
+  const fresh = await run({ ...pressed, gate: 1 - gate });
+  const expected = E.plan(grid, pos, mask, new Set(), grid.nets, true, boats, 1 - gate);
+  assert.equal(fresh.hint?.dir, expected?.seq[0]); assert.equal(fresh.hint?.moves, expected?.moves);
+  assert.notDeepEqual(expected && [expected.moves, expected.seq], [rest.moves, rest.seq]);
   const cancelled = await run(pressed, true);
   assert.equal(cancelled.usage['pilot:p08'], undefined);
 });
