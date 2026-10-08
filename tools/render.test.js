@@ -46,6 +46,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const drawShark = (...args) => sharkDrawn = args.slice(1), drawNet = (...args) => netsDrawn.push(args.slice(1));
     const drawBoat = (ctx, x, y) => boatsDrawn.push([x / T - 0.5, y / T - 0.5]);
     const onClear = () => {cleared = true;};
+    ${source.match(/^function markDevicesSeen\(.*$/m)[0]}
     ${effects}
     ${functions}
     st = freshState(level);
@@ -284,6 +285,7 @@ test('first-encounter device rules are recorded only on confirmation and can be 
     const openSheet=id=>{$(id).hidden=false;$('app').inert=true;};
     const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const save = {seenDevices: []}, persist = () => {}, reduceMotion = false;
+    const setTip = () => {}, addDeviceSpot = () => {};
     ${guideSource}
     return {show: showDeviceGuide, close: closeGuide, next: advanceGuide, seen: () => save.seenDevices};
   `)(JET, parseLevel(LEVELS[39]), id => elements[id], createDeviceDemo);
@@ -523,6 +525,7 @@ function storyLoader() {
   const story = source.slice(source.indexOf('// Device kinds a story canal introduces'), source.indexOf('/* ---------- story journey:'));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
   const loadLevel = source.match(/function loadLevel\([^]*?\n}/)[0], cardDue = source.match(/function chapterCardDue\([^]*?\n}/)[0];
+  const addSpot = source.match(/function addDeviceSpot\([^]*?\n}/)[0];
   return new Function('data', `
     ${engine}
     const { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, LEVEL_ROLES } = data;
@@ -532,6 +535,7 @@ function storyLoader() {
     const openChapterCard = ci => { chapterCardShown.add(ci); cards.push(ci); };
     ${story}
     ${cardDue}
+    ${addSpot}
     ${loadLevel}
     const at = position => STORY_ORDER[position];
     return {
@@ -589,4 +593,12 @@ test('the chapter card route keeps the current chapter centred with two on each 
   assert.deepEqual(stops(5, 6), [3, 4, 5, null, null], 'the newest chapter: the route fades out instead of ending');
   assert.deepEqual(stops(5, 9), [3, 4, 5, 6, 7], 'chapters added later appear ahead of it');
   assert.deepEqual(stops(20, 30), [18, 19, 20, 21, 22], 'five stops however long the journey grows');
+});
+
+test('a simple device introduced by the spotlight counts as seen when it starts, not when it is queued', () => {
+  const scene = game({ level: { par: 2, map: ['#######E#', '#S...o..#', '#########'] }, stored: JSON.stringify({ best: {}, coachNet: true, sessions: {}, seenDevices: [] }) });
+  scene.spot({ level: null, cells: [14], net: false, seen: ['buoy'], t: 0, started: false });
+  assert.deepEqual(JSON.parse(scene.stored()).seenDevices, [], 'queued only');
+  scene.tick(0.05);
+  assert.deepEqual(JSON.parse(scene.stored()).seenDevices, ['buoy']); assert.deepEqual(scene.shown(), [], 'not a chapter introduction');
 });

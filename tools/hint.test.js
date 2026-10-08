@@ -123,3 +123,42 @@ test('older and malformed hint records stay playable', async () => {
   const invalid = hints({stored:JSON.stringify({best:{},hintUsage:{'story:0':{count:-1,lastUsed:0}}})});
   assert.equal(invalid.status().label, '바로 2회');
 });
+
+// The stuck nudge with the production hint allowance and a controllable clock; the frame loop supplies dt.
+function nudger({ par = 5 } = {}) {
+  return new Function('par', `
+    let tip = null, pulses = 0, hint = null, hintRequest = 0, cleared = false, anim = null, coach = null, now = 1e6;
+    const Date = {now: () => now}, save = {hintUsage: {}}, persist = () => {}, LVL = 0, DAILY = null, FREE = null, PILOT = null;
+    const reduceMotion = false, elements = {hintBtn: {disabled: false, offsetWidth: 0, classList: {toggle: (name, on) => { if (name === 'nudge' && on) pulses++; }}},
+      hintStatus: {textContent: ''}, app: {inert: false}, gameScreen: {hidden: false}};
+    const $ = id => elements[id], setTip = (text, isHint) => { tip = [text, isHint]; };
+    let st = {moves: 0, history: []};
+    const curLevel = () => ({par});
+    ${hintSource}
+    return { tick: seconds => { for (let t = 0; t < seconds; t += 0.05) tickHintNudge(0.05); }, tip: () => tip, pulses: () => pulses,
+      move: () => { st.moves++; st.history.push({}); }, edit: () => st.history.push({}), restart: () => { st = {moves: 0, history: []}; },
+      set: (key, value) => { if (key === 'inert') elements.app.inert = value; else if (key === 'coach') coach = value; else if (key === 'cleared') cleared = value;
+        else if (key === 'hint') hint = value; else if (key === 'used') save.hintUsage['story:0'] = {count: value, lastUsed: now}; else if (key === 'later') now += value; } };
+  `)(par);
+}
+
+test('stuck nudge: 40 s without a move or edit pulses the hint button once and invites a hint in the tip', () => {
+  const idle = nudger(); idle.tick(39.5); assert.equal(idle.pulses(), 0);
+  idle.tick(1); assert.equal(idle.pulses(), 1); assert.match(idle.tip()[0], /힌트를 눌러/); assert.equal(idle.tip()[1], true, 'hint style, replaced on the next move');
+  idle.tick(120); assert.equal(idle.pulses(), 1, 'once per attempt');
+  idle.restart(); idle.tick(41); assert.equal(idle.pulses(), 2, 'a new attempt may nudge again');
+  const busy = nudger(); busy.tick(30); busy.move(); busy.tick(30); busy.edit(); busy.tick(30); assert.equal(busy.pulses(), 0, 'moves and net edits restart the wait');
+  busy.tick(11); assert.equal(busy.pulses(), 1);
+});
+
+test('stuck nudge: passing the star target invites a hint at once; covered, finished, guided or cooling-down play waits', () => {
+  const over = nudger({ par: 3 }); for (let k = 0; k < 4; k++) over.move(); over.tick(0.1);
+  assert.equal(over.pulses(), 1); assert.match(over.tip()[0], /기준보다 많이 움직였어요/);
+  const covered = nudger(); covered.set('inert', true); covered.tick(60); assert.equal(covered.pulses(), 0, 'time under a sheet does not count');
+  covered.set('inert', false); covered.tick(41); assert.equal(covered.pulses(), 1);
+  const guided = nudger(); guided.set('coach', {kind: 'swipe'}); guided.tick(60); assert.equal(guided.pulses(), 0, 'the first-play finger is already guiding');
+  const done = nudger(); done.set('cleared', true); done.tick(60); assert.equal(done.pulses(), 0);
+  const shown = nudger(); shown.set('hint', {dir: 'U'}); shown.tick(60); assert.equal(shown.pulses(), 0, 'a hint is already on screen');
+  const cooling = nudger(); cooling.set('used', 2); cooling.tick(45); assert.equal(cooling.pulses(), 0, 'waits for the hint cooldown');
+  cooling.set('later', 13000); cooling.tick(0.1); assert.equal(cooling.pulses(), 1);
+});

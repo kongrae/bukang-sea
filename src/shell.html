@@ -413,6 +413,8 @@ h1 .sea { color: var(--title-alert); }
 .hint-label small { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 .ctrl:active { transform: scale(.92); transition-duration: .08s; }
 .ctrl[disabled] { opacity: .35; cursor: default; }
+#hintBtn.nudge { animation: hint-nudge .8s ease-in-out 3; }
+@keyframes hint-nudge { 50% { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(255, 190, 80, .55); } }
 .ctrl[disabled]:active { transform: none; }
 .kbd { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
 @media (hover: none), (pointer: coarse), (max-height: 760px) { .kbd { display: none; } }

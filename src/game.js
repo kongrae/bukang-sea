@@ -984,8 +984,18 @@ function clearPlayEffects() {
 const flyingFish = new Set();   // HUD-bound mullet icons in flight (flyFish)
 let goalCatchAt = -Infinity;    // when one last landed in the HUD goal (catchGoal)
 const deviceSpotShown = new Set();   // LEVELS indices whose spotlight has played in this app session
+// Adds tiles (and the HUD net pill) to the spotlight that starts once nothing covers the board. `level` marks a
+// chapter's device introduction for this session; `seen` lists simple devices introduced by the spotlight itself.
+function addDeviceSpot(cells, { level = null, net = false, seen = [] } = {}) {
+  if (!deviceSpot || deviceSpot.started) deviceSpot = { level: null, cells: [], net: false, seen: [], t: 0, started: false };
+  for (const c of cells) if (!deviceSpot.cells.includes(c)) deviceSpot.cells.push(c);
+  if (level != null) deviceSpot.level = level;
+  deviceSpot.net = deviceSpot.net || net; deviceSpot.seen.push(...seen);
+}
 function startDeviceSpot() {
-  deviceSpot.started = true; deviceSpotShown.add(deviceSpot.level);
+  deviceSpot.started = true;
+  if (deviceSpot.level != null) deviceSpotShown.add(deviceSpot.level);
+  if (deviceSpot.seen?.length) markDevicesSeen(deviceSpot.seen);
   if (deviceSpot.net) $('netStatus').classList.add('spot');
 }
 function endDeviceSpot() {
@@ -1050,7 +1060,7 @@ function loadLevel(i, keep, definition = null) {
     const cells = [];
     g.cells.forEach((c, k) => { if (kinds.some(kind => kind !== 'boat' && kind !== 'net' && DEVICE_TILES[kind].test(c))) cells.push(k); });
     if (kinds.includes('boat')) st.boats.forEach(b => cells.push(b[0]));
-    if (cells.length || kinds.includes('net')) deviceSpot = { level: i, cells, net: kinds.includes('net'), t: 0, started: false };
+    if (cells.length || kinds.includes('net')) addDeviceSpot(cells, { level: i, net: kinds.includes('net') });
   }
   if (card) openChapterCard(chap.ci);
 }
@@ -1337,6 +1347,25 @@ function updateHintButton() {
   if (label.textContent !== text) label.textContent = text;
   button.disabled = !!(anim || cleared || searching || waiting);
 }
+// Stuck nudge, once per attempt: after 40 s of uncovered play without a move, undo or net edit, or once the moves pass
+// the star target, the hint button pulses and the tip invites a hint. It waits while a hint is shown, searched or
+// cooling down, and stays away while the first-play finger guides the move. Nothing is saved.
+const HINT_NUDGE_IDLE = 40;
+let hintNudge = { st: null, mark: '', idle: 0, done: false };
+function tickHintNudge(dt) {
+  if (!st) return;
+  if (hintNudge.st !== st) hintNudge = { st, mark: '', idle: 0, done: false };   // enter() starts each attempt with a new st
+  const mark = st.moves + ':' + st.history.length;
+  if (mark !== hintNudge.mark) { hintNudge.mark = mark; hintNudge.idle = 0; }
+  if (hintNudge.done || cleared || anim || coach || $('app').inert) return;
+  hintNudge.idle += dt;
+  const over = st.moves > curLevel().par;
+  if (!over && hintNudge.idle < HINT_NUDGE_IDLE) return;
+  if (hint || hintWait() || (hintSearching !== 0 && hintSearching === hintRequest)) return;
+  hintNudge.done = true;
+  pulseRewardMark($('hintBtn'), 'nudge');
+  setTip(over ? '기준보다 많이 움직였어요. 힌트로 가장 짧은 길을 볼 수 있어요.' : '막히면 힌트를 눌러 보세요. 다음 한 수를 알려 줘요.', true);
+}
 
 // Keep the same next-move recipe while the player performs its free net edits. Replanning after
 // each tap could choose a different equally short solution and send the player back and forth.
@@ -1380,7 +1409,7 @@ async function showHint() {
     if (!current() || p === undefined) return;
     if (!p) { hint = null; setTip('여기서는 나갈 길이 없어요. 되돌리기를 눌러 보세요.', true); return; }
     hint = { dir: p.seq[0], target: p.steps[0].nets, moves: p.moves, partial };
-    recordHintUse();
+    recordHintUse(); hintNudge.done = true;   // the player has found the hint; no invitation in this attempt
     refreshHint();
   } finally {
     if (hintSearching === request) hintSearching = 0;
@@ -2141,7 +2170,7 @@ function frame(now) {
   if (!$('gameScreen').hidden && g && staticLayer) {
     const moving = !$('app').inert && (!reduceMotion || !!anim);
     if (moving) step(dt);
-    updateHintButton();
+    updateHintButton(); tickHintNudge(dt);
     if (gameNeedsPaint || moving) { draw(clock); gameNeedsPaint = false; }
   }
   if (!$('titleScreen').hidden && heroVisible) {
@@ -2664,7 +2693,8 @@ function drawLegendIcon(c) {
 }
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
-  { key: 'buoy', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o') },
+  // light: a simple device introduced on the board (its tiles glow, the tip explains) instead of opening this sheet
+  { key: 'buoy', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o'), light: /o/ },
   { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 치거나 회수할 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
   { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
   { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 다시 누르면 회수해 다른 칸에 쓸 수 있어요. 설치와 회수는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
@@ -2675,7 +2705,8 @@ const DEVICE_GUIDES = [
 let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
 const guideOpen = () => !$('guideOverlay').hidden;
 function showDeviceGuide(firstOnly = false, requestedKey = null) {
-  const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !save.seenDevices.includes(d.key)));
+  if (firstOnly && g && !$('gameScreen').hidden) introduceLightDevices();
+  const devices = DEVICE_GUIDES.filter(d => (g && !$('gameScreen').hidden ? d.has(g) : !firstOnly) && (!firstOnly || !d.light && !save.seenDevices.includes(d.key)));
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
   guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
@@ -2799,8 +2830,19 @@ function drawDeviceDemo() {
   $('guideStats').textContent = `예시 이동 ${sample.moves}회${grid.nets ? ` · 그물 ${grid.nets - sample.nets.length}` : ''}`;
   $('guideProgress').value = guideTime / guideDemo.duration;
 }
+// First meeting with a simple device: no sheet. Its tiles join the spotlight and the tip explains it until the first
+// move; it counts as seen once the spotlight starts (at once in reduced motion, which has no spotlight).
+function introduceLightDevices() {
+  const fresh = DEVICE_GUIDES.filter(d => d.light && d.has(g) && !save.seenDevices.includes(d.key));
+  if (!fresh.length) return;
+  setTip(fresh.map(d => d.text).join(' '), true);
+  const cells = [], keys = fresh.map(d => d.key);
+  g.cells.forEach((c, k) => { if (fresh.some(d => d.light.test(c))) cells.push(k); });
+  if (reduceMotion) markDevicesSeen(keys); else addDeviceSpot(cells, { seen: keys });
+}
+function markDevicesSeen(keys) { save.seenDevices = [...new Set([...save.seenDevices, ...keys])]; persist(); }
 function closeGuide() {
-  save.seenDevices = [...new Set([...save.seenDevices, ...guideViewed])]; persist();
+  markDevicesSeen(guideViewed);
   guideKeys = []; guideViewed = new Set(); guideDemo = null; guidePlaying = false;
   closeSheet('guideOverlay', guideReturnFocus);
 }

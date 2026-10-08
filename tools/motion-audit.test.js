@@ -24,7 +24,7 @@ function scene() {
     const guideOpen=()=>!$('guideOverlay').hidden,endingOpen=()=>!$('endingOverlay').hidden,heroPaused=()=>$('app').inert;
     const step=dt=>{counts.step++;deltas.push(dt);clock+=dt;},draw=()=>counts.game++;
     const stepHero=dt=>heroTime+=dt,drawHero=()=>counts.hero++,drawEnding=()=>counts.ending++;
-    const stepDeviceGuide=dt=>{if(guidePlaying)counts.guide+=dt;guidePaintTime=guideTime;},stepRewardPreviews=()=>{},updateHintButton=()=>{};
+    const stepDeviceGuide=dt=>{if(guidePlaying)counts.guide+=dt;guidePaintTime=guideTime;},stepRewardPreviews=()=>{},updateHintButton=()=>{},tickHintNudge=()=>{};
     const resetSheetGesture=()=>{},flushSheetExits=()=>counts.flush++,pauseGame=()=>{counts.paused++;anim=null;};
     const interruptClearPresentation=()=>counts.interrupt++,clearPlayEffects=()=>{},drawSkinPreview=()=>{},updateGuidePlayback=()=>{};
     ${section('let gameNeedsPaint', 'const SWIPE')}

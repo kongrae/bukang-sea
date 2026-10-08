@@ -71,10 +71,11 @@ function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={})
     const closeSheet=id=>{$(id).hidden=true;$('app').inert=false;};
     const save={seenDevices:seen.slice(),best:{0:3},sessions:{story:{moves:4}},hintUsage:{'story:0':{count:2}}};
     let persisted=null;const persist=()=>{persisted=JSON.stringify(save);},elements=new Map();
+    const tips=[],spots=[],setTip=(text,hint)=>tips.push([text,hint]),addDeviceSpot=(cells,options)=>spots.push([cells,options]);
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:id==='guideOverlay'||id==='gameScreen'&&title,textContent:'',innerHTML:'',focus(){},setAttribute(){},getBoundingClientRect:()=>({width:0,height:0})});return elements.get(id);};
     ${guideSource}
     return {show:showDeviceGuide,close:closeGuide,next:advanceGuide,select:selectGuideDevice,change:changeGuideStep,toggle:toggleGuidePlayback,replay:replayGuide,step:stepDeviceGuide,
-      state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted};
+      state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted,tips,spots};
   `)(E,D,reduced,seen,level,title);
 }
 test('first encounter waits for the reader; optional playback and closing are isolated from gameplay records', () => {
@@ -111,11 +112,22 @@ test('net status shortcut opens the net page in a mixed level without marking ot
 });
 test('a mixed first encounter records only pages actually opened; skipped devices can still introduce themselves', () => {
   const level={map:['#######','#..w..#','#S.o..#','#wb.s.#','#######'],nets:1},scene=guide({level});
-  scene.show(true);assert.deepEqual(scene.state().keys,['buoy','boat','net','sand','whirl']);
-  scene.next();scene.close();assert.deepEqual(scene.state().seen,['buoy','boat']);
-  scene.show(true);assert.deepEqual(scene.state().keys,['net','sand','whirl']);
-  scene.select(2);scene.close();assert.deepEqual(scene.state().seen,['buoy','boat','net','whirl']);
+  scene.show(true);assert.deepEqual(scene.state().keys,['boat','net','sand','whirl'],'the buoy is introduced on the board, not in the sheet');
+  scene.select(3);scene.close();assert.deepEqual(scene.state().seen,['boat','whirl']);
+  scene.show(true);assert.deepEqual(scene.state().keys,['net','sand']);
+  scene.close();assert.deepEqual(scene.state().seen,['boat','whirl','net']);
   scene.show(true);assert.deepEqual(scene.state().keys,['sand']);
+});
+test('a first buoy opens no sheet: its tiles join the spotlight and the tip explains it; the settings list keeps it', () => {
+  const level={map:['#####E#','#S..o.#','#######']},scene=guide({level});scene.show(true);
+  assert.equal(scene.element('guideOverlay').hidden,true,'no sheet for a simple device');
+  assert.equal(scene.tips.length,1);assert.match(scene.tips[0][0],/부표는 벽처럼/);assert.equal(scene.tips[0][1],true,'hint style: the canal tip returns after the first move');
+  assert.deepEqual(scene.spots.map(([cells,options])=>[cells,options.seen]),[[[11],['buoy']]]);
+  assert.deepEqual(scene.state().seen,[],'counted as seen when the spotlight starts, not before');
+  const reduced=guide({level,reduced:true});reduced.show(true);
+  assert.deepEqual(reduced.spots,[]);assert.deepEqual(reduced.state().seen,['buoy'],'reduced motion: the tip alone introduces it');
+  const known=guide({level,seen:['buoy']});known.show(true);assert.deepEqual([known.tips,known.spots],[[],[]]);
+  scene.show();assert.deepEqual(scene.state().keys,['buoy'],'still in the device guide from settings');
 });
 test('reduced motion starts with a static example and only plays on request; title settings list all seven devices', () => {
   const scene=guide({reduced:true,title:true});scene.show();assert.equal(scene.state().keys.length,7);
