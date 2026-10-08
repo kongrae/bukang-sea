@@ -57,7 +57,9 @@ try {
     Copy-Item (Join-Path $projectDir 'www/*') -Destination $pagesDir -Recurse -Force
     New-Item -ItemType File -Path (Join-Path $pagesDir '.nojekyll') -Force | Out-Null
     $sourceCommit = git rev-parse HEAD
-    Set-Content -LiteralPath (Join-Path $pagesDir 'version.json') -Value (@{ sourceCommit = $sourceCommit; builtAt = [DateTime]::UtcNow.ToString('o') } | ConvertTo-Json) -Encoding utf8
+    # BOM 없는 UTF-8(Windows PowerShell 5.1의 Set-Content -Encoding utf8은 BOM을 붙인다)
+    $versionJson = @{ sourceCommit = $sourceCommit; builtAt = [DateTime]::UtcNow.ToString('o') } | ConvertTo-Json
+    [IO.File]::WriteAllText((Join-Path $pagesDir 'version.json'), $versionJson, (New-Object System.Text.UTF8Encoding $false))
     Run-Git -GitArgs @('-C', $pagesDir, 'add', '-A')
     & git -C $pagesDir diff --cached --quiet
     if ($LASTEXITCODE -eq 1) { Run-Git -GitArgs @('-C', $pagesDir, 'commit', '-m', "웹 배포: $sourceCommit") }
