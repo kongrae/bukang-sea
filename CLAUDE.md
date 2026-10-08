@@ -76,7 +76,7 @@ android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시�
 www/           build:web 결과 (gitignore)
 ```
 
-빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → sound.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 기본 상어 WebP 3개와 스킨 WebP 16개, 로비 아이콘 WebP 5개, 수문·스위치 SVG 4개, 지역 카드 WebP 6개, 효과음 19개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART`·`AUDIO` 목록, 토큰은 src에 한 번씩). 1–4장 그림 원본·프롬프트는 `assets/art/chapter-scenes-v1/`, 연결 방식은 `docs/CHAPTER-ART.md`를 따른다. 2026-10-03 스킨별 입체 디테일과 납품/검증 기준은 `assets/art/skins-v2/README.md`를 따른다. 스킨 ID·해금 조건은 유지한다.
+빌드는 `tools/build-source.js`에서 단순 연결하며 `engine.js → levels.js → pilot.js → variety.js → variety-reserves.js → daily.js → free.js → device-demo.js → art.js → sound.js → game.js` 순서가 중요하다. 모듈 시스템 없이 전역 이름(`LEVELS`, `CHAPTERS`, `PILOT_LEVELS`, `slide`, `plan` 등)을 공유한다. 기본 상어 WebP 3개와 스킨 WebP 16개, 로비 아이콘 WebP 5개, 수문·스위치 SVG 4개, 지역 카드 WebP 7개, 효과음 20개를 data URL로 내장해 오프라인·단일 파일·웹 빌드에서 동일하게 사용한다(`ART`·`AUDIO` 목록, 토큰은 src에 한 번씩). 1–4장 그림 원본·프롬프트는 `assets/art/chapter-scenes-v1/`, 연결 방식은 `docs/CHAPTER-ART.md`를 따른다. 2026-10-03 스킨별 입체 디테일과 납품/검증 기준은 `assets/art/skins-v2/README.md`를 따른다. 스킨 ID·해금 조건은 유지한다.
 `engine.js` 마지막 줄의 `module.exports`는 node 도구용이며 브라우저에서는 무시된다.
 
 ## 게임 규칙 (engine.js가 기준)
@@ -155,7 +155,7 @@ par는 별 3개를 받는 이동 기준이다. 실제 그물 규칙을 반영한
 - 화면 전환은 push(목록→수로)/pop(수로→목록) 슬라이드, 결과는 아래에서 올라오는 시트(넓은 화면에서는 가운데 카드).
 - `window.Capacitor?.Plugins?.App`이 있으면(네이티브 앱) 하드웨어 뒤로가기 = 목록으로, 목록에서는 앱 종료.
 - `window.claude?.hot` 부분은 Claude 아티팩트 실시간 업데이트용 훅이다. 일반 브라우저에서는 없는 값이라 무해하다.
-- 사운드는 `src/sound.js`에서 재생한다. 기본은 사람이 녹음·제작한 CC0 음원 19개(`assets/audio`, 출처 `assets/audio/LICENSES.md`, 2026-10-08 FX04)이고, 디코드에 실패한 소리만 WebAudio 합성음으로 대신한다. AI 생성 오디오와 다른 게임에서 추출한 소리는 쓰지 않는다. 음원을 바꾸거나 더하면 `SFX_SAMPLES`·`tools/build-source.js` `AUDIO`·LICENSES.md를 함께 고친다(테스트가 일치와 400KB 상한을 검사). `game.js` 바로 전에 빌드에 포함한다. 첫 사용자 입력 후에만 활성화하며 물방울·물살·둥근 토이 타격음을 공유한다. 컨텍스트/노이즈 버퍼를 재사용하고 재생 상한·이벤트 간격·획득/보상 우선순위를 적용한다. `save.sound`를 유지하며 음소거/화면 이탈/백그라운드 시 현재 음과 예약 보상음을 정리한다. 구현·미리듣기·검증 범위는 `docs/SOUND-DESIGN.md`, 음원 선택·근거는 `docs/SOUND-MOTION.md` 참고.
+- 사운드는 `src/sound.js`에서 재생한다. 기본은 사람이 녹음·제작한 CC0 음원 20개(`assets/audio`, 출처 `assets/audio/LICENSES.md`, 2026-10-08 FX04, 2026-10-09 숭어 한입 소리 추가)이고, 디코드에 실패한 소리만 WebAudio 합성음으로 대신한다. AI 생성 오디오와 다른 게임에서 추출한 소리는 쓰지 않는다. 음원을 바꾸거나 더하면 `SFX_SAMPLES`·`tools/build-source.js` `AUDIO`·LICENSES.md를 함께 고친다(테스트가 일치와 400KB 상한을 검사). `game.js` 바로 전에 빌드에 포함한다. 첫 사용자 입력 후에만 활성화하며 물방울·물살·둥근 토이 타격음을 공유한다. 컨텍스트/노이즈 버퍼를 재사용하고 재생 상한·이벤트 간격·획득/보상 우선순위를 적용한다. `save.sound`를 유지하며 음소거/화면 이탈/백그라운드 시 현재 음과 예약 보상음을 정리한다. 구현·미리듣기·검증 범위는 `docs/SOUND-DESIGN.md`, 음원 선택·근거는 `docs/SOUND-MOTION.md` 참고.
 
 ## 디자인
 

@@ -87,28 +87,24 @@ test('decoded recordings replace the synthesized layers; an effect missing a rec
   f.sfx.exit(); assert.ok(f.sources.some(n => n.kind === 'tone'), 'exit falls back without its splash recording');
   f.advance(2); assert.equal(f.audio.inspect().sources, 0); assert.ok(f.sources.every(n => n.disconnected));
 });
-test('recorded variants rotate without immediate repeats; a fish is a two-bite chomp and a gulp that bite higher along a swipe', async () => {
+test('recorded variants rotate without immediate repeats; a fish is one recorded bite that rises a little along a swipe', async () => {
   const f = fixture(recordings()); f.audio.unlock(); await f.audio.loaded();
   const bumps = []; for (let i = 0; i < 4; i++) { const before = f.sources.length; f.sfx.bump(); bumps.push(f.sources.slice(before).find(n => n.buffer).buffer.key); f.advance(.3); }
   assert.deepEqual(bumps, ['softImpact0', 'softImpact2', 'softImpact3', 'softImpact0']);
-  const firstBite = [];
-  for (let chain = 0; chain < 8; chain++) {
+  const rates = [];
+  for (let chain = 0; chain < 7; chain++) {
     const before = f.sources.length; f.sfx.eat(false, chain);
-    const layers = f.sources.slice(before).map(n => n.buffer.key);
-    assert.equal(layers.filter(k => /^softImpact/.test(k)).length, 2, 'two bites');
-    assert.ok(/^waterDrop/.test(layers.at(-1)), 'then a gulp');
-    assert.ok(layers.every(k => !/^(marimba|glock)/.test(k)), 'no tonal chime');
-    firstBite.push(+f.sources[before].playbackRate.value.toFixed(2)); f.advance(.3);
+    assert.deepEqual(f.sources.slice(before).map(n => n.buffer.key), ['bite'], 'a single bite, no chime or extra layers');
+    rates.push(f.sources[before].playbackRate.value); f.advance(.3);
   }
-  // pitch wobble is +-2%, the semitone steps stop at the fifth fish
-  firstBite.slice(0, 6).forEach((rate, k) => assert.ok(Math.abs(rate / (1.75 * Math.pow(2, k / 12)) - 1) <= .021, 'bite ' + k));
-  assert.ok(Math.abs(firstBite[7] / firstBite[5] - 1) <= .045, 'capped after five steps');
+  // pitch wobble is +-2%; half a semitone per fish, capped at the fifth
+  rates.slice(0, 5).forEach((rate, k) => assert.ok(Math.abs(rate / Math.pow(2, k / 24) - 1) <= .021, 'bite ' + k));
+  assert.ok(Math.abs(rates[6] / Math.pow(2, 4 / 24) - 1) <= .021, 'capped after four steps');
   const before = f.sources.length; f.sfx.eat(true, 2);
-  const last = f.sources.slice(before).map(n => n.buffer.key);
-  assert.equal(last.filter(k => /^softImpact/.test(k)).length, 3, 'the last fish takes a third bite');
-  assert.ok(last.every(k => !/^(marimba|glock)/.test(k)), 'and still no bell');
+  const last = f.sources.slice(before);
+  assert.deepEqual(last.map(n => n.buffer.key), ['bite']); assert.ok(last[0].playbackRate.value < .95, 'the last fish bites deeper');
   const synth = fixture(); synth.audio.unlock(); const tones = synth.sources.length; synth.sfx.eat(false, 0);
-  assert.equal(synth.sources.slice(tones).filter(n => n.kind === 'tone').length, 3, 'synthesized: two toy blips and a bloop');
+  assert.equal(synth.sources.slice(tones).filter(n => n.kind === 'tone').length, 1, 'synthesized: one falling chomp');
 });
 test('mute and backgrounding stop recorded layers and their scheduled reward notes', async () => {
   const f = fixture(recordings()); f.audio.unlock(); await f.audio.loaded();

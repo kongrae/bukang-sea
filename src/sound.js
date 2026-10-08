@@ -16,6 +16,7 @@ const SFX_SAMPLES = {
   select: ['@@SFX_SELECT@@', 0, .394], open: ['@@SFX_OPEN@@', .008, .363], close: ['@@SFX_CLOSE@@', 0, .372],
   marimbaC5: ['@@SFX_MARIMBA_C5@@', .005, 3.802, 524.4], marimbaG5: ['@@SFX_MARIMBA_G5@@', .005, 3.428, 782.2],
   glockC6: ['@@SFX_GLOCKENSPIEL_C6@@', 0, 9.12, 1054.7],
+  bite: ['@@SFX_CARTOON_BITE@@', .006, .153],
 };
 function createGameAudio({ enabled = () => true, active = () => true,
   createContext = () => new (window.AudioContext || window.webkitAudioContext)(), random = Math.random, samples = SFX_SAMPLES } = {}) {
@@ -200,10 +201,10 @@ function createGameAudio({ enabled = () => true, active = () => true,
   // Target levels (dB on the -24 reference) for each recorded layer, matched by offline render to the loudness of the
   // synthesized cue it replaces (first 300 ms; broadband water 1 dB under) so the tuned balance between events holds.
   // Each effect uses its recordings only when all of them decoded; otherwise the synthesized cue plays unchanged.
-  const lv = { bump: -34, bite: -30, gulp: -32, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
+  const lv = { bump: -34, bite: -28, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
     pressNote: -40, creak: -41, gateWater: -46, boat: -47, crateKnock: -36, crateWater: -43, crateCreak: -45, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
     unlock: -31, unlockBell: -36, chapter: -31, chapterBell: -36, chapterWater: -44, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
-  const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'], DROPS = ['waterDrop', 'waterDrop2'];
+  const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'];
   const effects = {
     bump: effect('bump', 'motion', 1, .18, v => {
       if (ready(...IMPACTS)) sample(v, turn('bump', IMPACTS), { lvl: lv.bump, dur: .14, rate: wobble() });
@@ -213,20 +214,11 @@ function createGameAudio({ enabled = () => true, active = () => true,
       const v = begin('eat', 'pickup', complete ? 3 : 2, complete ? 0 : .055); if (!v) return;
       // Coarse frames may collect several fish at once; spread only a bounded 120ms.
       const delay = Math.min(.12, Math.max(0, nextPickup - v.at)); nextPickup = v.at + delay + .055;
-      // A cute chomp, not a chime (2026-10-09): two quick toy bites ("nom-nom") from the soft impacts sped up, then a small
-      // water gulp. Each fish in one swipe bites a semitone higher (up to five); the last fish adds a third bite and a rounder gulp.
-      const up = Math.pow(2, Math.min(5, Math.max(0, chain)) / 12);
-      if (ready(...IMPACTS, ...DROPS)) {
-        sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite, dur: .07, delay, rate: 1.75 * up * wobble() });
-        sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite - 2, dur: .08, delay: delay + .075, rate: 1.5 * up * wobble() });
-        if (complete) sample(v, turn('eatBite', IMPACTS), { lvl: lv.bite - 1, dur: .08, delay: delay + .15, rate: 1.9 * up * wobble() });
-        sample(v, turn('eatGulp', DROPS), { lvl: lv.gulp, dur: complete ? .24 : .17, delay: delay + (complete ? .22 : .13), rate: (complete ? 1.15 : 1.35) * up, glide: true });
-        return;
-      }
-      drop(v, 620 * up, .06, .16, delay, 470 * up, true);
-      drop(v, 540 * up, .07, .14, delay + .075, 400 * up, true);
-      if (complete) drop(v, 680 * up, .07, .14, delay + .15, 500 * up, true);
-      drop(v, 330 * up, .14, .12, delay + (complete ? .22 : .13), 560 * up);
+      // One big bite, not a chime (2026-10-09, user feedback): a recorded cartoon chomp, nothing layered on it. Each fish in
+      // one swipe bites half a semitone higher (up to four); the last fish bites a little deeper and louder.
+      const rate = complete ? .92 : Math.pow(2, Math.min(4, Math.max(0, chain)) / 24);
+      if (ready('bite')) { sample(v, 'bite', { lvl: lv.bite + (complete ? 1 : 0), dur: .26, delay, fade: .05, rate: rate * wobble() }); return; }
+      drop(v, 330 * rate, .14, .22, delay, 150 * rate, true);
     },
     net: effect('net', 'device', 1, .075, (v, remove = false) => {
       if (ready('cloth1', 'cloth3', ...MALLETS)) {

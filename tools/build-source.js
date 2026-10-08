@@ -17,7 +17,7 @@ const ART = [
 // Embedded sound recordings (CC0, provenance in assets/audio/LICENSES.md); tokens live in src/sound.js SFX_SAMPLES.
 const AUDIO = ['soft-impact-0.ogg', 'soft-impact-2.ogg', 'soft-impact-3.ogg', 'water-drop.mp3', 'water-drop-2.mp3',
   'cloth-1.ogg', 'cloth-3.ogg', 'water-swish.mp3', 'drain-glug.mp3', 'wet-sand-step.mp3', 'toggle.ogg', 'wood-creak.ogg',
-  'splash.mp3', 'select.ogg', 'open.ogg', 'close.ogg', 'marimba-c5.mp3', 'marimba-g5.mp3', 'glockenspiel-c6.mp3']
+  'splash.mp3', 'select.ogg', 'open.ogg', 'close.ogg', 'marimba-c5.mp3', 'marimba-g5.mp3', 'glockenspiel-c6.mp3', 'cartoon-bite.mp3']
   .map(file => [file.replace(/\.\w+$/, '').replaceAll('-', '_').toUpperCase(), `audio/${file}`]);
 function embedAudio(text) {
   for (const [token, file] of AUDIO) {

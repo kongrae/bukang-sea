@@ -1,6 +1,6 @@
 # 효과음 음원 출처
 
-게임에 내장한 효과음 19개는 모두 사람이 녹음·제작한 **CC0** 음원이다. AI로 생성한 오디오와 다른 게임에서 추출한 소리는 쓰지 않았다. 선택 과정과 기준은 [docs/SOUND-MOTION.md](../../docs/SOUND-MOTION.md)에 있다.
+게임에 내장한 효과음 20개는 모두 사람이 녹음·제작한 **CC0** 음원이다. AI로 생성한 오디오와 다른 게임에서 추출한 소리는 쓰지 않았다. 선택 과정과 기준은 [docs/SOUND-MOTION.md](../../docs/SOUND-MOTION.md)에 있다.
 
 - **AI 아님 확인 방법:**
   - Kenney 팩: 각 팩의 License.txt에서 CC0와 제작 시기(2014–2020년)를 확인했다. 생성 AI 오디오가 쓰이기 전에 Kenney가 직접 만든 팩이다.
@@ -10,11 +10,11 @@
 
 | 파일 | 게임 용도 | 출처 (원본 이름) | 작성자 | 라이선스 | 공개 | AI 아님 근거 |
 |---|---|---|---|---|---|---|
-| soft-impact-0.ogg | 막힘, 숭어(냠) | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_000) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
-| soft-impact-2.ogg | 막힘, 숭어(냠), 나무 상자 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_002) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
-| soft-impact-3.ogg | 막힘, 숭어(냠) | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_003) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
-| water-drop.mp3 | 숭어(꿀꺽), 시작, 되돌리기(역재생) | [Freesound 348022](https://freesound.org/people/LilMati/sounds/348022/) (Water Drop 01) | LilMati | CC0 | 2016-06-18 | 물방울 녹음, AI 표시 없음 |
-| water-drop-2.mp3 | 숭어(꿀꺽), 스킨 선택 | [Freesound 273870](https://freesound.org/people/beskhu/sounds/273870/) (water drop 1) | beskhu | CC0 | 2015-05-12 | 물방울 녹음, AI 표시 없음 |
+| soft-impact-0.ogg | 막힘 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_000) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
+| soft-impact-2.ogg | 막힘, 나무 상자 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_002) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
+| soft-impact-3.ogg | 막힘 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) (impactSoft_medium_003) | Kenney | CC0 | 2019-12-19 | 2019년 Kenney 제작 팩 |
+| water-drop.mp3 | 시작, 되돌리기(역재생) | [Freesound 348022](https://freesound.org/people/LilMati/sounds/348022/) (Water Drop 01) | LilMati | CC0 | 2016-06-18 | 물방울 녹음, AI 표시 없음 |
+| water-drop-2.mp3 | 스킨 선택 | [Freesound 273870](https://freesound.org/people/beskhu/sounds/273870/) (water drop 1) | beskhu | CC0 | 2015-05-12 | 물방울 녹음, AI 표시 없음 |
 | cloth-1.ogg | 그물 설치 | [Kenney RPG Audio](https://kenney.nl/assets/rpg-audio) (cloth1) | Kenney | CC0 | 2014 | 2014년 Kenney 제작 팩 |
 | cloth-3.ogg | 그물 회수 | [Kenney RPG Audio](https://kenney.nl/assets/rpg-audio) (cloth3) | Kenney | CC0 | 2014 | 2014년 Kenney 제작 팩 |
 | water-swish.mp3 | 물줄기, 수문 물, 구조정 | [Freesound 321489](https://freesound.org/people/dslrguide/sounds/321489/) (Water Swish) | dslrguide | CC0 | 2015-09-07 | 큰 그릇 물속에서 펜을 빠르게 움직인 녹음, AI 표시 없음 |
@@ -29,5 +29,6 @@
 | marimba-c5.mp3 | 음 층 A4–C#5 (그물·스위치·탈출·별·시작·선택) | [Freesound 373580](https://freesound.org/people/sgossner/sounds/373580/) (Marimba - C5, VSCO 2 CE) | sgossner (Versilian Studios) | CC0 | 2017-01-05 | 공연장에서 실제 연주를 녹음(Rode NT1-A, 연주자 기재), AI 표시 없음 |
 | marimba-g5.mp3 | 음 층 E5–A5 | [Freesound 373586](https://freesound.org/people/sgossner/sounds/373586/) (Marimba - F#5, 측정 음높이 G5, VSCO 2 CE) | sgossner (Versilian Studios) | CC0 | 2017-01-05 | 공연장 실제 연주 녹음, AI 표시 없음 |
 | glockenspiel-c6.mp3 | 종 층 A5–E6 (별·해금·장 시작) | [Freesound 373364](https://freesound.org/people/sgossner/sounds/373364/) (Glockenspiel - C5, 측정 음높이 C6, VSCO 2 CE) | sgossner (Versilian Studios) | CC0 | 2017-01-05 | 공연장 실제 연주 녹음, AI 표시 없음 |
+| cartoon-bite.mp3 | 숭어 먹기(한입) | [Freesound 353067](https://freesound.org/people/Jofae/sounds/353067/) (Bite (Cartoon Style)) | Jofae | CC0 | 2016-08-29 | 2016년 업로드된 만화풍 무는 소리, 제작자가 게임·애니메이션용 효과음으로 공개, AI 표시 없음 |
 
 Freesound 파일은 공개 미리듣기 MP3다. 악기 3개는 용량을 줄이려고 저용량(lq) 미리듣기를 썼고, 나머지는 128kbps(hq)다. 라이선스는 원본과 같다.
