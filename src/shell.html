@@ -207,6 +207,10 @@ h1 .sea { color: var(--title-alert); }
 .skin-reveal b { color: #286446; font-size: 14px; }
 .skin-reveal strong { font: 23px var(--font-display); }
 .skin-reveal small { font-size: 12px; color: #435659; }
+.skin-reveal .skin-wear { min-height: 40px; padding: 6px 18px; font-size: 14px; }
+.skin-reveal .skin-wear[aria-disabled="true"] { opacity: .65; }
+.settings-about { margin: 2px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+.settings-about a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .skin-reveal canvas { width: 100%; height: 112px; border-radius: 12px; }
 .clear-unlocks { display: grid; gap: 10px; }
 .clear-celebrating .skin-reveal { animation: reward-reveal .7s var(--ease-spring) .75s both; }
@@ -421,7 +425,7 @@ h1 .sea { color: var(--title-alert); }
 .hint-label small { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 .ctrl:active { transform: scale(.92); transition-duration: .08s; }
 .ctrl[disabled] { opacity: .35; cursor: default; }
-#hintBtn.nudge { animation: hint-nudge .8s ease-in-out 3; }
+#hintBtn.nudge, #undoBtn.nudge, #restartBtn.nudge { animation: hint-nudge .8s ease-in-out 3; }
 @keyframes hint-nudge { 50% { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(255, 190, 80, .55); } }
 .ctrl[disabled]:active { transform: none; }
 .kbd { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
@@ -852,6 +856,7 @@ button:disabled:active { transform: none; }
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
+    <p class="settings-about">버전 @@APP_VERSION@@ · <a href="https://kongrae.github.io/bukang-sea/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="mailto:sky7700sky@naver.com">문의</a></p>
   </div>
 </div>
 

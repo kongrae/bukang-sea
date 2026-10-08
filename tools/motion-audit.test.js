@@ -12,7 +12,7 @@ function scene() {
   return new Function(`
     let now=0,sequence=0,reduceMotion=false,anim=null,bump=null,settle=null,pop=null,clock=0,exitZoom=null,deviceSpot=null;
     const EXIT_ZOOM={scale:.06,dur:.45},sandSeen=new Map();
-    let guidePlaying=false,guidePaintTime=0,guideTime=0,heroWake=0,heroTime=0,heroW=300,heroVisible=true,endingElapsed=0;
+    let guidePlaying=false,guidePaintTime=0,guideTime=0,guideDemo=null,guideKeys=[],guideIndex=0,heroWake=0,heroTime=0,heroW=300,heroVisible=true,endingElapsed=0;
     let clearReveal=null;
     const document={hidden:false},performance={now:()=>now},callbacks=new Map(),skinPreviewMotion=new Map(),heroRipples=[];
     const sound={suspend:()=>{},activate:()=>{}};
@@ -24,7 +24,7 @@ function scene() {
     const guideOpen=()=>!$('guideOverlay').hidden,endingOpen=()=>!$('endingOverlay').hidden,heroPaused=()=>$('app').inert;
     const step=dt=>{counts.step++;deltas.push(dt);clock+=dt;},draw=()=>counts.game++;
     const stepHero=dt=>heroTime+=dt,drawHero=()=>counts.hero++,drawEnding=()=>counts.ending++;
-    const stepDeviceGuide=dt=>{if(guidePlaying)counts.guide+=dt;guidePaintTime=guideTime;},stepRewardPreviews=()=>{},updateHintButton=()=>{},tickHintNudge=()=>{};
+    const stepDeviceGuide=dt=>{if(guidePlaying)counts.guide+=dt;guidePaintTime=guideTime;},stepRewardPreviews=()=>{},updateHintButton=()=>{},tickHintNudge=()=>{},tickStuck=()=>{};
     const resetSheetGesture=()=>{},flushSheetExits=()=>counts.flush++,pauseGame=()=>{counts.paused++;anim=null;};
     const interruptClearPresentation=()=>counts.interrupt++,clearPlayEffects=()=>{},drawSkinPreview=()=>{},updateGuidePlayback=()=>{};
     ${section('let gameNeedsPaint', 'const SWIPE')}

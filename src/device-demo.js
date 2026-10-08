@@ -33,7 +33,9 @@ const DEVICE_DEMOS = {
   ], summary: '스위치에서 멈춰야 눌리고, 누를 때마다 수문이 바뀌어요' },
 };
 function demoTurn(state) { return { pos: state.pos.slice(), dir: state.dir, boats: state.boats.map(b => b.slice()), nets: state.nets.slice(), moves: state.moves, gate: state.gate }; }
-function createDeviceDemo(key) {
+// pace 'read' (default): each caption gets its reading time, for manual stepping and the settings guide.
+// pace 'clip': the actions at their natural speed under one fixed summary caption — a short loop for a first meeting.
+function createDeviceDemo(key, { pace = 'read' } = {}) {
   const definition = DEVICE_DEMOS[key];
   if (!definition) return null;
   const grid = DEMO_ENGINE.parseLevel(definition), phases = [];
@@ -75,6 +77,10 @@ function createDeviceDemo(key) {
     }
   }
   add('hold', 1.1, definition.summary, state);
+  if (pace === 'clip') {
+    for (const phase of phases) phase.text = definition.summary;
+    return { key, grid, phases, steps: [{ start: 0, end: duration, text: definition.summary }], duration, clip: true };
+  }
   // Keep the action speed natural; give each distinct caption its own reading hold.
   // The same boundaries drive manual stepping and optional one-pass playback.
   const groups = [];

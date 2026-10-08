@@ -44,6 +44,7 @@ const SHARK_ART = (() => {
       for (const [name, src] of Object.entries(urls)) request(name, src);
     },
     hasSkin(name, skin) { return !!images[name + ':' + skin?.id]?.naturalWidth; },
+    url(name, skin) { return skinUrls[skin?.id]?.[name] || urls[name]; },
     get(name, skin) {
       const src = skinUrls[skin?.id]?.[name];
       if (src) {

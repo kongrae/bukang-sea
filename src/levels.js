@@ -16,26 +16,27 @@ const LEVELS = [
     '#S....#',
     '#######',
   ] },
-  // 2026-10-08 early curve: canals 2 and 3 redesigned as small boards that need one idea (docs/EARLY-CURVE-PLAN.md). Previous boards: LEGACY_STORY_LEVELS.
-  { par: 8, role: 'learn', name: '부표 계단', tip: '부표는 벽처럼 상어를 멈춰 세워요. 부표 앞에서 멈춘 뒤 방향을 바꿔 보세요.', map: [
+  // 2026-10-08 early curve: canals 2 and 3 redesigned as small boards that need one idea (docs/EARLY-CURVE-PLAN.md), with every
+  // reachable position still able to escape (no trap before undo is learned). Previous boards: LEGACY_STORY_LEVELS.
+  { par: 8, role: 'learn', name: '부표 징검다리', tip: '부표는 벽처럼 상어를 멈춰 세워요. 부표 앞에서 멈춘 뒤 방향을 바꿔 보세요.', map: [
     '#######',
-    '#...o.E',
+    '#...o.#',
+    '#.....E',
     '#.....#',
-    '#.o...#',
+    '#.....#',
     '#....o#',
-    '#.....#',
-    '#.....#',
+    '#..o..#',
     '##S####',
   ] },
   { par: 8, role: 'learn', name: '숭어 마중', tip: '숭어를 모두 먹고 나가면 별을 하나 더 받아요. 숭어가 있는 줄에 멈춰 서 보세요.', map: [
-    '#####E#',
-    '#..o..#',
+    '#E#####',
     '#.....#',
-    '#...f.#',
+    '#.....#',
+    '#..f..#',
+    '#o....#',
+    '#.....#',
     '#....o#',
-    '#.....#',
-    '#.....#',
-    '###S###',
+    '##S####',
   ] },
   {
     "par": 7,

@@ -6,7 +6,7 @@ const source = fs.readFileSync(path.join(__dirname,'../src/game.js'),'utf8');
 const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`,'m'))?.[0]
   || source.match(new RegExp(`function ${name}\\([^]*?\\n}`))?.[0];
 function fixture(stored = {}) {
-  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','migrateStoryOrder','refreshSkins'].map(fn).join('\n');
+  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','migrateStoryOrder','refreshSkins','skinNeedText','nextSkinGoal'].map(fn).join('\n');
   const skins=source.slice(source.indexOf('const SKINS ='),source.indexOf('// adds newly earned skins'));
   return new Function('stored',`
     ${fs.readFileSync(path.join(__dirname,'../src/engine.js'),'utf8')}
@@ -17,7 +17,7 @@ function fixture(stored = {}) {
     ${source.match(/^const unlocked = .*$/m)[0]}
     ${skins}
     ${functions}
-    return {save,migrate:migratePilotToStory,reorder:migrateStoryOrder,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars};
+    return {save,migrate:migratePilotToStory,reorder:migrateStoryOrder,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars,goal:nextSkinGoal};
   `)(stored);
 }
 function record(index, id = index, move = null) {
@@ -120,4 +120,25 @@ test('players who rescued all 60 canals before the additions keep their rescue a
   const firstNew=STORY_ORDER.filter(i=>i>=60&&STORY_ORDER[STORY_POSITION[i]-1]<60);
   assert.ok(firstNew.length>=5);for(const i of firstNew) assert.ok(f.unlocked(i),'new canal '+i+' follows a cleared canal');
   assert.equal(f.unlocked(61),false,'back-to-back new canals still open one at a time');f.save.best[60]=1;assert.ok(f.unlocked(61));
+});
+
+test('the next shark goal names the nearest locked star shark, then a journal shark, and ends when all are owned', () => {
+  assert.equal(fixture().goal().short,'벚꽃까지 ★20');
+  const some=fixture({best:Object.fromEntries(Array.from({length:9},(_,i)=>[i,3])),owned:['basic','sakura']});
+  assert.deepEqual([some.goal().skin.id,some.goal().short,some.goal().long],['wave','파도까지 ★18','파도 상어까지 별 18개']);
+  const stars=fixture({owned:['basic','sakura','wave','maple','snow','gold']});
+  assert.match(stars.goal().short,/^다음: /);assert.equal(stars.goal().skin.need.stars,undefined);
+  const all=fixture({owned:['basic','sakura','wave','maple','snow','gold','lighthouse','coral','starsea']});
+  assert.equal(all.goal(),null);
+});
+
+test('the first six canals have no position without a way out (players have not learned undo yet)', () => {
+  for (const index of STORY_ORDER.slice(0, 6)) {
+    const g = E.parseLevel(LEVELS[index]), key = p => p.join(','), seen = new Map([[key(g.start), g.start]]), queue = [g.start];
+    while (queue.length) {
+      const pos = queue.shift();
+      for (const d of 'UDLR') { const r = E.slide(g, pos, d, new Set(), g.boats); if (r.path.length && !r.win && !seen.has(key(r.end))) { seen.set(key(r.end), r.end); queue.push(r.end); } }
+    }
+    for (const pos of seen.values()) assert.ok(E.plan(g, pos, 0, new Set(), 0, false), `${LEVELS[index].name} ${pos}`);
+  }
 });

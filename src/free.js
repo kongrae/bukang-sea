@@ -13,7 +13,7 @@ const FREE_LEGACY_TIERS = FD.DAILY_STAGES.map((tier, difficulty) => ({ ...tier,
   tip: ['가볍게 한 판! 숭어를 챙기며 길을 찾아요.', '장치가 있는 물길이에요. 멈출 자리를 살펴보세요.', '장치를 함께 이용해 바다로 가는 길을 열어 주세요.'][difficulty],
 }));
 const FREE_TIERS = FREE_LEGACY_TIERS.map((tier, difficulty) => ({ ...tier, ...FV.VARIETY_FREE_TIERS[difficulty],
-  description: ['갈림길·순환로·작은 우회', '물살·순찰선·멈춤 자리', '그물 재사용·떨어진 물길'][difficulty] }));
+  description: ['갈림길·순환로·작은 우회', '물살·순찰선·멈춤 자리', '그물 자리 고르기·떨어진 물길'][difficulty] }));
 function freeId(run) { return `free:v${run.version}:${run.difficulty}:${run.serial}:${run.seed}`; }
 // Each seed regenerates the same map. Work limits and yields are shared with the verified operation solver.
 function* makeFreeV1Search(seed, difficulty) {

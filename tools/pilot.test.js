@@ -432,7 +432,7 @@ test('course results: the North Harbor boundary previews the sluice works, the f
     const reduceMotion = true, sfx = {win: noop, star: noop, cancelReward: noop, token:()=>0, unlockReward:noop}, haptic = noop, setTimeout = cb => cb();
     const openSheet = id => { $(id).hidden = false; }, closeSheet = id => { $(id).hidden = true; };
     const document = {hidden: false}, renderSuspended = () => false, REGION_ART = {};
-    const refreshSkins = () => [], earnedJournalRewards = () => [], renderLevelGrid = noop, unlocked = () => true, totalStars = () => 0;
+    const refreshSkins = () => [], earnedJournalRewards = () => [], nextSkinGoal = () => null, showClearMascot = noop, renderLevelGrid = noop, unlocked = () => true, totalStars = () => 0;
     const restoreSession = () => null, loadPilot = i => { loaded = i; }, show = which => { shown = which; $('gameScreen').hidden = which !== 'game'; };
     const curLevel = () => PILOT.level, dailySessionKey = () => 'daily';
     const loadLevel = noop, openDaily = noop, continueDaily = noop, openFree = noop, startFree = noop, currentSkin = () => ({});

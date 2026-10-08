@@ -34,6 +34,10 @@ function gameBody() {
     const data = fs.readFileSync(path.join(root, 'assets', file)), type = file.endsWith('.svg') ? 'image/svg+xml' : 'image/webp';
     body = body.replaceAll(`@@ART_${token}@@`, `data:${type};base64,` + data.toString('base64'));
   }
+  // The app version shown in settings comes from the Android build, so a report names the exact build.
+  const gradle = fs.readFileSync(path.join(root, 'android', 'app', 'build.gradle'), 'utf8');
+  const version = `${gradle.match(/versionName "([^"]+)"/)[1]} (${gradle.match(/versionCode (\d+)/)[1]})`;
+  body = body.replaceAll('@@APP_VERSION@@', version);
   return embedAudio(body);
 }
 module.exports = { gameBody, ART, AUDIO, embedAudio };

@@ -79,13 +79,17 @@ function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={})
       state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted,tips,spots};
   `)(E,D,reduced,seen,level,title);
 }
-test('first encounter plays the example once at reading pace; reduced motion and settings wait for the reader; closing is isolated from gameplay records', () => {
+test('first encounter loops a short clip under one caption; next switches to the reader-paced steps; reduced motion and settings wait', () => {
   const still=guide({reduced:true});still.show(true);assert.equal(still.state().playing,false);still.step(20);assert.equal(still.state().time,0);
   const manual=guide({title:true});manual.show();assert.equal(manual.state().playing,false,'the settings guide waits');
+  assert.equal(manual.state().demo.clip,undefined);
   const scene=guide();scene.show(true);assert.equal(scene.state().playing,true,'a new device plays by itself');
+  const {demo}=scene.state();assert.equal(demo.clip,true);assert.equal(demo.steps.length,1);assert.ok(demo.duration<8,'a short clip');
   scene.step(.4);assert.equal(scene.state().time,.4);scene.toggle();scene.step(.4);assert.equal(scene.state().time,.4);
-  const {demo}=scene.state();scene.toggle();scene.step(demo.duration+5);
-  assert.equal(scene.state().time,demo.duration);assert.equal(scene.state().playing,false,'it plays once and rests on the summary');
+  scene.toggle();scene.step(demo.duration-.4);scene.step(.3);
+  assert.equal(scene.state().playing,true,'it loops until closed');assert.ok(scene.state().time<1);
+  scene.change(1);assert.equal(scene.state().demo.clip,undefined,'next opens the reader-paced steps');assert.equal(scene.state().playing,false);
+  assert.equal(scene.element('guideCaption').textContent,scene.state().demo.steps[0].text);
   scene.replay();assert.equal(scene.state().time,0);assert.equal(scene.state().playing,true);
   assert.deepEqual(scene.state().seen,[]);scene.close();assert.deepEqual(scene.state().seen,['boat']);assert.equal(scene.state().demo,null);
   const saved=JSON.parse(scene.saved());assert.deepEqual(saved.best,{0:3});assert.deepEqual(saved.sessions,{story:{moves:4}});assert.deepEqual(saved.hintUsage,{'story:0':{count:2}});
@@ -139,4 +143,14 @@ test('reduced motion starts with a static example and only plays on request; tit
   scene.select(5);assert.equal(scene.state().playing,false);scene.toggle();assert.equal(scene.state().time,0);scene.step(.5);assert.equal(scene.state().time,.5);
   scene.close();scene.step(1);assert.equal(scene.state().demo,null);
   const plain=guide({level:D.DEVICE_DEMOS.move});plain.show(true);assert.equal(plain.element('guideOverlay').hidden,true);plain.show();assert.deepEqual(plain.state().keys,['move']);
+});
+
+test('clip pacing keeps natural action speed: every example acts within a second and ends within eight', () => {
+  for (const key of Object.keys(D.DEVICE_DEMOS)) {
+    const clip=D.createDeviceDemo(key,{pace:'clip'}),read=D.createDeviceDemo(key);
+    assert.ok(clip.duration<8&&clip.duration<read.duration,key);
+    assert.ok(clip.phases.find(p=>p.kind==='move'||p.kind==='tap').start<=1,key);
+    assert.ok(clip.phases.every(p=>p.text===D.DEVICE_DEMOS[key].summary),'one fixed caption '+key);
+    assert.deepEqual(D.sampleDeviceDemo(clip,clip.duration).pos,D.sampleDeviceDemo(read,read.duration).pos,'same actions '+key);
+  }
 });
