@@ -17,7 +17,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     return found[0];
   };
   const easing = source.slice(source.indexOf('function easeTable('), source.indexOf('/* ---------- drawing primitives'));
-  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw', 'updateNetStatus'].map(functionSource).join('\n');
+  const functions = ['hash', 'persist', 'levelSignature', 'copyTurn', 'restoreSession', 'dailySessionKey', 'checkpoint', 'pauseGame', 'freshState', 'netSet', 'fishMask', 'pushHistory', 'tryMove', 'eatFish', 'landShark', 'finishAnim', 'undo', 'tapTile', 'step', 'draw', 'updateNetStatus'].map(functionSource).join('\n');
   const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
   const engine = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
   return new Function('level', 'reduceMotion', 'LVL', 'stored', 'DAILY', 'storageFails', 'dailyStageId', 'pickupRule', `
@@ -38,7 +38,7 @@ function game({ reduced = false, index = 5, level = LEVELS[index], stored = null
     const save = stored ? JSON.parse(stored) : {best: {}, coachNet: true, sessions: {}}, curLevel = () => level;
     const STORE_KEY = 'test'; let written = stored, gest = null, FREE = null, PILOT = null;
     const localStorage = {setItem: (key, value) => {if (storageFails) throw Error('quota'); written = value;}};
-    const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map();
+    const wake = [], particles = [], jetFlash = new Map(), netPop = new Map(), contactPulse = new Map(), netRetract = new Map(), crateWobble = new Map();
     let g, st, anim = null, hint = null, bump = null, settle = null, pop = null, queued = null, coach = null, exitZoom = null, deviceSpot = null;
     const EXIT_ZOOM = { scale: .06, dur: .45 }, sandSeen = new Map(), DEVICE_SPOT = { dur: 1.8, pulses: 3 }, flights = [];
     const flyFish = (x, y) => flights.push([x, y]);
@@ -473,7 +473,7 @@ function flightScene(reduced = false) {
   const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
   return new Function('reduceMotion', `
     let bump = null, settle = null, pop = null, exitZoom = null, deviceSpot = null, now = 1000;
-    const particles = [], wake = [], netPop = new Map(), jetFlash = new Map(), contactPulse = new Map(), netRetract = new Map();
+    const particles = [], wake = [], netPop = new Map(), jetFlash = new Map(), contactPulse = new Map(), netRetract = new Map(), crateWobble = new Map();
     const T = 40, OX = 10, OY = 20, appended = [], bounces = [], performance = {now: () => now}, window = {devicePixelRatio: 2}, drawFish = () => {};
     const goal = {getBoundingClientRect: () => ({left: 30, top: 5, width: 22, height: 22}), animate: (frames, options) => bounces.push(options)};
     const $ = id => id === 'stats' ? {querySelector: s => s === '.goal svg' ? goal : null} : {classList: {remove() {}}};
@@ -574,7 +574,7 @@ function storyLoader() {
 
 test('only the canal introducing a device spotlights it: one per chapter, before the first move, until cleared', () => {
   const scene = storyLoader();
-  const firsts = { jet: 3, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60 };
+  const firsts = { jet: 3, boat: 12, net: 24, sand: 36, whirl: 48, gate: 60, crate: 72 };
   for (const [kind, position] of Object.entries(firsts)) {
     assert.deepEqual(scene.introduced(position), [kind]);
     assert.equal(Math.floor(position / 12), Object.keys(firsts).indexOf(kind), 'one new device per chapter');
@@ -595,7 +595,7 @@ test('only the canal introducing a device spotlights it: one per chapter, before
 });
 
 test('a chapter card covers only the first canal of every chapter after the first: once per session, before moving, until cleared', () => {
-  assert.deepEqual([0, 1, 2, 3, 4, 5].map(ci => storyLoader().devices(ci)), [['jet'], ['boat'], ['net'], ['sand'], ['whirl'], ['gate']]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map(ci => storyLoader().devices(ci)), [['jet'], ['boat'], ['net'], ['sand'], ['whirl'], ['gate'], ['crate']]);
   // chapter start positions come from the data, so added chapters are covered without editing this test
   const { CHAPTERS } = require('../src/levels.js'), starts = CHAPTERS.map((_, ci) => CHAPTERS.slice(0, ci).reduce((n, ch) => n + ch.count, 0));
   const scene = storyLoader();

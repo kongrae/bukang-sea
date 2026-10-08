@@ -819,7 +819,7 @@ const STORY_EXTENSION_LEVELS = [
     ] },
   { id: 'p12', region: 'sluice-works', role: 'challenge', name: '마지막 갑문', par: 17, nets: 0, route: 'U D U R L R U D U L U R D D R U R', needsGate: true, finale: true,
     intent: '물줄기와 구조정 사이에서 수문을 세 번 여닫아 숭어 세 마리를 챙기고 바다로 나간다.',
-    tip: '마지막 도전! 물줄기와 구조정 사이에서 수문을 여러 번 여닫아 넓은 바다로 나가요.', map: [
+    tip: '수문 시설의 마지막 도전! 물줄기와 구조정 사이에서 수문을 여러 번 여닫아 바깥 물길로 나가요.', map: [
       '##########',
       '#...f..#.E',
       '#.....>#G#',
@@ -985,8 +985,149 @@ const STORY_CHAPTER_LEVELS = [
 ];
 LEVELS.push(...STORY_CHAPTER_LEVELS);
 
+// 2026-10-09 7장 영도 물양장: 새 장치 나무 상자(c). LEVELS 72–83 = 화면 73–84번, 순서대로 (docs/CHAPTER7-QUAY.md).
+const STORY_QUAY_LEVELS = [
+  /* ----- 7장 영도 물양장: 나무 상자 (화면 73–84번) ----- */
+  { par: 6, role: 'learn', name: '나무 상자', tip: '멀리서 헤엄쳐 와 부딪히면 나무 상자가 막힐 때까지 밀려나요. 상자를 밀어 막힌 물길을 열어요.', map: [
+    '#####E##',
+    '#...c..#',
+    '#...#..#',
+    '#...#..#',
+    '#...#..#',
+    '#...#..#',
+    '#S######',
+  ] },
+  { par: 8, role: 'learn', name: '붙어서는 못 밀어요', tip: '상자에 붙은 채로는 밀리지 않아요. 물러났다가 다시 헤엄쳐 와 밀어 보세요.', map: [
+    '########',
+    '#......E',
+    '#......#',
+    '#....f.#',
+    '#..#...#',
+    '#...c..#',
+    '###S####',
+  ] },
+  { par: 10, name: '숭어가 붙든 상자', tip: '먹지 않은 숭어 앞에서는 상자도 멈춰요. 숭어를 언제 먹느냐에 따라 상자가 서는 자리가 달라져요.', map: [
+    '########',
+    '#......#',
+    '#..f...#',
+    '#...####',
+    '#...####',
+    '##....##',
+    '#..c.f.E',
+    '#......#',
+    '#S######',
+  ] },
+  { par: 11, name: '구석에 나란히', tip: '상자는 다른 상자 앞에서도 멈춰요. 어느 상자부터 밀지 순서를 정해 보세요.', map: [
+    '######E#',
+    '#......#',
+    '#......#',
+    '#c.....#',
+    '#......#',
+    '#....f.#',
+    '#..##..#',
+    '#.c....#',
+    '###S####',
+  ] },
+  { par: 11, name: '상자 말뚝', tip: '밀린 상자는 벽까지 미끄러져요. 상자를 구석으로 보내 숭어 줄에 멈출 자리를 만들어요.', map: [
+    '###E####',
+    '#.o....#',
+    '#......#',
+    '#..c...#',
+    '#.....##',
+    '#....f.#',
+    '#......#',
+    '#......#',
+    '#......#',
+    '####S###',
+  ] },
+  /* 쉬어 가기: 상자 없이 이전 장치만 */
+  { par: 9, name: '모래톱 쉼터', tip: '잠깐 쉬어 가는 수로예요. 모래톱에서 멈추면 출구로 가는 줄에 설 수 있어요.', map: [
+    '######E#',
+    '#......#',
+    '#......#',
+    '#..##..#',
+    '#......#',
+    '#......#',
+    '#.f...s#',
+    '#....f.#',
+    '####S###',
+  ] },
+  { par: 10, name: '짧아진 뱃길', tip: '구조정은 상자에 막히면 돌아서요. 상자로 뱃길을 줄여 구조정을 멈출 자리로 써 봐요.', map: [
+    '##E#####',
+    '#......#',
+    '#...o.##',
+    '#..c...#',
+    '#B.....#',
+    '##....##',
+    '#..f..##',
+    '####S###',
+  ] },
+  { par: 11, name: '비켜 준 모래톱', tip: '밀린 상자는 모래톱 위에서 멈춰요. 상자가 떠난 모래톱은 다시 멈출 자리가 돼요.', map: [
+    '#####E###',
+    '#.......#',
+    '#.......#',
+    '#...#.f.#',
+    '#...#..c#',
+    '#...#..s#',
+    '#......f#',
+    '#.......#',
+    '#.......#',
+    '###S#####',
+  ] },
+  { par: 13, name: '상자 빗장', tip: '상자는 스위치 칸에 들어가지 못해요. 누를 때마다 수문이 열리고 닫히니 횟수를 세어 봐요.', map: [
+    '##########',
+    '#........E',
+    '#........#',
+    '#........#',
+    '#####G####',
+    '#..pc.p..#',
+    '#f.......#',
+    '#........#',
+    '##S#######',
+  ] },
+  { par: 13, name: '소용돌이 배달', tip: '소용돌이에서 나온 방향으로 상자가 밀려요. 상자를 출구 옆 구석까지 보내 보세요.', map: [
+    '##E######',
+    '#.......#',
+    '#.......#',
+    '#....####',
+    '#.......#',
+    '#.......#',
+    '#....c.w#',
+    '#....f..#',
+    '#.......#',
+    '#w......#',
+    '###S#####',
+  ] },
+  { par: 8, name: '물줄기 앞 상자', tip: '잠깐 쉬어 가는 수로예요. 밀린 상자는 물줄기 앞에서 멈춰요.', map: [
+    '######E#',
+    '#......#',
+    '#......#',
+    '#......#',
+    '#.#..f.#',
+    '#..^.c<#',
+    '#......#',
+    '#......#',
+    '###S####',
+  ] },
+  { par: 18, role: 'challenge', name: '물양장 마지막 하역', tip: '영도 물양장의 마지막 도전! 상자는 구조정에 막히면 그 자리에 멈춰요. 두 상자를 세울 곳을 차례로 정해요.', map: [
+    '######E###',
+    '#........#',
+    '#....cb..#',
+    '####.....#',
+    '#........#',
+    '#........#',
+    '####.....#',
+    '#........#',
+    '#....c...#',
+    '####.f...#',
+    '#........#',
+    '########S#',
+  ] },
+];
+LEVELS.push(...STORY_QUAY_LEVELS);
+
 /* ---------- Chapters: consecutive runs of STORY_ORDER positions (count 합계 = LEVELS.length) ---------- */
-// One new device per chapter: 물줄기 · 구조정 · 그물 · 모래톱 · 소용돌이 · 스위치/수문 (docs/CHAPTER-RESTRUCTURE.md).
+// One new device per chapter: 물줄기 · 구조정 · 그물 · 모래톱 · 소용돌이 · 스위치/수문 · 나무 상자 (docs/CHAPTER-RESTRUCTURE.md).
 const CHAPTERS = [
   { name: '북항 수로', count: 12, region: 'harbor-canals' },
   { name: '친수공원 운하', count: 12, region: 'waterside-park' },
@@ -994,6 +1135,7 @@ const CHAPTERS = [
   { name: '외항 물길', count: 12, region: 'outer-harbor' },
   { name: '북항 바깥길', count: 12, region: 'north-harbor' },
   { name: '수문 시설', count: 12, region: 'sluice-works' },
+  { name: '영도 물양장', count: 12, region: 'yeongdo-quay' },
 ];
 // Play order: position (수로 번호 - 1) → LEVELS index. Saves, sessions and hints stay keyed by the LEVELS index,
 // so LEVELS remains append-only and records survive any change of play order.
@@ -1004,6 +1146,7 @@ const STORY_ORDER = [
   36, 37, 62, 63, 64, 21, 65, 44, 66, 67, 24, 38,
   68, 39, 42, 69, 41, 30, 40, 45, 46, 43, 25, 47,
   52, 53, 56, 54, 55, 32, 57, 58, 70, 71, 27, 59,
+  72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
 ];
 const STORY_POSITION = [];
 STORY_ORDER.forEach((index, position) => { STORY_POSITION[index] = position; });
@@ -1302,4 +1445,4 @@ const LEGACY_STORY_LEVELS = {
   }
 };
 
-if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_ORDER_V2, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS, STORY_CHAPTER_LEVELS };
+if (typeof module !== 'undefined') module.exports = { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_ORDER_V2, LEVEL_ROLES, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS, STORY_CHAPTER_LEVELS, STORY_QUAY_LEVELS };

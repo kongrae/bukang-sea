@@ -3,7 +3,7 @@ const cases = [
   ['짧은 헤엄','move',[2,.2]],['긴 헤엄','move',[10,.62]],['물방울 정지','stop',[.7]],['막힌 방향','bump',[]],
   ['숭어 획득','eat',[false,0]],['연속 숭어','eat',[false,3]],['마지막 숭어','eat',[true,3]],
   ['그물 설치','net',[false]],['그물 회수','net',[true]],['물줄기','jet',[]],['소용돌이','warp',[]],
-  ['모래톱','sand',[]],['스위치','press',[]],['수문','gate',[]],['구조정','boat',[]],
+  ['모래톱','sand',[]],['스위치','press',[]],['수문','gate',[]],['나무 상자','crate',[.18]],['구조정','boat',[]],
   ['바다로 탈출','exit',[]],['별 1','star',[0]],['별 2','star',[1]],['별 3','star',[2]],
   ['스킨 해금','unlockReward',[]],['장 시작','chapter',[]],['일반 버튼','ui',[]],['구출 시작','start',[]],['상어 선택','equip',[]],
   ['시트 열기','sheet',[true]],['시트 닫기','sheet',[false]],['되돌리기','undo',[]],
@@ -11,7 +11,7 @@ const cases = [
 const sequence = [
   [0,'move',2,.2],[.2,'stop',.4],[.6,'move',10,.62],[1.2,'stop',.8],
   [1.6,'bump'],[1.63,'bump'],[1.66,'bump'],[2,'eat',false,0],[2.1,'eat',false,1],[2.2,'eat',false,2],[2.3,'eat',true,3],
-  [3.2,'net',false],[3.8,'net',true],[4.4,'jet'],[5,'warp'],[5.8,'sand'],[6.4,'press'],[6.4,'gate'],[7,'boat'],
+  [3.2,'net',false],[3.8,'net',true],[4.4,'jet'],[5,'warp'],[5.8,'sand'],[6.4,'press'],[6.4,'gate'],[6.7,'crate',.18],[7,'boat'],
   [7.5,'ui'],[8,'start'],[8.5,'equip'],[9,'sheet',true],[9.5,'sheet',false],
   [10,'exit'],[10.9,'star',0],[11.1,'star',1],[11.3,'star',2],[11.9,'unlockReward'],
 ];
@@ -46,7 +46,7 @@ for(const [label,name,args] of cases) {
   for(const version of ['before','synth','after']) {
     const button=document.createElement('button');button.textContent=label+' · '+LABEL[version];button.className=version==='after'?'new':'';
     const removed=['move','stop'].includes(name)&&version!=='before';
-    const absent=['boat','unlockReward','chapter','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
+    const absent=['boat','crate','unlockReward','chapter','ui','start','sheet'].includes(name)&&version==='before';button.disabled=absent||removed;
     if(removed)button.textContent=label+' · 제거됨';
     button.onclick=()=>{stopLab();if(!muted&&!suspended)getEffects(version)[name]?.(...args);$lab('status').textContent=label+' · '+version;};row.append(button);
   }

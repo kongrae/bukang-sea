@@ -62,11 +62,13 @@ function scene(stored = {}, reduced = false) {
 }
 // Saves are keyed by LEVELS index; "through N" means the first N canals in play order.
 const bestThrough = count => Object.fromEntries(ORDER.slice(0, count).map(i => [i, 1]));
+// Chapters keep growing: "all canals" is derived, never a fixed count.
+const ALL = ORDER.length;
 
 test('journey uses valid story escapes, keeps chapter boundaries and ignores daily progress and invalid stars', () => {
   const game=scene({best:{...bestThrough(12),[ORDER[12]]:3,[ORDER[13]]:2,[ORDER[24]]:0,[ORDER[25]]:'3',[ORDER[26]]:4,[ORDER[47]]:-1},daily:{'2026-10-01':3},dailyOps:{'2026-10-01':{version:1,stars:[3,3,3]}}});
   const progress=game.progress();assert.equal(progress.count,14);assert.equal(progress.complete,false);
-  assert.deepEqual(progress.chapters.map(ch=>[ch.start,ch.count,ch.total,ch.complete]),[[ORDER[0],12,12,true],[ORDER[12],2,12,false],[ORDER[24],0,12,false],[ORDER[36],0,12,false],[ORDER[48],0,12,false],[ORDER[60],0,12,false]]);
+  assert.deepEqual(progress.chapters.map(ch=>[ch.start,ch.count,ch.total,ch.complete]),[[ORDER[0],12,12,true],[ORDER[12],2,12,false],[ORDER[24],0,12,false],[ORDER[36],0,12,false],[ORDER[48],0,12,false],[ORDER[60],0,12,false],[ORDER[72],0,12,false]]);
   assert.equal(game.ending(),false);assert.equal(game.written(),null,'viewing progress does not rewrite existing records');
 });
 
@@ -82,18 +84,18 @@ test('one-star chapter completion shows the milestone and continues to the next 
   assert.deepEqual(game.save().owned,['basic','gold']);assert.equal(game.save().skin,'gold');
 });
 
-test('final clear opens the ending at 72 one-star escapes; closing restores result and daily/home routes remain available', () => {
-  const game=scene({best:bestThrough(71)});game.clear(ORDER[71]);
+test('final clear opens the ending after one-star escapes of every canal; closing restores result and daily/home routes remain available', () => {
+  const game=scene({best:bestThrough(ALL-1)});game.clear(ORDER[ALL-1]);
   assert.equal(game.progress().complete,true);assert.equal(game.element('nextBtn').textContent,'구출 엔딩 보기');
   game.next();assert.equal(game.element('endingOverlay').hidden,false);assert.equal(game.element('clearOverlay').hidden,true);
-  assert.equal(game.element('app').inert,true);assert.match(game.element('endingRecord').textContent,/72개 수로 구출 완료 · ★ 72 \/ 216/);
+  assert.equal(game.element('app').inert,true);assert.equal(game.element('endingRecord').textContent.includes(`${ALL}개 수로 구출 완료 · ★ ${ALL} / ${ALL*3}`),true);
   game.close();assert.equal(game.element('clearOverlay').hidden,false);assert.equal(game.element('app').inert,true);
   game.next();game.daily();assert.equal(game.stats().dailyOpened,1);assert.equal(game.element('endingOverlay').hidden,true);
   game.ending();game.home();assert.equal(game.element('endingOverlay').hidden,true);assert.equal(game.element('endingBtn').hidden,false);
 });
 
 test('complete saves offer ending replay without extra flags or maximum stars; reload and journey return preserve ownership', () => {
-  const stored={best:bestThrough(72),last:59,skin:'coral',owned:['basic','coral'],journal:{version:1,days:{'2026-09-30':1}}};
+  const stored={best:bestThrough(ALL),last:59,skin:'coral',owned:['basic','coral'],journal:{version:1,days:{'2026-09-30':1}}};
   const game=scene(stored);game.render();assert.equal(game.element('endingBtn').hidden,false);
   assert.match(game.element('playBtn').textContent,/별 더 모으기/);
   game.journey();assert.equal(game.element('journeyEndingBtn').hidden,false);game.ending('journey');game.close();
@@ -103,9 +105,9 @@ test('complete saves offer ending replay without extra flags or maximum stars; r
 });
 
 test('missing earlier escape cannot unlock ending through last-level clear or daily completion', () => {
-  const best=bestThrough(72);delete best[ORDER[6]];const game=scene({best});game.clear(ORDER[71]);
+  const best=bestThrough(ALL);delete best[ORDER[6]];const game=scene({best});game.clear(ORDER[ALL-1]);
   assert.equal(game.progress().complete,false);assert.equal(game.element('nextBtn').textContent,'수로 목록');assert.equal(game.ending(),false);
-  const daily=scene({best:bestThrough(72)});daily.clear(0,3,true);assert.equal(daily.element('clearStory').hidden,true);
+  const daily=scene({best:bestThrough(ALL)});daily.clear(0,3,true);assert.equal(daily.element('clearStory').hidden,true);
   assert.equal(daily.element('clearChapterStamp').hidden,true);assert.equal(daily.element('clearRegion').hidden,true);
   daily.next();assert.equal(daily.stats().dailyContinued,1);assert.equal(daily.element('endingOverlay').hidden,true);
 });
@@ -115,7 +117,7 @@ test('journey can preview a locked chapter without opening its levels; reduced-m
   game.select(3);assert.match(game.element('levelGrid').innerHTML,/외항 물길/);
   assert.equal(game.element('stagePicker').open,true,'journey selection reveals its chapter before focus moves');
   assert.match(game.element('levelGrid').innerHTML,/disabled/);assert.equal(game.stats().loaded,null);
-  const ending=scene({best:bestThrough(72),skin:'starsea',owned:['basic','starsea']},true);
+  const ending=scene({best:bestThrough(ALL),skin:'starsea',owned:['basic','starsea']},true);
   ending.ending();const args=ending.stats().sharkDraws[0];
   assert.equal(args[1],222);assert.equal(args[6],false);assert.equal(args[9].id,'starsea');
   ending.draw(20);assert.equal(ending.stats().sharkDraws[1][1],222,'reduced motion keeps a static sea position');
@@ -167,8 +169,22 @@ test('players who rescued all 60 canals before the additions keep the ending whi
   const kept=scene({best,storyRescued:1});kept.render();
   assert.equal(kept.progress().complete,false);assert.equal(kept.progress().count,60);
   assert.equal(kept.element('endingBtn').hidden,false);assert.match(kept.element('playBtn').textContent,/이어서 구출/);
-  assert.equal(kept.ending(),true);assert.match(kept.element('endingRecord').textContent,/60개 수로 구출 완료 · ★ 60 \/ 216/);
+  assert.equal(kept.ending(),true);assert.equal(kept.element('endingRecord').textContent.includes(`60개 수로 구출 완료 · ★ 60 / ${ALL*3}`),true);
   assert.match(kept.element('endingAfter').textContent,/새로 들어온 수로/);
   kept.close();kept.journey();assert.equal(kept.element('journeyEndingBtn').hidden,false);
   assert.equal(scene({best}).ending(),false,'without a recorded rescue the ending still needs every canal');
+});
+
+test('chapter 7 arrives after the sluice works: a recorded 72-canal rescue keeps the replay, reaching canal 72 now does not open it', () => {
+  // the sluice-works finale is now a chapter end that previews the Yeongdo quay instead of opening the ending
+  const sluice=scene({best:bestThrough(71)});sluice.clear(ORDER[71]);
+  assert.equal(sluice.progress().complete,false);assert.equal(sluice.element('clearTitle').textContent,'수문 시설 통과!');
+  assert.match(sluice.element('clearStory').textContent,/영도 물양장/);assert.equal(sluice.element('clearRegion').region,'yeongdo-quay');
+  assert.equal(sluice.element('nextBtn').textContent,'다음 장으로');sluice.next();assert.equal(sluice.stats().loaded,ORDER[72]);
+  assert.equal(sluice.ending(),false,'a player who reaches canal 72 in this build has not seen the ending yet');
+  // migrateStoryLength() flags saves that had rescued all 72 before chapter 7; chapter 7 waits behind "이어서 구출"
+  const kept=scene({best:bestThrough(72),storyRescued:1,storyLength:84});kept.render();
+  assert.equal(kept.progress().count,72);assert.equal(kept.progress().complete,false);
+  assert.equal(kept.element('endingBtn').hidden,false);assert.match(kept.element('playBtn').textContent,/이어서 구출/);
+  assert.equal(kept.ending(),true);assert.match(kept.element('endingAfter').textContent,/새로 들어온 수로/);
 });

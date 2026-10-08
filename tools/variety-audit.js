@@ -20,18 +20,19 @@ function shapeKey(map) {
 function inspect(level) {
   const g = E.parseLevel(level), full = E.plan(g, g.start, 0, new Set(), g.nets, true), escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
   const used = full ? V.varietyRouteUse(g, full).used : new Set(), stops = [], fishOrder = [], placements = new Set();
-  let pos = g.start, boats = g.boats, mask = 0, netChanges = 0, lastNets = '[]';
+  let pos = g.start, boats = g.boats, gate = 0, crates = g.crates, mask = 0, netChanges = 0, lastNets = '[]';
   for (const step of full?.steps || []) {
     const key = JSON.stringify(step.nets.slice().sort((a,b)=>a-b));
     if (key !== lastNets) { netChanges++; lastNets = key; }
     if (step.nets.length) placements.add(key);
-    const r = E.slide(g, pos, step.dir, new Set(step.nets), boats);
+    // E.turn replays switches and crate pushes like play; canals without them replay exactly as slide + stepBoats did
+    const r = E.turn(g, pos, step.dir, new Set(step.nets), boats, gate, crates, mask);
     for (const [x,y] of r.path) {
       const c = E.cellAt(g,x,y); if ('^v<>sw'.includes(c)) used.add(c === 'w' ? 'warp' : c === 's' ? 'sand' : 'jet');
       g.fish.forEach(([fx,fy],i)=>{if(x===fx&&y===fy&&!(mask&(1<<i))){mask|=1<<i;fishOrder.push(i);}});
     }
     pos = r.end; stops.push(pos.join(','));
-    if (!r.win) boats = E.stepBoats(g,boats,pos[1]*g.w+pos[0],new Set(step.nets));
+    boats = r.boats; gate = r.gate; crates = r.crates;
   }
   const counts = {}; for(const c of level.map.join('')) if ('obB^v<>swf'.includes(c)) counts[c]=(counts[c]||0)+1;
   return {name:level.name,role:level.role||'regular',idea:level.idea||null,family:level.family||null,shape:shapeKey(level.map),layout:hash([level.map,g.nets]),

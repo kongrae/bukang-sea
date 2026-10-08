@@ -5,7 +5,7 @@ const OPP = { U: 'D', D: 'U', L: 'R', R: 'L' };
 
 function parseLevel(level) {
   const rows = level.map, h = rows.length, w = rows[0].length;
-  let start = null; const fish = [], cells = [], boats = [], gates = [], switches = [], gateOpen = new Set();
+  let start = null; const fish = [], cells = [], boats = [], gates = [], switches = [], gateOpen = new Set(), crates = [];
   for (let y = 0; y < h; y++) {
     if (rows[y].length !== w) throw new Error('ragged row ' + y + ' in ' + level.name);
     for (let x = 0; x < w; x++) {
@@ -17,6 +17,8 @@ function parseLevel(level) {
       // sluice gates: G starts closed, g starts open; both are stored as 'G', the start state in gateOpen. p = switch
       if (c === 'g' || c === 'G') { gates.push(y * w + x); if (c === 'g') gateOpen.add(y * w + x); c = 'G'; }
       if (c === 'p') switches.push(y * w + x);
+      // drifting crate: a pushable blocker on plain water, the tile itself is water
+      if (c === 'c') { crates.push(y * w + x); c = '.'; }
       cells.push(c);
     }
   }
@@ -24,7 +26,8 @@ function parseLevel(level) {
   const whirls = []; cells.forEach((c, i) => { if (c === 'w') whirls.push(i); });
   if (whirls.length && whirls.length !== 2) throw new Error('whirlpools must come in a pair in ' + level.name);
   const warp = new Map(whirls.length === 2 ? [[whirls[0], whirls[1]], [whirls[1], whirls[0]]] : []);
-  const g = { w, h, cells, start, fish, warp, boats, nets: level.nets || 0, par: level.par, gates, gateOpen, switches };
+  if (crates.length > 2) throw new Error('at most 2 crates in ' + level.name);
+  const g = { w, h, cells, start, fish, warp, boats, nets: level.nets || 0, par: level.par, gates, gateOpen, switches, crates };
   if (gates.length || switches.length) checkGates(g, level.name);
   return g;
 }
@@ -49,32 +52,34 @@ function checkGates(g, name) {
 // `gate` = press parity of the link group (0 at the start, flipped by every press). Each gate toggles from its start state.
 function gateIsOpen(g, i, gate) { return g.gateOpen.has(i) !== (gate === 1); }
 // boats: array of [cellIndex, dir] (the boats' current state); only their cells matter for blocking
-function isBlocked(g, x, y, nets, boats, gate) {
+function isBlocked(g, x, y, nets, boats, gate, crates) {
   const c = cellAt(g, x, y);
   if (c === '#' || c === 'o') return true;
   const i = y * g.w + x;
   if (c === 'G' && !gateIsOpen(g, i, gate)) return true;
   if (nets && nets.has(i)) return true;
   if (boats) for (const b of boats) if (b[0] === i) return true;
+  if (crates) for (const k of crates) if (k === i) return true;
   return false;
 }
 // Slide until blocked. path excludes the start tile; each step is [x, y, dir] (a 4th element `true` marks
 // the tile reached by a whirlpool jump rather than by swimming). Stops on a sandbar 's'. Jets and whirlpools
 // passed twice in one move stop the slide (loop guard); the tile the move starts on never triggers anything.
 // Boats stand still while the shark slides; they move afterwards (stepBoats). Gates keep their turn-start state.
-function slide(g, pos, dir, nets, boats, gate) {
+// A stopped slide also reports why (stop: 'block' | 'sand' | 'loop') and its final heading (dir) for crate pushes.
+function slide(g, pos, dir, nets, boats, gate, crates) {
   let [x, y] = pos, d = dir;
   const path = [], seen = new Set();
   for (let guard = 0; guard < 500; guard++) {
     const [dx, dy] = DIRS[d];
-    if (isBlocked(g, x + dx, y + dy, nets, boats, gate)) break;
+    if (isBlocked(g, x + dx, y + dy, nets, boats, gate, crates)) return { path, end: [x, y], win: false, stop: 'block', dir: d };
     x += dx; y += dy; path.push([x, y, d]);
     const c = cellAt(g, x, y);
     if (c === 'E') return { path, end: [x, y], win: true };
-    if (c === 's') break;
+    if (c === 's') return { path, end: [x, y], win: false, stop: 'sand', dir: d };
     if (JET[c] || c === 'w') {
       const key = x + ',' + y;
-      if (seen.has(key)) break;
+      if (seen.has(key)) return { path, end: [x, y], win: false, stop: 'loop', dir: d };
       seen.add(key);
       if (JET[c]) d = JET[c];
       else {
@@ -84,17 +89,55 @@ function slide(g, pos, dir, nets, boats, gate) {
       }
     }
   }
-  return { path, end: [x, y], win: false };
+  return { path, end: [x, y], win: false, stop: 'loop', dir: d };
 }
+// Drifting crates 'c' (chapter 7, 2026-10-09): blockers that move. A crate moves only when a real slide (path >= 1,
+// no escape) ended by bumping into it: it then slides on in the shark's final heading until blocked. Pressing a crate
+// the shark already touches is a blocked swipe (no move, no push); stopping on a sandbar or by the loop guard never pushes.
+// A crate enters only '.'/'s' tiles inside the grid without a net, a turn-start boat, another crate or a fish still
+// uneaten after this move, and stops on a sandbar. One crate at a time (no chains); crates never leave by the exit.
+// Returns { crates, from, to, cells } (crates unchanged by reference when nothing moved).
+function pushCrate(g, crates, r, nets, boats, eatenMask) {
+  const none = { crates, from: -1, to: -1, cells: [] };
+  if (!crates || !crates.length || !r.path.length || r.win || r.stop !== 'block') return none;
+  const [dx, dy] = DIRS[r.dir], ax = r.end[0] + dx, ay = r.end[1] + dy;
+  if (ax < 0 || ay < 0 || ax >= g.w || ay >= g.h) return none;
+  const from = ay * g.w + ax;
+  if (!crates.includes(from)) return none;
+  let x = ax, y = ay; const cells = [];
+  for (let guard = 0; guard < 200; guard++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= g.w || ny >= g.h) break;
+    const i = ny * g.w + nx, c = g.cells[i];
+    if (c !== '.' && c !== 's') break;
+    if (nets && nets.has(i)) break;
+    if (boats && boats.some(b => b[0] === i)) break;
+    if (crates.includes(i)) break;
+    const fi = g.fish.findIndex(f => f[1] * g.w + f[0] === i);
+    if (fi >= 0 && !(eatenMask & (1 << fi))) break;
+    x = nx; y = ny; cells.push(i);
+    if (c === 's') break;
+  }
+  if (!cells.length) return none;
+  const to = cells[cells.length - 1];
+  return { crates: crates.map(k => k === from ? to : k).sort((a, b) => a - b), from, to, cells };
+}
+// Search state suffix like gateKey: canals without crates keep the exact earlier keys (and therefore search order).
+const crateKey = (g, crates) => g.crates && g.crates.length ? '|c' + crates.join(',') : '';
+const eatPath = (g, fishIdx, mask, path) => {
+  for (const [x, y] of path) { const fi = fishIdx.get(y * g.w + x); if (fi != null) mask |= 1 << fi; }
+  return mask;
+};
 // After every shark move each boat, in order, steps one tile along its heading. A boat turns around when the
 // tile ahead is a wall, buoy, the sea exit, a closed gate, a net, the shark or another boat, and stays put if both
 // ways are blocked. A boat already inside a gate that was just closed may leave; the shutter waits until it does.
-function stepBoats(g, boats, sharkIdx, nets, gate) {
+function stepBoats(g, boats, sharkIdx, nets, gate, crates) {
   if (!boats.length) return boats;
   const next = boats.map(b => b.slice());
   const free = (i, self) => {
     const x = i % g.w, y = Math.floor(i / g.w), c = cellAt(g, x, y);
     if (c === '#' || c === 'o' || c === 'E' || (c === 'G' && !gateIsOpen(g, i, gate)) || i === sharkIdx || (nets && nets.has(i))) return false;
+    if (crates && crates.includes(i)) return false;
     return !next.some((b, k) => k !== self && b[0] === i);
   };
   next.forEach((b, k) => {
@@ -113,37 +156,44 @@ const boatsKey = boats => boats.map(b => b[0] + b[1]).join(',');
 function pressSwitch(g, pos, gate) {
   return g.switches && g.switches.includes(pos[1] * g.w + pos[0]) ? (gate === 1 ? 0 : 1) : gate;
 }
-// One whole swipe in the live order: slide with the turn-start gates, press a switch at the stop, then boats move
-// with the new gates. An escape ends the turn at once. Returns slide()'s fields plus { pressed, gate, boats }.
-function turn(g, pos, dir, nets, boats, gate) {
-  const r = slide(g, pos, dir, nets, boats, gate);
-  if (!r.path.length || r.win) return { ...r, pressed: false, gate, boats };
+// One whole swipe in the live order: slide with the turn-start gates and crates, push the crate the shark bumped,
+// press a switch at the stop, then boats move with the new gates and crates. An escape ends the turn at once.
+// `mask` = fish eaten before this swipe (a crate cannot slide over an uneaten fish); crates default to the start.
+// Returns slide()'s fields plus { pressed, gate, boats, crates, push } (push = pushCrate() result or null).
+function turn(g, pos, dir, nets, boats, gate, crates, mask = 0) {
+  crates = crates || g.crates || [];
+  const r = slide(g, pos, dir, nets, boats, gate, crates);
+  if (!r.path.length || r.win) return { ...r, pressed: false, gate, boats, crates, push: null };
+  const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
+  const push = pushCrate(g, crates, r, nets, boats, eatPath(g, fishIdx, mask, r.path));
   const next = pressSwitch(g, r.end, gate);
-  return { ...r, pressed: next !== gate, gate: next, boats: stepBoats(g, boats, r.end[1] * g.w + r.end[0], nets, next) };
+  return { ...r, pressed: next !== gate, gate: next, crates: push.crates, push: push.cells.length ? push : null,
+    boats: stepBoats(g, boats, r.end[1] * g.w + r.end[0], nets, next, push.crates) };
 }
 // Search state suffix: canals without switches keep the exact pre-gate keys (and therefore search order).
 const gateKey = (g, gate) => g.switches && g.switches.length ? '|' + (gate === 1 ? 1 : 0) : '';
-// BFS over (position, fish mask, boats, gates). Returns {moves, seq} or null. boats defaults to the level's start.
-function bfsFrom(g, pos, mask, nets, needAll, cap, boats, gate) {
-  boats = boats || g.boats;
+// BFS over (position, fish mask, boats, gates, crates). Returns {moves, seq} or null. boats/crates default to the level's start.
+function bfsFrom(g, pos, mask, nets, needAll, cap, boats, gate, crates) {
+  boats = boats || g.boats; crates = crates || g.crates || [];
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const full = (1 << g.fish.length) - 1;
-  const seen = new Set([pos + '|' + mask + '|' + boatsKey(boats) + gateKey(g, gate)]);
-  let q = [{ pos, mask, boats, gate, seq: '' }], depth = 0;
+  const seen = new Set([pos + '|' + mask + '|' + boatsKey(boats) + gateKey(g, gate) + crateKey(g, crates)]);
+  let q = [{ pos, mask, boats, gate, crates, seq: '' }], depth = 0;
   while (q.length) {
     depth++;
     if (depth > cap) return null;
     const nq = [];
     for (const s of q) for (const d of 'UDLR') {
-      const r = slide(g, s.pos, d, nets, s.boats, s.gate);
+      const r = slide(g, s.pos, d, nets, s.boats, s.gate, s.crates);
       if (!r.path.length) continue;
       let m = s.mask;
       for (const [x, y] of r.path) { const k = y * g.w + x; if (fishIdx.has(k)) m |= 1 << fishIdx.get(k); }
       if (r.win) { if (!needAll || m === full) return { moves: depth, seq: s.seq + d }; continue; }
-      const ng = pressSwitch(g, r.end, s.gate), nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], nets, ng);
-      const key = r.end + '|' + m + '|' + boatsKey(nb) + gateKey(g, ng);
+      const nc = pushCrate(g, s.crates, r, nets, s.boats, m).crates;
+      const ng = pressSwitch(g, r.end, s.gate), nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], nets, ng, nc);
+      const key = r.end + '|' + m + '|' + boatsKey(nb) + gateKey(g, ng) + crateKey(g, nc);
       if (seen.has(key)) continue;
-      seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, gate: ng, seq: s.seq + d });
+      seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, gate: ng, crates: nc, seq: s.seq + d });
     }
     q = nq;
   }
@@ -174,14 +224,14 @@ function fixedNetPlan(g, pos, mask, nets, netsLeft, needAll, boats) {
 // A new net is only tried on this swipe's free path or next to a boat: any other net can wait until the
 // swipe it affects, since setting it later keeps every option open (a tile placeable then is placeable now).
 // Returns the same shape as the relocating search; `remove` is always empty.
-function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
-  boats = boats || g.boats;
+function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, crates) {
+  boats = boats || g.boats; crates = crates || g.crates || [];
   const capacity = nets.size + netsLeft;
   if (capacity > 2) throw new Error('plan supports at most 2 nets');
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const full = (1 << g.fish.length) - 1, start = [...nets].sort((a, b) => a - b);
-  const keyOf = (pos, mask, boats, gate, placed) => pos + '|' + mask + '|' + boatsKey(boats) + gateKey(g, gate) + '|' + placed.join(',');
-  const root = { pos, mask, boats, gate, placed: start, parent: null }, seen = new Set([keyOf(pos, mask, boats, gate, start)]);
+  const keyOf = (pos, mask, boats, gate, placed, crates) => pos + '|' + mask + '|' + boatsKey(boats) + gateKey(g, gate) + '|' + placed.join(',') + crateKey(g, crates);
+  const root = { pos, mask, boats, gate, crates, placed: start, parent: null }, seen = new Set([keyOf(pos, mask, boats, gate, start, crates)]);
   const result = (parent, dir, placed) => {
     const steps = [{ dir, nets: [...placed] }];
     for (let s = parent; s.parent; s = s.parent) steps.push(s.step);
@@ -195,7 +245,7 @@ function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
     for (const s of q) {
       if (++visited % 32 === 0) yield;
       const here = s.pos[1] * g.w + s.pos[0], occupied = new Set(s.boats.map(b => b[0])), left = capacity - s.placed.length;
-      const canPlace = i => g.cells[i] === '.' && i !== here && !occupied.has(i) && !s.placed.includes(i)
+      const canPlace = i => g.cells[i] === '.' && i !== here && !occupied.has(i) && !s.placed.includes(i) && !s.crates.includes(i)
         && (!fishIdx.has(i) || (s.mask & (1 << fishIdx.get(i))));
       const boatSpots = new Set();
       if (left) for (const b of s.boats) for (const d of [b[1], OPP[b[1]]]) {
@@ -204,8 +254,12 @@ function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
       }
       const current = new Set(s.placed);
       for (const dir of 'UDLR') {
-        const plain = slide(g, s.pos, dir, current, s.boats, s.gate), relevant = new Set(boatSpots);
+        const plain = slide(g, s.pos, dir, current, s.boats, s.gate, s.crates), relevant = new Set(boatSpots);
         if (left) for (const [x, y] of plain.path) if (canPlace(y * g.w + x)) relevant.add(y * g.w + x);
+        // A net can also brake a crate pushed by this swipe: every tile the crate would cover is relevant.
+        if (left && plain.path.length && !plain.win) {
+          for (const i of pushCrate(g, s.crates, plain, current, s.boats, eatPath(g, fishIdx, s.mask, plain.path)).cells) if (canPlace(i)) relevant.add(i);
+        }
         const spots = [...relevant], adds = [[]];
         for (const i of spots) adds.push([i]);
         // Only the first net hit stops the shark; two new nets at once matter only when one affects a boat.
@@ -214,15 +268,16 @@ function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
         }
         for (const add of adds) {
           const placed = add.length ? [...s.placed, ...add].sort((a, b) => a - b) : s.placed;
-          const set = add.length ? new Set(placed) : current, r = add.length ? slide(g, s.pos, dir, set, s.boats, s.gate) : plain;
+          const set = add.length ? new Set(placed) : current, r = add.length ? slide(g, s.pos, dir, set, s.boats, s.gate, s.crates) : plain;
           if (!r.path.length) continue;
           let m = s.mask;
           for (const [x, y] of r.path) { const fi = fishIdx.get(y * g.w + x); if (fi != null) m |= 1 << fi; }
           if (r.win) { if (!needAll || m === full) return result(s, dir, placed); continue; }
+          const nc = pushCrate(g, s.crates, r, set, s.boats, m).crates;
           const ng = pressSwitch(g, r.end, s.gate);
-          const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], set, ng), key = keyOf(r.end, m, nb, ng, placed);
+          const nb = stepBoats(g, s.boats, r.end[1] * g.w + r.end[0], set, ng, nc), key = keyOf(r.end, m, nb, ng, placed, nc);
           if (seen.has(key)) continue;
-          seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, gate: ng, placed, parent: s, step: { dir, nets: placed } });
+          seen.add(key); nq.push({ pos: r.end, mask: m, boats: nb, gate: ng, crates: nc, placed, parent: s, step: { dir, nets: placed } });
         }
       }
     }
@@ -238,8 +293,9 @@ function* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate) {
 // Switches are pressed only by moves, so the recipe stays complete: replaying it with turn() presses them.
 // `netsLeft` retains its old meaning (unused inventory); placed nets are also reusable.
 // Returns {moves, seq, add, remove, steps:[{dir, nets:[idx]}]} or null. add/remove concern step 1 only.
-function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false) {
-  if (!pickup) return yield* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate);
+function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false, crates) {
+  if (!pickup) return yield* placedPlanSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, crates);
+  if (g.crates && g.crates.length) throw new Error('relocating-net search (v1-v3) does not support crates');
   boats = boats || g.boats;
   const capacity = nets.size + netsLeft;
   if (capacity > 2) throw new Error('plan supports at most 2 nets');
@@ -304,8 +360,8 @@ function* planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup 
   }
   return null;
 }
-function plan(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false) {
-  const search = planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup);
+function plan(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup = false, crates) {
+  const search = planSearch(g, pos, mask, nets, netsLeft, needAll, boats, gate, pickup, crates);
   let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
@@ -315,4 +371,5 @@ function starsForClear(allFish, inPar) {
   return 1 + (allFish ? 1 : 0) + (allFish && inPar ? 1 : 0);
 }
 if (typeof module !== 'undefined') module.exports = { parseLevel, slide, stepBoats, boatsKey, bfsFrom, fixedNetPlan, planSearch, plan, starsForClear, cellAt, isBlocked,
-  gatePassage, gateIsOpen, pressSwitch, turn, DIRS, JET, OPP };
+  gatePassage, gateIsOpen, pressSwitch, turn, DIRS, JET, OPP,
+  pushCrate, crateKey };

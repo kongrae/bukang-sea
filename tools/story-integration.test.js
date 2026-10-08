@@ -6,7 +6,7 @@ const source = fs.readFileSync(path.join(__dirname,'../src/game.js'),'utf8');
 const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`,'m'))?.[0]
   || source.match(new RegExp(`function ${name}\\([^]*?\\n}`))?.[0];
 function fixture(stored = {}) {
-  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','migrateStoryOrder','refreshSkins','skinNeedText','nextSkinGoal'].map(fn).join('\n');
+  const functions=['persist','levelSignature','copyTurn','restoreSession','storyLevel','storyResumeId','storySession','migratePilotToStory','migrateStoryOrder','migrateStoryLength','refreshSkins','skinNeedText','nextSkinGoal'].map(fn).join('\n');
   const skins=source.slice(source.indexOf('const SKINS ='),source.indexOf('// adds newly earned skins'));
   return new Function('stored',`
     ${fs.readFileSync(path.join(__dirname,'../src/engine.js'),'utf8')}
@@ -17,7 +17,7 @@ function fixture(stored = {}) {
     ${source.match(/^const unlocked = .*$/m)[0]}
     ${skins}
     ${functions}
-    return {save,migrate:migratePilotToStory,reorder:migrateStoryOrder,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars,goal:nextSkinGoal};
+    return {save,migrate:migratePilotToStory,reorder:migrateStoryOrder,lengthen:migrateStoryLength,unlocked,session:storySession,resume:storyResumeId,refresh:refreshSkins,total:totalStars,goal:nextSkinGoal};
   `)(stored);
 }
 function record(index, id = index, move = null) {
@@ -27,8 +27,10 @@ function record(index, id = index, move = null) {
   if(move){const r=E.turn(g,state.pos,move,new Set(),state.boats,state.gate);Object.assign(state,{pos:r.end,dir:move,boats:r.boats,moves:1,gate:r.gate,history:[start]});}
   return {version:1,id,layout:JSON.stringify([level.map,level.nets||0]),state};
 }
-test('saved LEVELS indices keep the original 60 canals in place while 72 canals play in six 12-canal chapters',()=>{
-  assert.equal(LEVELS.length,72);assert.deepEqual(CHAPTERS.map(c=>c.count),[12,12,12,12,12,12]);
+test('saved LEVELS indices keep the original 60 canals in place while the canals play in 12-canal chapters',()=>{
+  // chapters keep growing (chapter 7 2026-10-09): appended canals only, every chapter 12 canals
+  assert.ok(LEVELS.length>=84);assert.equal(LEVELS.length,CHAPTERS.length*12);assert.ok(CHAPTERS.every(c=>c.count===12));
+  assert.deepEqual(STORY_ORDER.slice(72,84),[72,73,74,75,76,77,78,79,80,81,82,83],'chapter 7 plays LEVELS 72-83 in order');
   assert.deepEqual([...STORY_ORDER].sort((a,b)=>a-b),LEVELS.map((_,i)=>i),'every canal appears once in play order');
   STORY_ORDER.forEach((index,position)=>assert.equal(STORY_POSITION[index],position));
   const sha=data=>crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
@@ -122,6 +124,20 @@ test('players who rescued all 60 canals before the additions keep their rescue a
   assert.equal(f.unlocked(61),false,'back-to-back new canals still open one at a time');f.save.best[60]=1;assert.ok(f.unlocked(61));
 });
 
+test('chapter 7: saves that had rescued all 72 canals keep the ending once; later arrivals at canal 72 do not',()=>{
+  const best=Object.fromEntries(STORY_ORDER.slice(0,72).map(i=>[i,1]));
+  const before=fixture({best,storyOrder:3});before.reorder();before.lengthen();
+  assert.equal(before.save.storyRescued,1);assert.equal(before.save.storyLength,STORY_ORDER.length);assert.ok(before.unlocked(72),'chapter 7 opens');
+  const once=JSON.stringify(before.save);before.lengthen();assert.equal(JSON.stringify(before.save),once,'runs once per story length');
+  const partial=fixture({best:{...best,[STORY_ORDER[30]]:undefined},storyOrder:3});partial.reorder();partial.lengthen();
+  assert.equal(partial.save.storyRescued,undefined);assert.equal(partial.save.storyLength,STORY_ORDER.length);
+  // a player of this build marks the current length on first boot, so reaching canal 72 later never counts as an old rescue
+  const fresh=fixture();fresh.reorder();fresh.lengthen();Object.assign(fresh.save.best,best);fresh.lengthen();
+  assert.equal(fresh.save.storyRescued,undefined);
+  // the next chapter repeats the rule from the recorded length
+  const next=fixture({best:Object.fromEntries(STORY_ORDER.map(i=>[i,2])),storyOrder:3,storyLength:STORY_ORDER.length-12});next.lengthen();
+  assert.equal(next.save.storyRescued,1);
+});
 test('the next shark goal names the nearest locked star shark, then a journal shark, and ends when all are owned', () => {
   assert.equal(fixture().goal().short,'벚꽃까지 ★20');
   const some=fixture({best:Object.fromEntries(Array.from({length:9},(_,i)=>[i,3])),owned:['basic','sakura']});

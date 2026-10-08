@@ -80,7 +80,7 @@ const recordedOf = f => f.sources.filter(n => n.buffer?.key);
 test('decoded recordings replace the synthesized layers; an effect missing a recording keeps its synthesized cue', async () => {
   const f = fixture(recordings(['splash'])); f.audio.unlock(); await f.audio.loaded();
   assert.equal(f.audio.inspect().samples, Object.keys(SFX_SAMPLES).length - 1);
-  for (const name of ['bump', 'jet', 'warp', 'sand', 'press', 'gate', 'boat', 'undo', 'ui', 'start', 'equip']) { f.sfx[name](); f.advance(.5); }
+  for (const name of ['bump', 'jet', 'warp', 'sand', 'press', 'gate', 'crate', 'boat', 'undo', 'ui', 'start', 'equip']) { f.sfx[name](); f.advance(.5); }
   f.sfx.net(false); f.advance(.5); f.sfx.sheet(true); f.advance(.5); f.sfx.eat(true, 2); f.advance(1); f.sfx.star(1); f.advance(1.5);
   assert.equal(f.sources.filter(n => n.kind === 'tone').length, 0, 'no oscillator while recordings are ready');
   assert.ok(recordedOf(f).length >= 20); assert.ok(recordedOf(f).every(n => Number.isFinite(n.playbackRate.value) || n.playbackRate.events.length));

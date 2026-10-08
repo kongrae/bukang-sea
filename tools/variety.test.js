@@ -105,7 +105,7 @@ test('authored story boards retain required device learning order and add divers
   const played = STORY_ORDER.map(i=>LEVELS[i]);
   const first = pattern => played.findIndex(l=>l.map.some(row=>pattern.test(row)))+1;
   assert.equal(first(/[<>^v]/),4);assert.equal(first(/[bB]/),13);assert.equal(played.findIndex(l=>l.nets)+1,25);
-  assert.equal(first(/s/),37);assert.equal(first(/w/),49);assert.equal(first(/[pGg]/),61);
+  assert.equal(first(/s/),37);assert.equal(first(/w/),49);assert.equal(first(/[pGg]/),61);assert.equal(first(/c/),73);
   assert.ok(new Set(LEVELS.map(l=>shapeKey(l.map))).size>=29);
   for(const i of [42,45]) {
     const level=LEVELS[i],g=E.parseLevel(level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);

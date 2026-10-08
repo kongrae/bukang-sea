@@ -205,7 +205,7 @@ normalizeJournal(); // Import only surviving records; old single-puzzle clears n
 // i is a LEVELS index; the previous canal is the one before it in STORY_ORDER. Cleared canals and kept access stay open.
 const unlocked = i => i === 0 || save.best[STORY_ORDER[STORY_POSITION[i] - 1]] != null || Array.isArray(save.storyAccess) && save.storyAccess.includes(i) || Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
 // Device kinds a story canal introduces: the first canal in play order that uses them (one per chapter).
-const DEVICE_TILES = { jet: /[<>^v]/, boat: /[bB]/, sand: /s/, whirl: /w/, gate: /[pGg]/ };
+const DEVICE_TILES = { jet: /[<>^v]/, boat: /[bB]/, sand: /s/, whirl: /w/, gate: /[pGg]/, crate: /c/ };
 let firstDeviceAt = null;
 function introducedDevices(i) {
   if (!firstDeviceAt) {
@@ -251,7 +251,8 @@ const JOURNEY_STORY = [
   { intro: '방파제 너머로 흐르는 물살. 그물을 쳐서 멈출 자리를 만들어요.', outro: '방파제를 넘어왔어요! 이제 모래톱이 쌓인 외항으로 나아가요.' },
   { intro: '모래톱에 올라서면 멈춰요. 모래톱을 디딤돌 삼아 외항의 물길을 건너요.', outro: '외항을 통과했어요! 이제 소용돌이가 도는 북항 바깥길로 가요.' },
   { intro: '떨어진 물길은 소용돌이로 이어져요. 부두 사이를 지나 수문 시설 입구까지 가요.', outro: '북항 바깥길을 통과했어요! 이제 스위치로 수문을 여닫아 보세요.' },
-  { intro: '스위치 위에 멈춰 수문을 열고 닫아요. 마지막 갑문 너머가 넓은 바다예요.', outro: '마지막 수문이 열렸어요. 상어가 넓은 바다로 돌아갑니다.' },
+  { intro: '스위치 위에 멈춰 수문을 열고 닫아요. 마지막 갑문을 지나면 영도 앞 물양장이에요.', outro: '수문 시설을 통과했어요! 이제 나무 상자가 떠 있는 영도 물양장으로 가요.' },
+  { intro: '빈 나무 상자가 물길을 막은 물양장. 헤엄쳐 와 상자를 밀어 바다로 가는 길을 열어요.', outro: '물양장을 빠져나왔어요. 상어가 넓은 바다로 돌아갑니다.' },
 ];
 function storyProgress() {
   let start = 0;
@@ -828,6 +829,30 @@ function drawSwitch(ctx, x, y, T, on, press = 0) {
   }
   ctx.restore();
 }
+// Drifting crate (chapter 7): an EMPTY wooden fish box afloat, seen from above at ~70% of the tile. A light rim, a darker
+// open floor with plank seams, and a white band where it sits in the water. Square, brown and plank-lined so it never
+// reads as the round orange buoy or the grey promenade; the gentle bob says it floats (none in reduced motion).
+// pulse: a short squash when the shark stops against it.
+function drawCrate(ctx, x, y, T, t, pulse = 0) {
+  const s = T * 0.7 * (1 + pulse), h = s / 2, rim = s * 0.17, cx = x + T / 2, cy = y + T / 2;
+  const bob = reduceMotion ? 0 : Math.sin(t * 2.2 + cx * 0.05 + cy * 0.03) * Math.min(2, T * 0.04);
+  const box = (k, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-k, -k, k * 2, k * 2, r); else ctx.rect(-k, -k, k * 2, k * 2); };
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = Math.max(1.5, T * 0.045);   // waterline band (stays on the water)
+  box(h + T * 0.05, T * 0.12); ctx.stroke();
+  ctx.translate(0, bob);
+  ctx.fillStyle = 'rgba(4,20,26,.25)'; ctx.save(); ctx.translate(T * 0.04, T * 0.06); box(h, T * 0.08); ctx.fill(); ctx.restore();
+  const wood = ctx.createLinearGradient(-h, -h, h, h); wood.addColorStop(0, '#dca063'); wood.addColorStop(1, '#a8652f');
+  box(h, T * 0.08); ctx.fillStyle = wood; ctx.fill();
+  ctx.lineWidth = Math.max(1.2, T * 0.035); ctx.strokeStyle = '#5b3416'; ctx.stroke();
+  const f = h - rim;   // the open, empty inside: darker floor boards
+  ctx.fillStyle = '#8a4f25'; ctx.fillRect(-f, -f, f * 2, f * 2);
+  ctx.strokeStyle = '#5b3416'; ctx.lineWidth = Math.max(1, T * 0.025); ctx.strokeRect(-f, -f, f * 2, f * 2);
+  ctx.beginPath(); for (const k of [-1 / 3, 1 / 3]) { ctx.moveTo(-f, f * k); ctx.lineTo(f, f * k); } ctx.stroke();   // three planks
+  ctx.strokeStyle = 'rgba(255,236,200,.55)'; ctx.lineWidth = Math.max(1, T * 0.022);   // sunlit top edge of the rim
+  ctx.beginPath(); ctx.moveTo(-h + T * 0.07, -h + rim * 0.45); ctx.lineTo(h - T * 0.07, -h + rim * 0.45); ctx.stroke();
+  ctx.restore();
+}
 // tileable light pattern for the water surface (computed once)
 const caustic = (() => {
   const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
@@ -857,7 +882,7 @@ let deviceSpot = null;
 const DEVICE_SPOT = { dur: 1.8, pulses: 3 };
 let coach = null;   // first-play finger hint: { kind: 'swipe', dir } or { kind: 'tap', x, y }
 const netPop = new Map(), jetFlash = new Map();
-const contactPulse = new Map(), netRetract = new Map();
+const contactPulse = new Map(), netRetract = new Map(), crateWobble = new Map();   // crateWobble: crate cell -> {at, d} after a blocked nudge
 let hudLast = { moves: -1, fish: -1 };
 // DAILY = {date, stage, version, tier, level}; legacy makeDaily has no stage/version. Null in story mode.
 // PILOT = {index, level} for the separate North Harbor → Sluice Works course (src/pilot.js).
@@ -868,6 +893,7 @@ function freshState(level) {
   g = parseLevel(level);
   const state = { pos: g.start.slice(), dir: 'U', fish: [], nets: [], boats: g.boats.map(b => b.slice()), moves: 0, history: [] };
   if (g.switches.length) state.gate = 0;   // switch press parity; canals without switches keep the old turn shape
+  if (g.crates.length) state.crates = g.crates.slice();   // crate cells, ascending like the engine keeps them; same rule
   return state;
 }
 function netSet() { return new Set(st.nets); }
@@ -878,6 +904,7 @@ function levelSignature(level) { return JSON.stringify([level.map, level.nets ||
 function copyTurn(s) {
   const copy = { pos: s.pos.slice(), dir: s.dir, fish: s.fish.slice(), nets: s.nets.slice(), boats: s.boats.map(b => b.slice()), moves: s.moves };
   if (s.gate === 0 || s.gate === 1) copy.gate = s.gate;
+  if (Array.isArray(s.crates)) copy.crates = s.crates.slice();
   return copy;
 }
 function restoreSession(record, level, id) {
@@ -888,7 +915,8 @@ function restoreSession(record, level, id) {
     if (!v || !Array.isArray(v.pos) || v.pos.length !== 2 || !v.pos.every(Number.isInteger) || !['U', 'D', 'L', 'R'].includes(v.dir)
       || !Number.isSafeInteger(v.moves) || v.moves < 0 || !ints(v.fish, grid.fish.length) || v.fish.some(i => i >= grid.fish.length)
       || !ints(v.nets, grid.nets) || !Array.isArray(v.boats) || v.boats.length !== grid.boats.length
-      || (grid.switches.length ? v.gate !== 0 && v.gate !== 1 : v.gate !== undefined && v.gate !== 0)) return false;
+      || (grid.switches.length ? v.gate !== 0 && v.gate !== 1 : v.gate !== undefined && v.gate !== 0)
+      || (grid.crates.length ? !ints(v.crates, grid.crates.length) || v.crates.length !== grid.crates.length : v.crates !== undefined)) return false;
     const [x, y] = v.pos, index = y * grid.w + x;
     if (grid.cells[index] === 'G' && !gateIsOpen(grid, index, v.gate)) return false;   // a boat may wait in a closing gate; the shark never
     const open = i => Number.isInteger(i) && i >= 0 && i < grid.cells.length && !['#', 'o', 'E'].includes(grid.cells[i]);
@@ -896,6 +924,9 @@ function restoreSession(record, level, id) {
     if (v.boats.some((b, k) => !Array.isArray(b) || b.length !== 2 || !open(b[0]) || b[0] === index
       || !(grid.boats[k][1] === 'R' ? ['R', 'L'] : ['D', 'U']).includes(b[1]))) return false;
     if (new Set(v.boats.map(b => b[0])).size !== v.boats.length) return false;
+    // crates: ascending on water or sand, never under the shark, a boat, a net or a fish still uneaten
+    if (v.crates && v.crates.some((k, j) => !['.', 's'].includes(grid.cells[k]) || k === index || (j && k <= v.crates[j - 1])
+      || v.boats.some(b => b[0] === k) || v.nets.includes(k) || grid.fish.some((f, fi) => f[1] * grid.w + f[0] === k && !v.fish.includes(fi)))) return false;
     return v.nets.every(i => grid.cells[i] === '.' && i !== index && !v.boats.some(b => b[0] === i)
       && !grid.fish.some((f, k) => f[1] * grid.w + f[0] === i && !v.fish.includes(k)));
   };
@@ -954,6 +985,16 @@ function migrateStoryOrder() {
   STORY_ORDER_V2.forEach((i, position) => { if (position === 0 || save.best[STORY_ORDER_V2[position - 1]] != null) access.add(i); });
   save.storyAccess = [...access]; save.storyOrder = 3; persist();
 }
+// Chapters keep being appended (chapter 7: 2026-10-09). storyLength = story length at the last boot. A save that had
+// escaped every canal of that shorter story keeps the ending replay (storyRescued), decided once here so a player who
+// reaches the same canal later is not offered it. Saves from before the field played the 72-canal story.
+function migrateStoryLength() {
+  if (save.storyLength === STORY_ORDER.length) return;
+  const previous = Number.isInteger(save.storyLength) && save.storyLength > 0 ? save.storyLength : 72;
+  const cleared = i => Number.isInteger(save.best[i]) && save.best[i] >= 1 && save.best[i] <= 3;
+  if (previous < STORY_ORDER.length && STORY_ORDER.slice(0, previous).every(cleared)) save.storyRescued = 1;
+  save.storyLength = STORY_ORDER.length; persist();
+}
 function dailySessionKey(daily) { return Number.isInteger(daily.stage) ? 'daily' : 'dailyLegacy'; }
 function dailySessionRecord(daily) {
   const record = save.sessions.dailyStages?.[daily.stage];
@@ -986,7 +1027,7 @@ function pauseGame() {
 const ring = (x, y, size = 1, alpha = 0.55) => { if (!reduceMotion) particles.push({ kind: 'ring', x, y, life: 1, size, alpha }); };
 function clearPlayEffects() {
   particles.length = 0; wake.length = 0;
-  netPop.clear(); jetFlash.clear(); contactPulse.clear(); netRetract.clear();
+  netPop.clear(); jetFlash.clear(); contactPulse.clear(); netRetract.clear(); crateWobble.clear();
   bump = null; settle = null; pop = null; exitZoom = null;
   for (const icon of flyingFish) icon.remove();
   flyingFish.clear(); goalCatchAt = -Infinity; endDeviceSpot();
@@ -1070,6 +1111,7 @@ function loadLevel(i, keep, definition = null) {
     const cells = [];
     g.cells.forEach((c, k) => { if (kinds.some(kind => kind !== 'boat' && kind !== 'net' && DEVICE_TILES[kind].test(c))) cells.push(k); });
     if (kinds.includes('boat')) st.boats.forEach(b => cells.push(b[0]));
+    if (kinds.includes('crate')) (st.crates || g.crates).forEach(c => cells.push(c));   // crate tiles parse as water
     if (cells.length || kinds.includes('net')) addDeviceSpot(cells, { level: i, net: kinds.includes('net') });
   }
   if (card) openChapterCard(chap.ci);
@@ -1119,10 +1161,10 @@ function enter(level, keep, label, region = level.region, regionPreview = !!leve
 function setupCoach() {
   coach = null;
   if ((PILOT ? PILOT.index === 0 : !DAILY && !FREE && LVL === 0) && !save.coachSwipe && !st.moves && !st.history.length) {
-    const p = plan(g, st.pos, 0, new Set(), 0, true, st.boats, st.gate);
+    const p = plan(g, st.pos, 0, new Set(), 0, true, st.boats, st.gate, false, st.crates);
     if (p) coach = { kind: 'swipe', dir: p.seq[0] };
   } else if (g.nets && !save.coachNet) {
-    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats, st.gate, netPickup());
+    const p = plan(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, true, st.boats, st.gate, netPickup(), st.crates);
     if (p && p.add.length) coach = { kind: 'tap', x: p.add[0] % g.w, y: Math.floor(p.add[0] / g.w) };
   }
 }
@@ -1215,11 +1257,14 @@ function tryMove(d) {
   if (cleared) return;
   if (anim) { queued = d; return; }
   hintRequest++;
-  const r = turn(g, st.pos, d, netSet(), st.boats, st.gate);
+  const r = turn(g, st.pos, d, netSet(), st.boats, st.gate, st.crates, fishMask());   // fish eaten before this swipe
   if (!r.path.length) {   // nothing changed: the tip (a hint or a stuck notice) still holds
     bump = { d, t: 0 }; view.target = ANG[d]; settle = null; queued = null;
     sfx.bump();
     const [dx, dy] = DIRS[d]; splashAt(st.pos[0] + dx * 0.45, st.pos[1] + dy * 0.45, 5, d, 0.6);
+    // A crate the shark already touches never moves (it needs a run-up): it only rocks in place.
+    const ax = st.pos[0] + dx, ay = st.pos[1] + dy;
+    if (!reduceMotion && st.crates && ax >= 0 && ay >= 0 && ax < g.w && ay < g.h && st.crates.includes(ay * g.w + ax)) crateWobble.set(ay * g.w + ax, { at: clock, d });
     return;
   }
   hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
@@ -1236,14 +1281,18 @@ function tryMove(d) {
   const dirs = [d, ...r.path.map(p => p[2])];
   if (r.win) { const last = r.path[r.path.length - 1]; const [dx, dy] = DIRS[last[2]]; for (let k = 1; k <= 3; k++) { pts.push([last[0] + dx * k, last[1] + dy * k]); dirs.push(last[2]); } }
   const steps = r.path.length;
-  st.moves++; st.pos = r.end.slice(); st.dir = r.path[steps - 1][2];
-  const boatsFrom = st.boats, gateFrom = st.gate;
-  st.boats = r.boats; if (r.pressed) st.gate = r.gate;
-  // Show the same turn order as the engine: shark swims, a pressed switch turns the gates, then boats move.
-  // Input stays queued until every phase finishes.
+  // Bumping a crate faces the engine's final heading: a jet on the stop tile turns the shark before it meets the crate.
+  const [fx, fy] = r.stop === 'block' && st.crates ? [r.end[0] + DIRS[r.dir][0], r.end[1] + DIRS[r.dir][1]] : [-1, -1];
+  const faceDir = fx >= 0 && fy >= 0 && fx < g.w && fy < g.h && st.crates.includes(fy * g.w + fx) ? r.dir : null;
+  st.moves++; st.pos = r.end.slice(); st.dir = faceDir || r.path[steps - 1][2];
+  const boatsFrom = st.boats, gateFrom = st.gate, cratesFrom = st.crates;
+  st.boats = r.boats; if (r.pressed) st.gate = r.gate; if (st.crates) st.crates = r.crates;
+  // Show the same turn order as the engine: shark swims, the bumped crate slides, a pressed switch turns the gates,
+  // then boats move. Input stays queued until every phase finishes.
+  const crateDur = r.push && !reduceMotion ? Math.min(0.22, 0.14 + 0.02 * r.push.cells.length) : 0;
   const gateDur = r.pressed && !reduceMotion ? 0.2 : 0;
   const boatDur = !reduceMotion && !r.win && boatsFrom.some((b, k) => b[0] !== st.boats[k][0] || b[1] !== st.boats[k][1]) ? 0.16 : 0;
-  anim = { boatsFrom, gateFrom, pressed: r.pressed, gateDur, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
+  anim = { boatsFrom, gateFrom, cratesFrom, push: r.push, crateDur, bumpDir: r.stop === 'block' ? r.dir : null, faceDir, pressed: r.pressed, gateDur, boatDur, pts, dirs, p: 0, t: 0, n: pts.length - 1, steps, speed: 0, eats, jets, win: r.win, eaten: new Set(), exitFx: false, warps, warpDone: new Set(), warpScale: 1,
     dur: Math.min(0.62, 0.09 + 0.052 * steps) + (r.win ? 0.3 : 0) };
   prepareSwim(anim);
   bump = null; settle = null; pop = null;
@@ -1270,19 +1319,24 @@ function landShark(a) {
   if (a.landed || a.win) return;
   a.landed = true;
   const [x, y] = a.pts[a.steps];
-  if (a.pressed) {   // stopping on a switch presses it; the linked gates turn right after (gate phase in draw)
-    sfx.press(); sfx.gate(); haptic('medium'); ring(x, y, 0.9, 0.6);
-    g.gates.forEach(i => ring(i % g.w, Math.floor(i / g.w), 0.8, 0.45));
-  }
+  // stopping on a switch presses it; the linked gates turn right after the crate phase (gate cue in step, phase in draw)
+  if (a.pressed) { sfx.press(); haptic('medium'); ring(x, y, 0.9, 0.6); }
   if (cellAt(g, x, y) === 's') {
     settle = { t: 0, d: a.dirs[a.steps], amp: 0.35 }; ring(view.x, view.y, 0.8, 0.45); sfx.sand(); haptic('light');
     if (!reduceMotion) for (let k = 0; k < 10; k++) { const an = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2; particles.push({ kind: 'grain', x, y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp, life: 1, size: 0.03 + Math.random() * 0.03 }); }
     return;
   }
-  const d = a.dirs[a.steps], [dx, dy] = DIRS[d], index = (y + dy) * g.w + x + dx;
+  const d = a.faceDir || a.dirs[a.steps], [dx, dy] = DIRS[d], index = (y + dy) * g.w + x + dx;
   const soft = cellAt(g, x + dx, y + dy) !== '#' && st.nets.includes(index), amp = Math.min(1, a.steps / 5) * (soft ? 0.5 : 1);
   settle = { t: 0, d, amp };
   if (!reduceMotion && (soft || ['o', 'G'].includes(cellAt(g, x + dx, y + dy)))) contactPulse.set(index, { at: clock, amp });
+  // Crates use the engine's final heading (after jets and whirlpools): a pushed crate slides off in the crate phase,
+  // one that could not move reacts like a buoy.
+  if (st.crates && a.bumpDir) {
+    const [cx, cy] = DIRS[a.bumpDir], k = (y + cy) * g.w + x + cx;
+    if (a.push) { sfx.crate(a.crateDur || 0.18); haptic('light'); ring(x + cx, y + cy, 0.8, 0.45); splashAt(x + cx * 0.5, y + cy * 0.5, 5, a.bumpDir, 0.7); }
+    else if (!reduceMotion && x + cx >= 0 && y + cy >= 0 && x + cx < g.w && y + cy < g.h && st.crates.includes(k)) contactPulse.set(k, { at: clock, amp });
+  }
   ring(x + dx * 0.3, y + dy * 0.3, 0.6 + 0.5 * amp, 0.5);
   splashAt(x + dx * 0.45, y + dy * 0.45, 4 + Math.round(6 * amp), d, 0.5 + amp * 0.7);
 }
@@ -1303,6 +1357,7 @@ function undo() {
   const h = st.history.pop();
   Object.assign(st, { pos: h.pos, dir: h.dir, fish: h.fish, nets: h.nets, boats: h.boats || st.boats, moves: h.moves });
   if (h.gate === 0 || h.gate === 1) st.gate = h.gate;
+  if (h.crates) st.crates = h.crates;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
   cleared = false; hint = null; queued = null; clearPlayEffects(); pop = reduceMotion ? null : { t: 0 };
   ring(view.x, view.y, 0.8, 0.45); sfx.undo(); haptic('tick');
@@ -1317,6 +1372,8 @@ function tapTile(gx, gy) {
   if (anim || cleared) return;
   const device = cellAt(g, gx, gy);
   if (device === 'p' || device === 'G') { setTip(device === 'p' ? '스위치는 상어가 그 위에서 멈춰야 눌려요.' : '수문은 스위치로 열고 닫아요. 닫힌 수문은 벽처럼 막아요.'); return; }
+  // A crate tile parses as water, so it is refused here before any net check: a net never goes under a crate.
+  if (st.crates && st.crates.includes(gy * g.w + gx)) { setTip('나무 상자예요. 멀리서 헤엄쳐 와 치면 막힐 때까지 밀려나요.'); return; }
   if (!g.nets) { setTip(save.seenDevices?.includes('net') ? NO_NETS_TIP : '화면을 밀어서 상어를 움직여요. 방향키도 돼요.'); return; }
   const idx = gy * g.w + gx, c = cellAt(g, gx, gy);
   const hasFish = g.fish.some((f, i) => f[0] === gx && f[1] === gy && !st.fish.includes(i)) || st.boats.some(b => b[0] === idx);
@@ -1400,7 +1457,7 @@ function tickStuck() {
   stuckCheck = { st, mark, request };
   if (!st.history.length) return;
   const alive = () => stuckCheck.request === request && st === state && g === map && turnMark() === mark && !anim && !cleared && !$('gameScreen').hidden;
-  runChunked(planSearch(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, false, st.boats, st.gate, netPickup()), alive).then(p => {
+  runChunked(planSearch(g, st.pos, fishMask(), netSet(), g.nets - st.nets.length, false, st.boats, st.gate, netPickup(), st.crates), alive).then(p => {
     if (p !== null || !alive()) return;
     hintNudge.stuckMark = mark;   // no idle/over-target nudge on top of this notice while the turn stays stuck
     pulseRewardMark($('undoBtn'), 'nudge');
@@ -1464,7 +1521,7 @@ async function planHint(record) {
     if (!current()) return;
     const ns = netSet(), left = g.nets - st.nets.length;
     // undefined: cancelled; null: the complete search found no route
-    const find = needAll => runChunked(planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats, st.gate, netPickup()), current);
+    const find = needAll => runChunked(planSearch(g, st.pos, fishMask(), ns, left, needAll, st.boats, st.gate, netPickup(), st.crates), current);
     let p = await find(true), partial = false;
     if (p === null) { p = await find(false); partial = true; }
     if (!current() || p === undefined) {
@@ -2312,7 +2369,7 @@ function step(dt) {
       }
       if (prev < k - 0.5 && a.p >= k - 0.5) wake.length = 0;
     }
-    view.target = ANG[a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
+    view.target = ANG[a.faceDir && a.t >= a.dur ? a.faceDir : a.dirs[Math.min(i + 1, a.dirs.length - 1)]];
     for (const e of a.eats) if (!a.eaten.has(e.fi) && a.p >= e.k - 0.35) eatFish(e.fi);
     for (const j of a.jets) if (!j.done && a.p >= j.k - 0.25) { j.done = true; if (!reduceMotion) jetFlash.set(j.y * g.w + j.x, 1); ring(j.x, j.y, 0.8, 0.5); sfx.jet(); haptic('tick'); }
     if (a.win && !a.exitFx && a.p >= a.steps - 0.2) {
@@ -2330,11 +2387,21 @@ function step(dt) {
     }
     if (swimming && !reduceMotion && Math.random() < dt * 30) particles.push({ kind: 'bubble', x: view.x + (Math.random() - 0.5) * 0.3, y: view.y + (Math.random() - 0.5) * 0.3, vx: 0, vy: 0, life: 1 });
     if (a.t >= a.dur) landShark(a);
-    if (!a.boatSound && !a.win && a.t >= a.dur + a.gateDur) {
+    // phases after arrival: crate slide (crateDur) -> gates (gateDur) -> boats (boatDur); zero-length phases pass at once
+    const gateAt = a.dur + a.crateDur;
+    if (a.push && !a.crateStop && a.t >= gateAt) {
+      a.crateStop = true; const to = a.push.to, [dx, dy] = DIRS[a.bumpDir];
+      ring(to % g.w, Math.floor(to / g.w), 0.7, 0.4); splashAt(to % g.w + dx * 0.45, Math.floor(to / g.w) + dy * 0.45, 4, a.bumpDir, 0.5);
+    }
+    if (a.pressed && a.landed && !a.gateCue && a.t >= gateAt) {
+      a.gateCue = true; sfx.gate();
+      g.gates.forEach(i => ring(i % g.w, Math.floor(i / g.w), 0.8, 0.45));
+    }
+    if (!a.boatSound && !a.win && a.t >= gateAt + a.gateDur) {
       a.boatSound = true;
       if (a.boatsFrom.some((b, k) => b[0] !== st.boats[k][0])) sfx.boat();
     }
-    if (a.t >= a.dur + a.gateDur + a.boatDur) finishAnim();
+    if (a.t >= gateAt + a.gateDur + a.boatDur) finishAnim();
   }
   let da = view.target - view.ang; da = Math.atan2(Math.sin(da), Math.cos(da));
   view.ang = reduceMotion ? view.target : view.ang + da * (1 - Math.exp(-dt * 22));
@@ -2351,6 +2418,7 @@ function step(dt) {
   for (const [k, v] of netPop) if (clock - v >= 0.32) netPop.delete(k);
   for (const [k, v] of netRetract) if (clock - v >= 0.18) netRetract.delete(k);
   for (const [k, v] of contactPulse) if (clock - v.at >= 0.32) contactPulse.delete(k);
+  for (const [k, v] of crateWobble) if (clock - v.at >= 0.3) crateWobble.delete(k);
   for (let k = particles.length - 1; k >= 0; k--) {
     const p = particles[k];
     if (p.kind === 'fish') { p.life -= dt * 4.5; p.x += (p.toX - p.x) * Math.min(1, dt * 16); p.y += (p.toY - p.y) * Math.min(1, dt * 16); }
@@ -2406,18 +2474,29 @@ function draw(t) {
     }
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
-  // Switches and gates keep the turn-start state while the shark swims. A press turns them in the gate phase; a gate
-  // a boat held open closes as that boat leaves (boat phase). Reduced motion shows the final state on arrival.
+  // Crates stay put while the shark swims; the bumped one glides to its stop in the crate phase (reduced motion: the
+  // final state on arrival). A blocked nudge only rocks it; a stop against one that cannot move squashes it like a buoy.
+  if (st.crates) {
+    const push = anim && anim.push, k = !push ? 1 : anim.crateDur ? GLIDE(clamp01((anim.t - anim.dur) / anim.crateDur)) : anim.t >= anim.dur ? 1 : 0;
+    st.crates.forEach(i => {
+      const from = push && i === push.to ? push.from : i, rock = crateWobble.get(i), hit = contactPulse.get(i);
+      let x = from % g.w + (i % g.w - from % g.w) * k, y = Math.floor(from / g.w) + (Math.floor(i / g.w) - Math.floor(from / g.w)) * k;
+      if (rock) { const [dx, dy] = DIRS[rock.d], p = clamp01((clock - rock.at) / 0.3), e = Math.sin(p * Math.PI * 3) * (1 - p) * 0.06; x += dx * e; y += dy * e; }
+      drawCrate(ctx, x * T, y * T, T, t, hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.08 : 0);
+    });
+  }
+  // Switches and gates keep the turn-start state while the shark swims. A press turns them in the gate phase (after any
+  // crate phase); a gate a boat held open closes as that boat leaves (boat phase). Reduced motion shows the final state on arrival.
   if (g.gates.length) {
     const swimming = anim && anim.t < anim.dur, gate0 = anim ? anim.gateFrom : st.gate, boats0 = anim ? anim.boatsFrom : st.boats;
     const span = (start, len) => !anim ? 1 : len > 0 ? clamp01((anim.t - start) / len) : anim.t >= start ? 1 : 0;
-    const pressK = anim && anim.pressed ? span(anim.dur, anim.gateDur) : 1;
+    const gateAt = anim ? anim.dur + anim.crateDur : 0, pressK = anim && anim.pressed ? span(anim.dur, anim.gateDur) : 1;
     g.switches.forEach(i => drawSwitch(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, (swimming ? gate0 : st.gate) === 1, reduceMotion || pressK >= 1 ? 0 : pressK));
     g.gates.forEach(i => {
       const held0 = boats0.some(b => b[0] === i), held1 = st.boats.some(b => b[0] === i);
       const from = gateIsOpen(g, i, gate0) || held0 ? 1 : 0, to = gateIsOpen(g, i, st.gate) || held1 ? 1 : 0;
       const k = from === to ? 1 : gateIsOpen(g, i, gate0) !== gateIsOpen(g, i, st.gate) && !held0
-        ? span(anim ? anim.dur : 0, anim ? anim.gateDur : 0) : span(anim ? anim.dur + anim.gateDur : 0, anim ? anim.boatDur : 0);
+        ? span(gateAt, anim ? anim.gateDur : 0) : span(gateAt + (anim ? anim.gateDur : 0), anim ? anim.boatDur : 0);
       const eased = 1 - Math.pow(1 - k, 2), hit = contactPulse.get(i);
       drawGate(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, swimming ? from : from + (to - from) * eased, gatePassage(g, i),
         hit ? clamp01((clock - hit.at) / 0.32) : 0);
@@ -2454,7 +2533,7 @@ function draw(t) {
   }
   // Patrol boats remain on their old tile during the swim and glide only after the shark arrives.
   const BOAT_ANG = { U: 0, R: Math.PI / 2, D: Math.PI, L: -Math.PI / 2 };
-  const boatStart = anim ? anim.dur + anim.gateDur : 0;
+  const boatStart = anim ? anim.dur + anim.crateDur + anim.gateDur : 0;
   const bk = anim ? (anim.t < boatStart ? 0 : anim.boatDur ? 1 - Math.pow(1 - clamp01((anim.t - boatStart) / anim.boatDur), 2) : 1) : 1;
   st.boats.forEach((b, k) => {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
@@ -2777,7 +2856,7 @@ function renderLegend() {
     ['boat', '구조정 · 한 칸씩 오가요'], ['jet', '물줄기 · 방향이 꺾여요'],
     ['net', '그물 · 톡 눌러 치기'], ['exit', '바다 · 여기로 나가요'],
     ['sand', '모래톱 · 올라서면 멈춰요'], ['whirl', '소용돌이 · 짝으로 빨려 나가요'],
-    ['gate', '스위치·수문 · 멈추면 열고 닫아요'],
+    ['gate', '스위치·수문 · 멈추면 열고 닫아요'], ['crate', '나무 상자 · 멀리서 치면 밀려나요'],
   ];
   $('legend').innerHTML = items.map(([k, l]) => `<div><canvas data-k="${k}" width="72" height="72"></canvas><span>${l}</span></div>`).join('');
   $('legend').querySelectorAll('canvas').forEach(drawLegendIcon);
@@ -2794,6 +2873,7 @@ function drawLegendIcon(c) {
   if (k === 'sand') drawSand(x, 0, 0, S, 5);
   if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
   if (k === 'gate') { drawGate(x, 0, 0, S * 0.62, 0); drawSwitch(x, S * 0.4, S * 0.38, S * 0.6, false); }
+  if (k === 'crate') drawCrate(x, -S * 0.05, -S * 0.05, S * 1.1, 0);
 }
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
@@ -2805,6 +2885,7 @@ const DEVICE_GUIDES = [
   { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
   { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
   { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
+  { key: 'crate', name: '나무 상자', text: '멀리서 헤엄쳐 와 코로 치면 상자도 막힐 때까지 밀려나요. 바로 옆에서는 밀리지 않아요. 밀린 상자 앞에서 멈출 수 있어요.', has: g => !!g.crates?.length },
 ];
 let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
 // When the sheet opens by itself for a new device, its example loops as a short clip at natural speed under one summary
@@ -2928,6 +3009,7 @@ function drawDeviceDemo() {
     x.restore();
   }
   for (const index of sample.nets) drawNet(x, index % grid.w * size, Math.floor(index / grid.w) * size, size, false, guideTime);
+  for (const crate of sample.crates) drawCrate(x, crate.x * size, crate.y * size, size, guideTime);   // glides in its 'crate' phase
   for (const boat of sample.boats) drawBoat(x, (boat.x + .5) * size, (boat.y + .5) * size, size, guideTime, ANG[boat.dir] + Math.PI / 2, true);
   drawShark(x, (sample.pos[0] + .5) * size, (sample.pos[1] + .5) * size, ANG[sample.dir], size * Math.max(.05, sample.scale), guideTime, phase.kind === 'move');
   if (phase.kind === 'cue' || phase.kind === 'tap') {
@@ -3157,7 +3239,7 @@ if (capApp) capApp.addListener('appStateChange', ({ isActive }) => {
 
 /* ---------- boot (keeps a game in progress across live page updates) ---------- */
 function start(data) {
-  migratePilotToStory(); migrateStoryOrder();
+  migratePilotToStory(); migrateStoryOrder(); migrateStoryLength();
   refreshSkins();   // grant skins already earned by existing progress
   renderLegend(); drawLegendIcon($('netToolIcon')); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)

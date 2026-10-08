@@ -9,35 +9,37 @@
 //   node tools/difficulty.js        -> live-rule route/target table, grouped by chapter
 const E = require('../src/engine.js');
 
-// state = shark position + eaten-fish mask + patrol boats (they move after every swim)
+// state = shark position + eaten-fish mask + patrol boats (they move after every swim) + gate parity + crates.
+// Swipes run through E.turn, so switches and crate pushes follow the live rules (canals without them: as before).
 function model(g, nets) {
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const full = (1 << g.fish.length) - 1, mm = new Map(), pm = new Map(), cm = new Map();
-  const skey = (pos, mask, boats) => pos + '|' + mask + '|' + E.boatsKey(boats);
-  const moves = (pos, mask, boats) => {
-    const key = skey(pos, mask, boats); if (mm.has(key)) return mm.get(key);
+  const skey = s => s.pos + '|' + s.mask + '|' + E.boatsKey(s.boats) + '|' + s.gate + '|' + s.crates.join(',');
+  const moves = s => {
+    const key = skey(s); if (mm.has(key)) return mm.get(key);
     const out = [];
     for (const d of 'UDLR') {
-      const r = E.slide(g, pos, d, nets, boats); if (!r.path.length) continue;
-      let m = mask; for (const [x, y] of r.path) { const k = y * g.w + x; if (fishIdx.has(k)) m |= 1 << fishIdx.get(k); }
-      out.push({ pos: r.end, mask: m, win: r.win, boats: r.win ? boats : E.stepBoats(g, boats, r.end[1] * g.w + r.end[0], nets) });
+      const r = E.turn(g, s.pos, d, nets, s.boats, s.gate, s.crates, s.mask); if (!r.path.length) continue;
+      let m = s.mask; for (const [x, y] of r.path) { const k = y * g.w + x; if (fishIdx.has(k)) m |= 1 << fishIdx.get(k); }
+      out.push({ pos: r.end, mask: m, win: r.win, boats: r.boats, gate: r.gate, crates: r.crates });
     }
     mm.set(key, out); return out;
   };
+  const start = { pos: g.start, mask: 0, boats: g.boats, gate: 0, crates: g.crates || [] };
   // chance of a full (all fish) escape within `left` random moves
-  const P = (pos, mask, left, boats = g.boats) => {
-    if (left <= 0) return 0; const key = skey(pos, mask, boats) + '|' + left; if (pm.has(key)) return pm.get(key);
-    const ms = moves(pos, mask, boats); let p = 0;
-    for (const m of ms) p += (m.win ? +(m.mask === full) : P(m.pos, m.mask, left - 1, m.boats)) / ms.length;
+  const P = (s, left) => {
+    if (left <= 0) return 0; const key = skey(s) + '|' + left; if (pm.has(key)) return pm.get(key);
+    const ms = moves(s); let p = 0;
+    for (const m of ms) p += (m.win ? +(m.mask === full) : P(m, left - 1)) / ms.length;
     pm.set(key, p); return p;
   };
   // number of move sequences that finish a full escape in exactly `left` moves
-  const C = (pos, mask, left, boats = g.boats) => {
-    if (left <= 0) return 0; const key = skey(pos, mask, boats) + '|' + left; if (cm.has(key)) return cm.get(key);
-    let c = 0; for (const m of moves(pos, mask, boats)) c += m.win ? +(m.mask === full && left === 1) : C(m.pos, m.mask, left - 1, m.boats);
+  const C = (s, left) => {
+    if (left <= 0) return 0; const key = skey(s) + '|' + left; if (cm.has(key)) return cm.get(key);
+    let c = 0; for (const m of moves(s)) c += m.win ? +(m.mask === full && left === 1) : C(m, left - 1);
     cm.set(key, c); return c;
   };
-  return { P, C };
+  return { P: left => P(start, left), C: left => C(start, left) };
 }
 
 // level: { map, nets, par }. Returns { bits, sols, netOK, placements }.
@@ -45,14 +47,14 @@ function measure(level) {
   const g = E.parseLevel(level), par = level.par;
   const fishTiles = new Set(g.fish.map(f => f[1] * g.w + f[0])), here = g.start[1] * g.w + g.start[0], boatTiles = new Set(g.boats.map(b => b[0]));
   const spots = [];
-  for (let k = 0; k < g.cells.length; k++) if (g.cells[k] === '.' && k !== here && !fishTiles.has(k) && !boatTiles.has(k)) spots.push(k);
+  for (let k = 0; k < g.cells.length; k++) if (g.cells[k] === '.' && k !== here && !fishTiles.has(k) && !boatTiles.has(k) && !g.crates.includes(k)) spots.push(k);
   let configs = [[]];
   if (g.nets === 1) configs = spots.map(a => [a]);
   if (g.nets >= 2) { configs = []; for (let a = 0; a < spots.length; a++) for (let b = a + 1; b < spots.length; b++) configs.push([spots[a], spots[b]]); }
   let p = 0, sols = 0, netOK = 0;
   for (const cfg of configs) {
-    const m = model(g, new Set(cfg)), s = m.C(g.start, 0, par);
-    p += m.P(g.start, 0, par); sols += s; if (s) netOK++;
+    const m = model(g, new Set(cfg)), s = m.C(par);
+    p += m.P(par); sols += s; if (s) netOK++;
   }
   p /= configs.length;
   return { bits: p > 0 ? +(-Math.log2(p)).toFixed(1) : Infinity, sols, netOK, placements: configs.length };

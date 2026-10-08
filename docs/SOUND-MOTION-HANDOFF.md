@@ -54,7 +54,7 @@
 - **비교실:** `npm run build:sound-lab`가 `outputs/audio/`에 행동별 전후 재생, WAV, 파형 검사, 기록 격리 5분 자동 플레이를 만든다.
 - **연출:** 애니메이션 1–8을 완료했다(별·해금·도장·스킨 보상, 이동·정지·장치 반응, 메인, 시트, 성능·동작 줄이기). 실물 Android 검증은 남아 있다.
 - **외부 오디오 파일:** 0개다. 그림은 `tools/build-source.js`의 `ART` 목록으로 data URL에 내장하지만, 오디오를 내장하는 경로는 없다.
-- **장 구성:** 장마다 새 장치 하나, 6장 × 12 = 72개다(`docs/CHAPTER-RESTRUCTURE.md`).
+- **장 구성:** 장마다 새 장치 하나, 7장 × 12 = 84개다(`docs/CHAPTER-RESTRUCTURE.md`, 7장은 `docs/CHAPTER7-QUAY.md`).
 
 ## 먼저 확인할 파일
 

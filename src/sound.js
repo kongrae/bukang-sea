@@ -201,7 +201,7 @@ function createGameAudio({ enabled = () => true, active = () => true,
   // synthesized cue it replaces (first 300 ms; broadband water 1 dB under) so the tuned balance between events holds.
   // Each effect uses its recordings only when all of them decoded; otherwise the synthesized cue plays unchanged.
   const lv = { bump: -34, drop: -32, note: -34, bell: -34, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
-    pressNote: -40, creak: -41, gateWater: -46, boat: -47, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
+    pressNote: -40, creak: -41, gateWater: -46, boat: -47, crateKnock: -36, crateWater: -43, crateCreak: -45, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
     unlock: -31, unlockBell: -36, chapter: -31, chapterBell: -36, chapterWater: -44, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
   const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'], DROPS = ['waterDrop', 'waterDrop2'];
   const CHAIN = ['A4', 'B4', 'C#5', 'E5', 'F#5', 'A5'];
@@ -256,6 +256,16 @@ function createGameAudio({ enabled = () => true, active = () => true,
         sample(v, 'woodCreak', { lvl: lv.creak, dur: .3, delay: .045, fade: .1 });
         sample(v, 'waterSwish', { lvl: lv.gateWater, dur: .3, delay: .095, fade: .12, rate: .9 });
       } else { wash(v, .24, .2, 680, 320, .045); drop(v, 160, .17, .07, .05, 195, true); }
+    }),
+    // An empty wooden crate nudged by the shark's nose: a soft knock, water along its slide, then a quiet creak where it
+    // comes to rest `slide` seconds later (the crate phase; clamped so a long or missing value stays a short cue).
+    crate: effect('crate', 'device', 1, .16, (v, slide = .18) => {
+      const rest = Math.max(.08, Math.min(.4, Number.isFinite(slide) ? slide : .18));
+      if (ready('softImpact2', 'waterSwish', 'woodCreak')) {
+        sample(v, 'softImpact2', { lvl: lv.crateKnock, dur: .14, rate: .82 * wobble() });
+        sample(v, 'waterSwish', { lvl: lv.crateWater, dur: .3, delay: .02, fade: .12, rate: 1.05 });
+        sample(v, 'woodCreak', { lvl: lv.crateCreak, dur: .24, delay: rest, fade: .1, rate: 1.1 });
+      } else { drop(v, 190, .1, .12, 0, 150, true); wash(v, .2, .15, 600, 280, .02); drop(v, 150, .12, .05, rest, 130, true); }
     }),
     boat: effect('boat', 'device', 0, .38, v => {
       if (ready('waterSwish')) sample(v, 'waterSwish', { lvl: lv.boat, dur: .3, fade: .12, rate: .85 * wobble() });

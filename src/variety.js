@@ -1,5 +1,5 @@
 /* Authored spatial families, shared quality checks, and bounded v2 generation. */
-const VE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, DIRS, cellAt };
+const VE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel, slide, stepBoats, turn, DIRS, cellAt };
 function canalMask(w, h, rooms, start, exit, walls = []) {
   const cells = Array.from({ length: h }, () => Array(w).fill('#'));
   for (const [x0,y0,x1,y1] of rooms) for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) cells[y][x]='.';
@@ -66,15 +66,18 @@ function varietyLayoutKey(level) {
   }
   return `${level.nets||0}:${keys.sort()[0]}`;
 }
+// Replays with the live turn() (gates, crate pushes, then boats); boards without switches/crates replay exactly as before.
 function varietyRouteUse(g, full) {
-  let pos=g.start,boats=g.boats; const used=new Set(); let previous='[]', edits=0;
+  let pos=g.start,boats=g.boats,gate=0,crates=g.crates||[],mask=0; const used=new Set(); let previous='[]', edits=0;
+  const fishIdx=new Map(g.fish.map((f,i)=>[f[1]*g.w+f[0],i]));
   for(const step of full.steps) {
     const placed=new Set(step.nets),key=JSON.stringify(step.nets.slice().sort((a,b)=>a-b));
     if(key!==previous){edits++;previous=key;}
-    const r=VE.slide(g,pos,step.dir,placed,boats);
-    for(const [x,y] of r.path){const c=VE.cellAt(g,x,y);if('^v<>'.includes(c))used.add('jet');if(c==='s')used.add('sand');if(c==='w')used.add('warp');}
+    const r=VE.turn(g,pos,step.dir,placed,boats,gate,crates,mask);
+    for(const [x,y] of r.path){const c=VE.cellAt(g,x,y),fi=fishIdx.get(y*g.w+x);if(fi!=null)mask|=1<<fi;if('^v<>'.includes(c))used.add('jet');if(c==='s')used.add('sand');if(c==='w')used.add('warp');}
     const last=r.path.at(-1);if(last){const [dx,dy]=VE.DIRS[last[2]],next=(r.end[1]+dy)*g.w+r.end[0]+dx;if(boats.some(b=>b[0]===next))used.add('boat');}
-    pos=r.end;if(!r.win)boats=VE.stepBoats(g,boats,pos[1]*g.w+pos[0],placed);
+    if(r.push)used.add('crate');
+    pos=r.end;boats=r.boats;gate=r.gate;crates=r.crates;
   }
   if(full.steps.some(s=>s.nets.length))used.add('net');return {used,edits};
 }

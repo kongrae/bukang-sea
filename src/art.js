@@ -109,4 +109,5 @@ const REGION_ART = {
   'harbor-canals': '@@ART_REGION_HARBOR_CANALS@@', 'waterside-park': '@@ART_REGION_WATERSIDE_PARK@@',
   'beyond-breakwater': '@@ART_REGION_BEYOND_BREAKWATER@@', 'outer-harbor': '@@ART_REGION_OUTER_HARBOR@@',
   'north-harbor': '@@ART_REGION_NORTH@@', 'sluice-works': '@@ART_REGION_SLUICE@@',
+  'yeongdo-quay': '@@ART_REGION_YEONGDO_QUAY@@',
 };
