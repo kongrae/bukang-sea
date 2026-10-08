@@ -7780,6 +7780,9 @@ const DEVICE_GUIDES = [
   { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
 ];
 let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
+// A new device's example plays once at reading pace when the sheet opens by itself (2026-10-08), then rests on its summary.
+// Opening the guide from settings, or with reduced motion, waits for the reader as before.
+let guideAutoplay = false;
 const guideOpen = () => !$('guideOverlay').hidden;
 function showDeviceGuide(firstOnly = false, requestedKey = null) {
   if (firstOnly && g && !$('gameScreen').hidden) introduceLightDevices();
@@ -7787,6 +7790,7 @@ function showDeviceGuide(firstOnly = false, requestedKey = null) {
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
   guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
+  guideAutoplay = firstOnly && !reduceMotion;
   guideReturnFocus = requestedKey === 'net' ? 'netTool' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
   $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
   openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
@@ -7794,7 +7798,7 @@ function showDeviceGuide(firstOnly = false, requestedKey = null) {
 function renderGuideDevice() {
   const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
   if (key !== 'move') guideViewed.add(key);
-  guideDemo = createDeviceDemo(key); guideTime = 0; guidePlaying = false; guidePaintTime = -1;
+  guideDemo = createDeviceDemo(key); guideTime = 0; guidePlaying = guideAutoplay && !!guideDemo; guidePaintTime = -1;
   $('guideName').textContent = device.name;
   $('guideCounter').textContent = `${guideIndex + 1} / ${guideKeys.length}`;
   $('guideItems').innerHTML = `<p>${device.text}</p>`;

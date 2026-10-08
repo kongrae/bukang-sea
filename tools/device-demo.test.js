@@ -79,10 +79,13 @@ function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={})
       state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted,tips,spots};
   `)(E,D,reduced,seen,level,title);
 }
-test('first encounter waits for the reader; optional playback and closing are isolated from gameplay records', () => {
-  const scene=guide();scene.show(true);assert.equal(scene.state().playing,false);
-  scene.step(20);assert.equal(scene.state().time,0);scene.toggle();
+test('first encounter plays the example once at reading pace; reduced motion and settings wait for the reader; closing is isolated from gameplay records', () => {
+  const still=guide({reduced:true});still.show(true);assert.equal(still.state().playing,false);still.step(20);assert.equal(still.state().time,0);
+  const manual=guide({title:true});manual.show();assert.equal(manual.state().playing,false,'the settings guide waits');
+  const scene=guide();scene.show(true);assert.equal(scene.state().playing,true,'a new device plays by itself');
   scene.step(.4);assert.equal(scene.state().time,.4);scene.toggle();scene.step(.4);assert.equal(scene.state().time,.4);
+  const {demo}=scene.state();scene.toggle();scene.step(demo.duration+5);
+  assert.equal(scene.state().time,demo.duration);assert.equal(scene.state().playing,false,'it plays once and rests on the summary');
   scene.replay();assert.equal(scene.state().time,0);assert.equal(scene.state().playing,true);
   assert.deepEqual(scene.state().seen,[]);scene.close();assert.deepEqual(scene.state().seen,['boat']);assert.equal(scene.state().demo,null);
   const saved=JSON.parse(scene.saved());assert.deepEqual(saved.best,{0:3});assert.deepEqual(saved.sessions,{story:{moves:4}});assert.deepEqual(saved.hintUsage,{'story:0':{count:2}});
