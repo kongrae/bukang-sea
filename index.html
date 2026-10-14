@@ -6047,8 +6047,58 @@ function drawBuoy(ctx, cx, cy, T, t) {
   ctx.strokeStyle = '#ac481e'; ctx.lineWidth = Math.max(1, T * .025);
   ctx.beginPath(); ctx.arc(0, 0, r * .43, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
 }
+// Small convex solids in tile units. Only their footprint rotates; height always rises toward screen-up.
+// Clockwise footprints expose their south-facing edges to the existing .78 camera, with one shared light direction.
+function devicePolygon(ctx, points, fill, edge = null, width = .018) {
+  ctx.beginPath(); points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = width; ctx.stroke(); }
+}
+function deviceRotate(points, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return points.map(([x, y]) => [x * c - y * s, x * s + y * c]);
+}
+function devicePrism(ctx, points, base, height, palette) {
+  const bottom = points.map(([x, y]) => [x, y - base]), top = points.map(([x, y]) => [x, y - base - height]);
+  points.forEach((a, i) => {
+    const j = (i + 1) % points.length, b = points[j];
+    if (b[0] >= a[0] - .0001) return;
+    const face = ctx.createLinearGradient(0, Math.min(top[i][1], top[j][1]), 0, Math.max(bottom[i][1], bottom[j][1]));
+    face.addColorStop(0, palette.side); face.addColorStop(1, palette.front);
+    devicePolygon(ctx, [bottom[i], bottom[j], top[j], top[i]], face, palette.edge);
+  });
+  const cap = ctx.createLinearGradient(top[0][0], top[0][1], top[2][0], top[2][1]);
+  cap.addColorStop(0, palette.top); cap.addColorStop(1, palette.shade || palette.top);
+  devicePolygon(ctx, top, cap, palette.edge);
+}
+function drawObliqueBoat(ctx, cx, cy, T, t, ang, arrow) {
+  const angle = ang + (reduceMotion ? 0 : Math.sin(t * 1.6 + cx) * .035);
+  const rotate = points => deviceRotate(points, angle), atHeight = (points, z) => rotate(points).map(([x, y]) => [x, y - z]);
+  const hull = rotate([[0, -.41], [.15, -.28], [.22, -.08], [.21, .27], [.15, .36], [-.15, .36], [-.21, .27], [-.22, -.08], [-.15, -.28]]);
+  const cabin = rotate([[-.13, -.15], [.13, -.15], [.13, .15], [-.13, .15]]);
+  const deck = .12 + (reduceMotion ? 0 : Math.sin(t * 2 + cx) * .012);
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(T, T); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.save(); ctx.rotate(angle); ctx.fillStyle = '#164d6540'; ctx.beginPath(); ctx.ellipse(.025, .055, .26, .42, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  devicePolygon(ctx, hull, null, '#e5fffc9e', .035);
+  devicePrism(ctx, hull, 0, deck, {top:'#fff9e8',shade:'#dce9e4',front:'#83a9b8',side:'#dce9e6',edge:'#346779'});
+  // The orange rescue stripe stays on the deck, distinct from the round orange buoys.
+  devicePolygon(ctx, atHeight([[-.205,.17],[.205,.17],[.20,.26],[-.20,.26]], deck + .005), '#ee7e32');
+  devicePolygon(ctx, atHeight([[-.075,-.25],[0,-.34],[.075,-.25]], deck + .006), '#c1dce1');
+  devicePrism(ctx, cabin, deck, .16, {top:'#e4f6f4',front:'#24647c',side:'#408aa1',edge:'#285d73'});
+  // Glazed cabin sides and a pale roof make the height legible in all four headings.
+  devicePolygon(ctx, atHeight([[-.10,-.12],[.10,-.12],[.10,.12],[-.10,.12]], deck + .166), '#fffdf0');
+  const beacon = atHeight([[0,.015]], deck + .18)[0];
+  ctx.fillStyle = '#f99540'; ctx.beginPath(); ctx.ellipse(beacon[0], beacon[1], .042, .032, 0, 0, Math.PI * 2); ctx.fill();
+  if (arrow) {
+    const points = rotate([[-.085,-.49],[0,-.56],[.085,-.49]]);
+    ctx.strokeStyle = '#f2fffb'; ctx.lineWidth = .035;
+    ctx.beginPath(); points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.stroke();
+  }
+  ctx.restore();
+}
 // ang: heading (0 = bow up); arrow: show a small chevron ahead of the bow (where it goes next)
-function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false) {
+function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false, raised = false) {
+  if (raised) { drawObliqueBoat(ctx, cx, cy, T, t, ang, arrow); return; }
   const L = T * 0.44, W = T * 0.23;
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang + Math.sin(t * 1.6 + cx) * 0.05);
   if (arrow) {
@@ -6200,7 +6250,37 @@ function drawWhirl(ctx, cx, cy, T, t, flash = 0) {
 // 'H' rotates the drawing only (collision is the whole tile either way). A closed gate never renders as an open channel.
 // Device pixels of one tile for the cached SVG rasters (the canvas transform carries the display scale).
 const tilePixels = (ctx, T) => { const m = ctx.getTransform && ctx.getTransform(); return Math.max(8, Math.round(T * (m && m.a ? Math.hypot(m.a, m.b) : 1))); };
-function drawGate(ctx, x, y, T, open, axis = 'V', pulse = 0) {
+function drawObliqueGate(ctx, x, y, T, open, axis, pulse) {
+  const shut = 1 - clamp01(open), angle = axis === 'H' ? Math.PI / 2 : 0;
+  const rect = (left, top, right, bottom) => deviceRotate([[left,top],[right,top],[right,bottom],[left,bottom]], angle);
+  const pier = (left,right) => deviceRotate([[left+.025,-.23],[right-.025,-.23],[right,-.205],[right,.205],[right-.025,.23],[left+.025,.23],[left,.205],[left,-.205]],angle);
+  const stone = {top:'#f3fcf9',shade:'#c8e2e3',front:'#6e99a9',side:'#b5d4d7',edge:'#356c7c'};
+  const orange = {top:'#ffca80',shade:'#ee9d48',front:'#bd612e',side:'#f5ad60',edge:'#875028'};
+  // Below .25 so the nearer pier never covers the centre of an open horizontal passage.
+  const parts = [{points:pier(-.44,-.25),height:.20,paint:stone,pier:true}, {points:pier(.25,.44),height:.20,paint:stone,pier:true}];
+  // Each half retracts into its own pier. At fully open there is no rail or shadow spanning the passage.
+  if (shut > 0) {
+    parts.push({points:rect(-.25,-.085,-.25 + .25 * shut,.085),height:.17,paint:orange});
+    parts.push({points:rect(.25 - .25 * shut,-.085,.25,.085),height:.17,paint:orange});
+  }
+  const centre = (part,axis) => part.points.reduce((sum,p)=>sum+p[axis],0)/part.points.length;
+  parts.sort((a,b)=>centre(a,1)-centre(b,1));
+  ctx.save(); ctx.translate(x + T / 2, y + T / 2); ctx.scale(T,T); ctx.lineJoin = 'round';
+  if(pulse)ctx.translate(Math.sin(pulse * Math.PI * 3) * .025,0);
+  for(const part of parts) {
+    if(part.pier)devicePolygon(ctx, part.points.map(([px,py])=>[px+.02,py+.045]), '#10465c33');
+    devicePrism(ctx, part.points, 0, part.height, part.paint);
+    if(part.pier) {
+      const cx=centre(part,0),cy=centre(part,1);
+      ctx.fillStyle='#517e8e';ctx.beginPath();ctx.ellipse(cx,cy-part.height,.034,.027,0,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // Closed: a pale latch across the meeting point. Open: the full water gap itself conveys the state.
+  if(shut > .98)devicePolygon(ctx, rect(-.07,-.025,.07,.025).map(([px,py])=>[px,py-.177]), '#fff3d8');
+  ctx.restore();
+}
+function drawGate(ctx, x, y, T, open, axis = 'V', pulse = 0, raised = false) {
+  if (raised) { drawObliqueGate(ctx, x, y, T, open, axis, pulse); return; }
   const art = typeof BOARD_ART !== 'undefined' ? BOARD_ART : null, px = tilePixels(ctx, T);
   const openImg = art && art.get('gateOpen', px), closedImg = art && art.get('gateClosed', px), shut = 1 - clamp01(open), h = T / 2;
   ctx.save(); ctx.translate(x + h, y + h); if (axis === 'H') ctx.rotate(Math.PI / 2);
@@ -6248,7 +6328,30 @@ function drawSwitch(ctx, x, y, T, on, press = 0) {
 // open floor with plank seams, and a white band where it sits in the water. Square, brown and plank-lined so it never
 // reads as the round orange buoy or the grey promenade; the gentle bob says it floats (none in reduced motion).
 // pulse: a short squash when the shark stops against it.
-function drawCrate(ctx, x, y, T, t, pulse = 0) {
+function drawObliqueCrate(ctx, x, y, T, t, pulse) {
+  const half = .32 * (1 + pulse), lift = .19, bevel = .045;
+  const footprint = [[-half+bevel,-half],[half-bevel,-half],[half,-half+bevel],[half,half-bevel],[half-bevel,half],[-half+bevel,half],[-half,half-bevel],[-half,-half+bevel]];
+  const bob = reduceMotion ? 0 : Math.sin(t * 2.2 + (x+y+T)*.05) * .015;
+  ctx.save(); ctx.translate(x+T/2,y+T/2);ctx.scale(T,T);ctx.lineJoin='round';
+  devicePolygon(ctx, footprint.map(([a,b])=>[a*1.13,b*1.13]), null, '#e0ffedaa', .032);
+  devicePolygon(ctx, footprint.map(([a,b])=>[a+.035,b+.055]), '#164d653d');
+  ctx.translate(0,bob);
+  devicePrism(ctx, footprint, 0, lift, {top:'#f3c68a',shade:'#daa25f',front:'#8f542d',side:'#d49b59',edge:'#684322'});
+  // An open, empty box: dark inner walls, a recessed wooden floor and a bright thick rim.
+  const inside = half - .075;
+  ctx.fillStyle='#66401f';ctx.fillRect(-inside,-inside-lift,inside*2,inside*2);
+  ctx.fillStyle='#b57a43';ctx.fillRect(-inside+.025,-inside-lift+.075,inside*2-.05,inside*2-.10);
+  ctx.strokeStyle='#805128';ctx.lineWidth=.018;ctx.beginPath();
+  for(const k of [-1/3,1/3]){const row=k*inside-lift+.045;ctx.moveTo(-inside+.025,row);ctx.lineTo(inside-.025,row);}ctx.stroke();
+  ctx.strokeStyle='#fce2ac';ctx.lineWidth=.025;
+  ctx.beginPath();ctx.moveTo(-half+bevel,-half-lift+.015);ctx.lineTo(half-bevel,-half-lift+.015);ctx.stroke();
+  // Two broad front boards reinforce a square wooden silhouette at small tile sizes.
+  ctx.strokeStyle='#744522';ctx.lineWidth=.018;ctx.beginPath();ctx.moveTo(-half+bevel,half-lift*.5);ctx.lineTo(half-bevel,half-lift*.5);ctx.stroke();
+  ctx.fillStyle='#e6be85';for(const px of [-half+.075,half-.075]){ctx.beginPath();ctx.arc(px,half-lift*.5,.018,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}
+function drawCrate(ctx, x, y, T, t, pulse = 0, raised = false) {
+  if (raised) { drawObliqueCrate(ctx, x, y, T, t, pulse); return; }
   const s = T * 0.7 * (1 + pulse), h = s / 2, rim = s * 0.17, cx = x + T / 2, cy = y + T / 2;
   const bob = reduceMotion ? 0 : Math.sin(t * 2.2 + cx * 0.05 + cy * 0.03) * Math.min(2, T * 0.04);
   const box = (k, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-k, -k, k * 2, k * 2, r); else ctx.rect(-k, -k, k * 2, k * 2); };
@@ -8024,7 +8127,7 @@ function draw(t) {
       const from = push && i === push.to ? push.from : i, rock = crateWobble.get(i), hit = contactPulse.get(i);
       let x = from % g.w + (i % g.w - from % g.w) * k, y = Math.floor(from / g.w) + (Math.floor(i / g.w) - Math.floor(from / g.w)) * k;
       if (rock) { const [dx, dy] = DIRS[rock.d], p = clamp01((clock - rock.at) / 0.3), e = Math.sin(p * Math.PI * 3) * (1 - p) * 0.06; x += dx * e; y += dy * e; }
-      drawCrate(ctx, x * T, y * T, T, t, hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.08 : 0);
+      drawCrate(ctx, x * T, y * T, T, t, hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.08 : 0, q !== 1);
     });
   }
   // Switches and gates keep the turn-start state while the shark swims. A press turns them in the gate phase (after any
@@ -8041,7 +8144,7 @@ function draw(t) {
         ? span(gateAt, anim ? anim.gateDur : 0) : span(gateAt + (anim ? anim.gateDur : 0), anim ? anim.boatDur : 0);
       const eased = 1 - Math.pow(1 - k, 2), hit = contactPulse.get(i);
       drawGate(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, swimming ? from : from + (to - from) * eased, gatePassage(g, i),
-        hit ? clamp01((clock - hit.at) / 0.32) : 0);
+        hit ? clamp01((clock - hit.at) / 0.32) : 0, q !== 1);
     });
   }
   // new-device spotlight: three pulses of a gold ring with a soft glow (the coach/hint look-here colour), fading out
@@ -8081,7 +8184,7 @@ function draw(t) {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
     const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
     const heading = anim && anim.t < boatStart ? anim.boatsFrom[k][1] : b[1];
-    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim);
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim, q !== 1);
   });
   for (const [i, at] of netRetract) {
     const k = clamp01((clock - at) / 0.18);
