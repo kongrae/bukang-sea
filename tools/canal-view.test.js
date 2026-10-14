@@ -25,12 +25,12 @@ test('camera covers every playable mode and restored map while staying disabled 
   c.scope('empty'); assert.equal(c.projection(),1); assert.equal(c.elements.canalViewToggle.hidden,true);
   c.set('oblique'); assert.equal(c.writes.length,0);
   for (const [mode,index,legacy] of [['daily',0,false],['free',0,false],['pilot',0,false],['story',0,true],['story',59,true]]) {
-    c.scope(mode,index,legacy); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);
+    c.scope(mode,index,legacy); assert.equal(c.projection(),.88); assert.equal(c.elements.canalViewToggle.hidden,false);
     c.set('top'); assert.equal(c.projection(),1);
-    c.set('oblique'); assert.equal(c.projection(),.78);
+    c.set('oblique'); assert.equal(c.projection(),.88);
   }
   for (let index=0;index<84;index++) {
-    c.scope('story',index); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);
+    c.scope('story',index); assert.equal(c.projection(),.88); assert.equal(c.elements.canalViewToggle.hidden,false);
   }
 });
 test('camera preference uses its own storage and the inverse screen mapping matches both projections', () => {
@@ -43,7 +43,7 @@ test('camera preference uses its own storage and the inverse screen mapping matc
   assert(c.writes.every(([key])=>key==='bukang-first-canal-view-v1'));
   const count=c.paints();c.set('invalid');assert.equal(c.paints(),count);
   assert.equal(camera({stored:'top'}).projection(),1);
-  assert.equal(camera({stored:'corrupt'}).projection(),.78);
+  assert.equal(camera({stored:'corrupt'}).projection(),.88);
   const failed=camera({fail:true});failed.set('top');assert.equal(failed.projection(),1);
 });
 test('directional art is lazy, reused, and unsupported or failed skins keep their original fallback', () => {

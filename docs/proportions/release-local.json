@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:5182/www/",
+  "browser": "Edge mobile emulation",
+  "physicalAndroid": false,
+  "seededProgress": true,
+  "checks": [
+    "Canal 72: real picker, both cameras at the same position, exact saved bytes, reload/resume and undo",
+    "Canal 84: real picker, both cameras at the same position, exact saved bytes, reload/resume and undo",
+    "Dense 12-row canal: 320/360/390/430 widths and 200% root text retain board and 44px camera controls",
+    "Rapid camera changes leave save untouched; unchanged release service worker resumes the dense canal offline",
+    "daily 1: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume",
+    "daily 2: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume",
+    "daily 3: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume",
+    "free 1: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume",
+    "free 2: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume",
+    "free 3: actual menu entry, both cameras, separate session and saved camera choice survive reload and offline resume"
+  ],
+  "errors": [],
+  "success": true
+}

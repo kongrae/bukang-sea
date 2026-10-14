@@ -83,7 +83,7 @@ async function run() {
           for(const camera of ['top','oblique']) {
             await page.locator(`[data-canal-view=${camera}]`).dispatchEvent('click');
             assert.equal(await page.evaluate(()=>boardQA.saved()),before);
-            assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.78);
+            assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.88);
             if([9,36,47,59,83].includes(index)) {
               await page.waitForTimeout(120);
               await page.screenshot({path:path.join(out,`canal-${STORY_POSITION[index]+1}-${camera}.png`)});
@@ -180,7 +180,7 @@ async function checkModes(page,name){
       const saved=await page.evaluate(()=>boardQA.saved());
       for(const camera of ['top','oblique']){
         await page.locator(`[data-canal-view=${camera}]`).dispatchEvent('click');
-        assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.78,run.label);
+        assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.88,run.label);
         assert.equal(await page.evaluate(()=>boardQA.saved()),saved,run.label);
       }
       if(['daily-v4-2','free-v4-2','legacy-story-0','pilot-11'].includes(run.label))await page.screenshot({path:path.join(out,run.label+'.png')});
