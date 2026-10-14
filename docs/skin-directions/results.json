@@ -1,0 +1,12 @@
+{
+  "url": "http://localhost:5182/www/",
+  "browser": "Edge mobile emulation",
+  "physicalAndroid": false,
+  "checks": [
+    "All 9 skins render 4 authored directions at 48px and 32px without clipping; comparison uses the real before/after renderer",
+    "All 9 skins selected through the actual collection UI draw their oblique image in the playable board and device examples; examples preserve the active session",
+    "Skinned gameplay preserves movement, top-view switch, reload, offline oblique rendering and undo"
+  ],
+  "errors": [],
+  "success": true
+}

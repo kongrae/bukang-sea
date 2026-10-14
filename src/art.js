@@ -30,10 +30,17 @@ const SHARK_ART = (() => {
     coral: { portrait: '@@ART_SKIN_CORAL_PORTRAIT@@', swim: '@@ART_SKIN_CORAL_SWIM@@' },
     starsea: { portrait: '@@ART_SKIN_STARSEA_PORTRAIT@@', swim: '@@ART_SKIN_STARSEA_SWIM@@' },
   };
-  // Optional directional art for the first-canal camera comparison; decode only when that camera is used.
+  // Every skin has four authored views; decode only the selected skin when the oblique camera is used.
   const oblique = {
     basic: { R: '@@ART_OBLIQUE_BASIC_R@@', L: '@@ART_OBLIQUE_BASIC_L@@', D: '@@ART_OBLIQUE_BASIC_D@@', U: '@@ART_OBLIQUE_BASIC_U@@' },
+    sakura: { R: '@@ART_OBLIQUE_SAKURA_R@@', L: '@@ART_OBLIQUE_SAKURA_L@@', D: '@@ART_OBLIQUE_SAKURA_D@@', U: '@@ART_OBLIQUE_SAKURA_U@@' },
+    wave: { R: '@@ART_OBLIQUE_WAVE_R@@', L: '@@ART_OBLIQUE_WAVE_L@@', D: '@@ART_OBLIQUE_WAVE_D@@', U: '@@ART_OBLIQUE_WAVE_U@@' },
+    maple: { R: '@@ART_OBLIQUE_MAPLE_R@@', L: '@@ART_OBLIQUE_MAPLE_L@@', D: '@@ART_OBLIQUE_MAPLE_D@@', U: '@@ART_OBLIQUE_MAPLE_U@@' },
+    snow: { R: '@@ART_OBLIQUE_SNOW_R@@', L: '@@ART_OBLIQUE_SNOW_L@@', D: '@@ART_OBLIQUE_SNOW_D@@', U: '@@ART_OBLIQUE_SNOW_U@@' },
+    gold: { R: '@@ART_OBLIQUE_GOLD_R@@', L: '@@ART_OBLIQUE_GOLD_L@@', D: '@@ART_OBLIQUE_GOLD_D@@', U: '@@ART_OBLIQUE_GOLD_U@@' },
     lighthouse: { R: '@@ART_OBLIQUE_LIGHTHOUSE_R@@', L: '@@ART_OBLIQUE_LIGHTHOUSE_L@@', D: '@@ART_OBLIQUE_LIGHTHOUSE_D@@', U: '@@ART_OBLIQUE_LIGHTHOUSE_U@@' },
+    coral: { R: '@@ART_OBLIQUE_CORAL_R@@', L: '@@ART_OBLIQUE_CORAL_L@@', D: '@@ART_OBLIQUE_CORAL_D@@', U: '@@ART_OBLIQUE_CORAL_U@@' },
+    starsea: { R: '@@ART_OBLIQUE_STARSEA_R@@', L: '@@ART_OBLIQUE_STARSEA_L@@', D: '@@ART_OBLIQUE_STARSEA_D@@', U: '@@ART_OBLIQUE_STARSEA_U@@' },
   };
   for (const [id, views] of Object.entries(oblique)) {
     skinUrls[id] = { ...skinUrls[id], ...Object.fromEntries(Object.entries(views).map(([dir, src]) => ['oblique' + dir, src])) };

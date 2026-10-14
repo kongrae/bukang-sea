@@ -79,7 +79,7 @@ const pass = text => { results.checks.push(text); console.log('PASS', text); };
       const before=await p.evaluate(()=>localStorage.getItem('bukang-sea-v1'));
       await p.locator('[data-canal-view=top]').click();await p.locator('[data-canal-view=oblique]').click();
       assert.equal(await p.evaluate(()=>localStorage.getItem('bukang-sea-v1')),before);
-      assert.equal(await p.locator('#canalViewNote').isVisible(),skin==='coral');
+      assert.equal(await p.locator('#canalViewNote').count(),0);
       await p.screenshot({path:path.join(out,skin+'.png')});await c.close();
     }
     pass('equipped lighthouse and unsupported coral remain equipped; camera comparison does not grant or change skins');

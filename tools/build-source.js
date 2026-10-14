@@ -6,7 +6,7 @@ const root = path.join(__dirname, '..');
 const ART = [
   ['LAUNCH', 'art/shark-hero.webp'],
   ...['hero', 'portrait', 'swim'].map(name => [name.toUpperCase(), `art/shark-${name}.webp`]),
-  ...['basic', 'lighthouse'].flatMap(id => ['R', 'L', 'D', 'U'].map(dir =>
+  ...['basic', 'sakura', 'wave', 'maple', 'snow', 'gold', 'lighthouse', 'coral', 'starsea'].flatMap(id => ['R', 'L', 'D', 'U'].map(dir =>
     [`OBLIQUE_${id.toUpperCase()}_${dir}`, `art/oblique-v1/${id}-${dir}.webp`])),
   ...['challenge', 'free', 'map', 'journal', 'settings'].map(name => [`UI_${name.toUpperCase()}`, `art/ui-v1/${name}.webp`]),
   ...['sakura', 'wave', 'maple', 'snow', 'gold', 'lighthouse', 'coral', 'starsea'].flatMap(id =>

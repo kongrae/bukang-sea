@@ -23,6 +23,126 @@
     "width": 406,
     "height": 442
   },
+  "sakura-R.webp": {
+    "left": 30,
+    "top": 147,
+    "width": 594,
+    "height": 396
+  },
+  "sakura-L.webp": {
+    "left": 633,
+    "top": 147,
+    "width": 591,
+    "height": 396
+  },
+  "sakura-D.webp": {
+    "left": 98,
+    "top": 657,
+    "width": 482,
+    "height": 438
+  },
+  "sakura-U.webp": {
+    "left": 723,
+    "top": 708,
+    "width": 405,
+    "height": 448
+  },
+  "wave-R.webp": {
+    "left": 30,
+    "top": 157,
+    "width": 599,
+    "height": 389
+  },
+  "wave-L.webp": {
+    "left": 627,
+    "top": 153,
+    "width": 600,
+    "height": 393
+  },
+  "wave-D.webp": {
+    "left": 89,
+    "top": 679,
+    "width": 499,
+    "height": 440
+  },
+  "wave-U.webp": {
+    "left": 710,
+    "top": 720,
+    "width": 433,
+    "height": 442
+  },
+  "maple-R.webp": {
+    "left": 23,
+    "top": 140,
+    "width": 599,
+    "height": 391
+  },
+  "maple-L.webp": {
+    "left": 634,
+    "top": 138,
+    "width": 599,
+    "height": 393
+  },
+  "maple-D.webp": {
+    "left": 84,
+    "top": 651,
+    "width": 498,
+    "height": 444
+  },
+  "maple-U.webp": {
+    "left": 699,
+    "top": 702,
+    "width": 447,
+    "height": 471
+  },
+  "snow-R.webp": {
+    "left": 24,
+    "top": 142,
+    "width": 597,
+    "height": 389
+  },
+  "snow-L.webp": {
+    "left": 633,
+    "top": 142,
+    "width": 597,
+    "height": 389
+  },
+  "snow-D.webp": {
+    "left": 98,
+    "top": 655,
+    "width": 478,
+    "height": 437
+  },
+  "snow-U.webp": {
+    "left": 713,
+    "top": 712,
+    "width": 411,
+    "height": 449
+  },
+  "gold-R.webp": {
+    "left": 27,
+    "top": 142,
+    "width": 592,
+    "height": 410
+  },
+  "gold-L.webp": {
+    "left": 638,
+    "top": 144,
+    "width": 595,
+    "height": 402
+  },
+  "gold-D.webp": {
+    "left": 91,
+    "top": 658,
+    "width": 491,
+    "height": 438
+  },
+  "gold-U.webp": {
+    "left": 708,
+    "top": 667,
+    "width": 436,
+    "height": 495
+  },
   "lighthouse-R.webp": {
     "left": 41,
     "top": 168,
@@ -46,5 +166,53 @@
     "top": 665,
     "width": 391,
     "height": 489
+  },
+  "coral-R.webp": {
+    "left": 30,
+    "top": 146,
+    "width": 594,
+    "height": 386
+  },
+  "coral-L.webp": {
+    "left": 635,
+    "top": 146,
+    "width": 590,
+    "height": 386
+  },
+  "coral-D.webp": {
+    "left": 91,
+    "top": 659,
+    "width": 512,
+    "height": 446
+  },
+  "coral-U.webp": {
+    "left": 695,
+    "top": 707,
+    "width": 437,
+    "height": 456
+  },
+  "starsea-R.webp": {
+    "left": 29,
+    "top": 146,
+    "width": 600,
+    "height": 383
+  },
+  "starsea-L.webp": {
+    "left": 627,
+    "top": 146,
+    "width": 600,
+    "height": 382
+  },
+  "starsea-D.webp": {
+    "left": 91,
+    "top": 649,
+    "width": 488,
+    "height": 443
+  },
+  "starsea-U.webp": {
+    "left": 703,
+    "top": 682,
+    "width": 439,
+    "height": 479
   }
 }

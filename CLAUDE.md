@@ -41,6 +41,8 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 
 ## 구조
 
+2026-10-14 전체 스킨 입체화: 기본/항해사만 있던 방향별 아트를 **9종 × 4방향**으로 완성했다. `assets/art/oblique-v1/`의 추가 7개 원본과 WebP 28개를 `art.js`/`build-source.js`에 연결했다. 선택된 스킨 네 방향만 디코딩하며 실제 게임·장치 예시가 함께 사용한다. 기존 탑뷰/선택 그림, 해금/개발 빌드/저장 규칙은 유지한다. 이전 "나머지 스킨은 기존 그림" 설명보다 이 내용이 우선한다. 비교·검증은 `docs/ALL-SKIN-DIRECTIONS.md` 참고.
+
 2026-10-14 개발 해금·장치 예시: `drawDeviceDemo()`와 도움말 아이콘은 저장된 시점의 88% 투영/입체 장치 및 상어 외형을 사용한다. 개발 해금은 `tools/development-build.js`가 빌드할 때만 삽입한다. Pages는 현재 요청에 따라 개발 빌드, 디버그 앱은 `kr.hongrae.sharksos.dev`다. 개발 진행/시점 키는 별도이며 정식 기록을 읽거나 덮지 않는다. 출시 소스·dist·기본 웹·AAB는 정상 해금이다. `check-release.js`와 Gradle `preReleaseBuild`가 개발 자산·비교 화면·변조된 빌드 결과를 차단한다. 사용법/검증은 `docs/DEVELOPMENT-BUILD.md` 참고. 이는 기존 관찰용 playtest와 별개인 개발자용 빌드다.
 
 2026-10-14 입체 비율 조정: 지면 투영을 세로 78%에서 **88%**로 완화했다. 기본·항해사 외 스킨과 이미지 실패 대체 그림도 `drawShark()`의 선택적 `projection` 인자로 역보정해 외형이 눌리지 않게 한다. 탑뷰/안내/메인의 기본값은 1이다. 실제 비교와 검증은 `docs/BOARD-PROPORTIONS.md` 참고.

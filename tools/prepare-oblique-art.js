@@ -6,7 +6,7 @@ const sharp = require(process.argv[2] || 'sharp');
 const dir = path.join(__dirname, '../assets/art/oblique-v1');
 (async () => {
   const manifest = {};
-  for (const skin of ['basic', 'lighthouse']) {
+  for (const skin of ['basic', 'sakura', 'wave', 'maple', 'snow', 'gold', 'lighthouse', 'coral', 'starsea']) {
     const file = path.join(dir, 'source', skin + '.png');
     const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     if (info.width % 2 || info.height % 2) throw new Error('Atlas must have equal quadrants');
@@ -24,5 +24,5 @@ const dir = path.join(__dirname, '../assets/art/oblique-v1');
     }
   }
   fs.writeFileSync(path.join(dir, 'crops.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log('Exported 8 transparent directional sprites');
+  console.log(`Exported ${Object.keys(manifest).length} transparent directional sprites`);
 })();

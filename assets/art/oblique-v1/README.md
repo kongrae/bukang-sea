@@ -1,13 +1,15 @@
-# 입체 시점 비교용 상어 · v1
+# 입체 시점 상어 · v1
 
-2026-10-14, built-in `image_gen`으로 생성. 기본·등대(비교 화면에서는 항해사) 스킨의 투명 2×2 방향별 원본 2장과 WebP 8장이다. 정식 스킨 자산은 교체하지 않는다.
+2026-10-14, built-in `image_gen`으로 생성. 전체 9종 스킨의 투명 2×2 방향별 원본 9장과 WebP 36장이다. 처음 기본·등대(항해사) 2종만 연결했던 범위를 모든 스킨으로 확장했다. 기존 선택 화면용 portrait와 탑뷰용 swim 자산은 유지한다.
 
 - 기준: `../shark-portrait.webp`, `../shark-swim.webp`, `../skins-v2/lighthouse-portrait.webp`, `../skins-v2/lighthouse-swim.webp`.
-- `source/basic.png`, `source/lighthouse.png`: 생성 원본과 알파 보존. 순서 R / L / D / U.
+- `source/*.png`: 9종 생성 원본과 알파 보존. 사분면 순서 R / L / D / U.
 - 각 방향은 독립된 그림이며 이미지를 회전해서 방향을 만들지 않는다. 약 50도 고정 카메라를 요청했다. 실제 이미지는 좌우에서 얼굴을 강조한 스타일화된 결과다.
 - `tools/prepare-oblique-art.js <sharp module>`: 사분면의 알파 경계에서 크롭, 비율 유지, 최대 256px WebP. `crops.json`에 경계 보관.
 - 게임판에는 수평 방향 최대 1.03칸 너비, 수직 방향 최대 0.80칸 높이로 표시한다. 방향·위치는 기존 게임의 실제 이동 상태를 따른다.
-- 정식 게임 84개 수로의 입체 시점과 `/compare/`에서 공통 사용한다. `SHARK_ART`가 입체 시점에서 선택된 기본/항해사 스킨의 네 방향만 필요 시 디코딩한다. 원본 2장과 WebP는 생성 결과이며 별도 외부 다운로드가 없다.
+- 모든 플레이 모드와 장치 예시의 입체 시점에서 공통 사용한다. `SHARK_ART`가 선택된 스킨의 네 방향만 필요 시 디코딩한다. 기본/항해사만 고를 수 있는 과거 `/compare/`도 같은 렌더러를 쓴다. 원본 9장과 WebP는 생성 결과이며 별도 외부 다운로드가 없다.
+- 추가 7종(벚꽃·파도·단풍·눈꽃·황금·산호·별바다)은 `../skins-v2/source/<id>.png`의 정체성과 `source/basic.png`의 네 방향을 참조했다. 생성 프롬프트 전문과 참조 역할은 [skin-prompts.json](skin-prompts.json)에 보관한다.
+- 36 WebP 합계 648,710 bytes. 단일 HTML에 포함하므로 오프라인에서도 모두 사용한다. [실제 화면 및 검사](../../../docs/ALL-SKIN-DIRECTIONS.md).
 
 ## 최종 생성 프롬프트
 

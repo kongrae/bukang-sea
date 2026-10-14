@@ -2358,7 +2358,6 @@ function updateCanalView() {
   const visible = canalComparison();
   $('canalViewToggle').hidden = !visible;
   $('canalViewToggle').querySelectorAll('[data-canal-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.canalView === canalView)));
-  $('canalViewNote').hidden = !visible || canalView !== 'oblique' || SHARK_ART.hasOblique(currentSkin());
 }
 function setCanalView(mode) {
   if (!canalComparison() || !['top', 'oblique'].includes(mode)) return;

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "sakura",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Cherry blossom skin: pink and ivory body, layered pale pink cherry flowers with golden stamens and green leaves at dorsal-fin base, pink ribbon and large pale petal markings.",
+    "references": [
+      "../skins-v2/source/sakura.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "wave",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Wave skin: vivid turquoise and ivory body, deep navy-blue fins and tail, sculpted white curling wave motifs and a pair of white pearls at dorsal-fin base.",
+    "references": [
+      "../skins-v2/source/wave.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "maple",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Autumn maple skin: warm amber-orange and ivory body, copper-red fins/tail with gold leaf veins, large red maple-leaf brooch and layered leaf mantle behind head, small amber spots.",
+    "references": [
+      "../skins-v2/source/maple.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "snow",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Snowflake skin: icy pale blue and ivory body, frosted blue fins and tail, clearly visible red knitted scarf wrapped behind the face, icy snowflake brooch and white snowflake body marks.",
+    "references": [
+      "../skins-v2/source/snow.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "gold",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Royal gold skin: warm metallic gold and ivory body, small gold crown with vivid turquoise gem atop forehead, dark navy band at dorsal-fin base, embossed gold laurel leaf pattern.",
+    "references": [
+      "../skins-v2/source/gold.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "coral",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Coral skin: salmon-coral pink and ivory body, turquoise fin tips, small orange/red coral-branch ornament with white pearls and turquoise starfish near dorsal-fin base, pale branching coral body pattern.",
+    "references": [
+      "../skins-v2/source/coral.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  },
+  {
+    "id": "starsea",
+    "prompt": "Use case: identity-preserve. Asset: transparent mobile puzzle game sprite atlas, exactly FOUR directional poses of ONE shark skin. Image 1 is the REQUIRED existing skin identity reference (its two old poses are NOT the output layout). Image 2 is the REQUIRED four-pose layout, camera, proportions and expressive face reference. Recreate image 2's poses with image 1's skin colors, materials, and recognizable ornaments. Preserve this game's cute rounded shark, large friendly eyes, ivory muzzle/belly, forked tail and fins. Soft dimensional 3D toy rendering with upper-left light. Fixed orthographic camera about 50 degrees above the horizontal water plane, looking north from south. All sharks swim horizontally, never standing up.\nExactly 2x2 equally sized quadrants on a square transparent canvas. TOP LEFT: EAST, nose to image RIGHT, tail to LEFT, side face and belly visible. TOP RIGHT: WEST, nose to image LEFT, tail to RIGHT. BOTTOM LEFT: SOUTH, swimming TOWARDS viewer, big smiling face forward, tail behind toward TOP. BOTTOM RIGHT: NORTH, swimming AWAY from viewer, back of head towards TOP, tail toward BOTTOM, no front-facing smile. Independently render each direction in the fixed camera, do not rotate the side sprite. Match reference 2's compact body proportions and consistent scale. Ornaments sit behind/above the head without hiding the eyes. Readable at 40-48 pixels. Fully contain each character in its quadrant, at least 6% clear padding around every quadrant edge and central gutters. Actual transparent alpha, no checkerboard, no background, no scenery, no water, no cast shadow, no panels, no labels or text.\nSkin identity to preserve: Star sea skin: deep indigo-blue to violet gradient and ivory belly, silver crescent moon and blue star jewel at dorsal-fin base, large gold stars and simple gold constellation lines, violet fin edges.",
+    "references": [
+      "../skins-v2/source/starsea.png",
+      "source/basic.png"
+    ],
+    "transparent_background": true,
+    "generator": "built-in image_gen"
+  }
+]

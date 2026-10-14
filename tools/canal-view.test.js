@@ -11,8 +11,8 @@ function camera({ stored = null, fail = false } = {}) {
     const T = 48, CH = 480, OY = 72, clock = 3, writes = [];
     const localStorage = {getItem: () => { if(fail) throw Error(); return stored; }, setItem: (...args) => { if(fail) throw Error(); writes.push(args); }};
     const buttons = ['top', 'oblique'].map(mode => ({dataset:{canalView:mode},setAttribute(k,v){this[k]=v;}}));
-    const elements = {canalViewToggle:{hidden:false,querySelectorAll:()=>buttons},canalViewNote:{hidden:true}};
-    const $ = id => elements[id], SHARK_ART = {hasOblique:()=>true}, currentSkin=()=>({id:'basic'});
+    const elements = {canalViewToggle:{hidden:false,querySelectorAll:()=>buttons}};
+    const $ = id => elements[id];
     let paints = 0; const resize=()=>{},invalidateScenes=()=>{},draw=()=>paints++;
     ${cameraSource}
     return {projection:boardProjection, gridY:boardGridY, set:setCanalView, update:updateCanalView, writes, elements, buttons,
@@ -50,13 +50,39 @@ test('directional art is lazy, reused, and unsupported or failed skins keep thei
   const pending=[];
   const Image=function(){pending.push(this);this.naturalWidth=this.naturalHeight=256;};
   const api=new Function('Image',artSource+';return SHARK_ART;')(Image);
-  assert.equal(pending.length,0);assert.equal(api.getOblique({id:'coral'},'R'),null);assert.equal(pending.length,0);
+  assert.equal(pending.length,0);assert.equal(api.getOblique({id:'unknown'},'R'),null);assert.equal(pending.length,0);
   assert.equal(api.getOblique({id:'basic'},'R'),null);assert.equal(pending.length,4);
   pending.forEach(i=>i.onload());const right=api.getOblique({id:'basic'},'R');assert(right);
   for(let n=0;n<30;n++)assert.equal(api.getOblique({id:'basic'},'R'),right);
   assert.equal(pending.length,4);
   api.getOblique({id:'lighthouse'},'R');pending.slice(4).forEach(i=>i.onerror());
   assert.equal(api.getOblique({id:'lighthouse'},'R'),null);assert.equal(pending.length,8);
+});
+
+test('every selectable skin has four distinct embedded oblique views, decoded only when selected', () => {
+  const ids = [...source.match(/const SKINS = \[([\s\S]*?)\n\];/)[1].matchAll(/\{ id: '([^']+)'/g)].map(m => m[1]);
+  const { ART, gameBody } = require('./build-source'), body = gameBody();
+  const pending = [], Image = function () { pending.push(this); this.naturalWidth = this.naturalHeight = 256; };
+  const api = new Function('Image', artSource + ';return SHARK_ART;')(Image);
+  assert.equal(ids.length, 9);
+  api.load(); assert.equal(pending.length, 3, 'startup must not decode all 36 directions');
+  for (const id of ids) {
+    const skin = { id }, start = pending.length, urls = new Set();
+    assert.equal(api.hasOblique(skin), true, id + ' needs directional art');
+    api.getOblique(skin, 'R'); assert.equal(pending.length, start + 4);
+    pending.slice(start).forEach(image => image.onload());
+    for (const dir of ['R', 'L', 'D', 'U']) {
+      const token = `OBLIQUE_${id.toUpperCase()}_${dir}`, record = ART.find(([name]) => name === token);
+      assert(record, token + ' must be included in every build');
+      const bytes = fs.readFileSync(path.join(__dirname, '../assets', record[1]));
+      assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
+      const url = 'data:image/webp;base64,' + bytes.toString('base64');
+      assert(body.includes(url), token + ' is embedded for offline use'); urls.add(url);
+      assert(api.getOblique(skin, dir), token + ' must resolve');
+    }
+    assert.equal(urls.size, 4, 'each direction has its own authored image');
+    assert.equal(pending.length, start + 4, 'rendering reuses the selected images');
+  }
 });
 
 test('raised quays leave every water/device cell centre visible and retain the regional land palette', () => {
