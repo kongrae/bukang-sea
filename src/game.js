@@ -168,7 +168,7 @@ save.free.completed = [0, 1, 2].map(i => Number.isSafeInteger(save.free.complete
 save.free.recent = [0, 1, 2].map(i => Array.isArray(save.free.recent?.[i])
   ? save.free.recent[i].filter(key => typeof key === 'string' && key.length <= 4096).slice(-6) : []);
 save.free.thinking = [0, 1, 2].map(i => Array.isArray(save.free.thinking?.[i])
-  ? save.free.thinking[i].filter(r => r && typeof r.id === 'string' && typeof r.pattern === 'string' && typeof r.signature === 'string').slice(-6) : []);
+  ? save.free.thinking[i].filter(r => r && typeof r.id === 'string' && typeof r.pattern === 'string' && typeof r.signature === 'string').slice(-12) : []);
 // Keep the previous single puzzle separately so starting an operation never overwrites it.
 if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
   save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
@@ -1132,8 +1132,9 @@ function restoreSession(record, level, id) {
   return Object.assign(copyTurn(s), { history: s.history.map(copyTurn) });
 }
 function storyLevel(i) {
-  const legacy = LEGACY_STORY_LEVELS[i], record = save.sessions.story;
-  return legacy && record?.id === i && record.layout === levelSignature(legacy) ? legacy : LEVELS[i];
+  const record = save.sessions.story?.id === i ? save.sessions.story : save.sessions.importedStory;
+  const previous = [LEGACY_STORY_LEVELS[i], STORY_PRE_VARIETY_LEVELS[i]];
+  return previous.find(level => level && record?.id === i && record.layout === levelSignature(level)) || LEVELS[i];
 }
 function storyResumeId() { return save.sessions.story?.id ?? save.sessions.importedStory?.id; }
 function storySession(i = storyResumeId()) {
@@ -1157,7 +1158,7 @@ function migratePilotToStory() {
         lastUsed: Math.max(Number.isFinite(newHint?.lastUsed) && newHint.lastUsed >= 0 ? newHint.lastUsed : 0, oldHint.lastUsed) };
     }
     const oldSession = save.sessions.pilot;
-    if (restoreSession(oldSession, LEVELS[i], id)) {
+    if (restoreSession(oldSession, PILOT_LEVELS[i - 48], id)) {
       access.add(48); access.add(i);
       const migrated = { ...oldSession, id: i };
       if (Number.isInteger(save.sessions.story?.id) && LEVELS[save.sessions.story.id] && restoreSession(save.sessions.story, storyLevel(save.sessions.story.id), save.sessions.story.id)) save.sessions.importedStory = migrated;
@@ -2273,7 +2274,8 @@ function renderFreeCard() {
   $('freeSummary').textContent = count ? `${count}개 구출!` : '계속 도전!';
 }
 function renderFree() {
-  $('freeTiers').innerHTML = FREE_TIERS.map((tier, difficulty) => {
+  $('freeTiers').innerHTML = FREE_TIERS.map((_, difficulty) => {
+    const tier = freeTier(difficulty);
     const run = freeRecord(difficulty), packet = save.sessions['free' + difficulty];
     const resume = run && packet?.id === freeId(run) && Number.isSafeInteger(packet.state?.moves) && packet.state.moves >= 0;
     const action = resume || run && !run.stars ? '이어하기' : run ? '새 수로' : '시작하기';
@@ -2282,7 +2284,7 @@ function renderFree() {
       <div class="free-actions"><button class="btn primary" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'new' : 'resume'}" aria-label="${tier.label} ${action}">${action}</button>
       ${run ? `<button class="btn" type="button" data-free="${difficulty}" data-action="${action === '새 수로' ? 'replay' : 'new'}" aria-label="${tier.label} ${action === '새 수로' ? '다시 풀기' : '새 수로'}">${action === '새 수로' ? '다시 풀기' : '새 수로'}</button>` : ''}</div></div>`;
   }).join('');
-  $('freeLearnNote').hidden = !learningDevices();
+  $('freeLearnNote').hidden = false;
   $('freeStatus').textContent = '';
 }
 function openFree() {
@@ -2335,7 +2337,7 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId,
         ...(run.version >= 6 ? {puzzleId:run.level.puzzleId} : {}) };
       save.free.recent[difficulty] = [...save.free.recent[difficulty], varietyLayoutKey(run.level)].slice(-6);
-      if(run.version>=6)save.free.thinking[difficulty]=[...save.free.thinking[difficulty],v6History(run.level)].slice(-6);
+      if(run.version>=6)save.free.thinking[difficulty]=[...save.free.thinking[difficulty],v6History(run.level)].slice(-12);
       delete save.sessions['free' + difficulty];
       for (const key of Object.keys(save.hintUsage)) if (FREE_VERSIONS.some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
       if (previous) freeCache.delete(freeId(previous));

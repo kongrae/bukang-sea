@@ -5,11 +5,13 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
 const { dailyStageId } = require('../src/daily.js');
 const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8') + '; return LEVELS;')();
+// Coordinate/timing regressions deliberately keep their original board; the all-story loop below uses current boards.
+const REGRESSION_LEVELS = require('../src/levels').STORY_PRE_VARIETY_LEVELS;
 
 // Run the production movement/frame/render functions with a silent canvas and sound output.
 // Capturing drawBoat coordinates tests visible turn order; this does not test sprite pixels or device touch.
 // pickup: true plays the net rule of daily operations / free canals v1–v3 (a set net can be picked up again).
-function game({ reduced = false, index = 5, level = LEVELS[index], stored = null, daily = null, storageFails = false, pickup = false } = {}) {
+function game({ reduced = false, index = 5, level = REGRESSION_LEVELS[index], stored = null, daily = null, storageFails = false, pickup = false } = {}) {
   const functionSource = name => {
     const found = source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))
       || source.match(new RegExp(`function ${name}\\([^]*?\\n}`));
@@ -268,7 +270,7 @@ test('every story solution has restorable checkpoints, including special tiles a
   const {parseLevel, plan} = require('../src/engine.js');
   for (let index = 0; index < LEVELS.length; index++) {
     const grid = parseLevel(LEVELS[index]), solution = plan(grid, grid.start, 0, new Set(), grid.nets, true);
-    const scene = game({index});
+    const scene = game({index,level:LEVELS[index]});
     for (const step of solution.steps) {
       for (const n of scene.state().nets.filter(n => !step.nets.includes(n))) scene.tap(n % grid.w, Math.floor(n / grid.w));
       for (const n of step.nets.filter(n => !scene.state().nets.includes(n))) scene.tap(n % grid.w, Math.floor(n / grid.w));
@@ -299,7 +301,7 @@ test('first-encounter device rules are recorded only on confirmation and can be 
     const setTip = () => {}, addDeviceSpot = () => {};
     ${guideSource}
     return {show: showDeviceGuide, close: closeGuide, next: advanceGuide, seen: () => save.seenDevices};
-  `)(JET, parseLevel(LEVELS[39]), id => elements[id], createDeviceDemo);
+  `)(JET, parseLevel(REGRESSION_LEVELS[39]), id => elements[id], createDeviceDemo);
   run.show(true);
   assert.equal(elements.guideOverlay.hidden, false);
   assert.equal(elements.app.inert, true);

@@ -12,6 +12,6 @@ const PILOT_REGIONS = [
     palette: { water: '#287b9e', sea: '#17577b', land: ['#f4f8fa', '#dbe7eb'], seam: '#accbd5', rail: '#f8ffff', park: '#82b7ac', frame: '#93c7d7' } },
 ];
 // Compatibility aliases for old p01-p12 saves and the device/route verification tools.
-// Production stages use the same definitions through LEVELS[48..59].
+// Frozen pilot definitions match STORY_PRE_VARIETY_LEVELS[48..59]; current story boards can be redesigned.
 const PILOT_LEVELS = typeof STORY_EXTENSION_LEVELS !== 'undefined' ? STORY_EXTENSION_LEVELS : require('./levels.js').STORY_EXTENSION_LEVELS;
 if (typeof module !== 'undefined') module.exports = { PILOT_VERSION, PILOT_REGIONS, PILOT_LEVELS };

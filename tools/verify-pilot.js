@@ -15,8 +15,8 @@ function frozen(level) { const g = E.parseLevel(level); g.switches = []; return 
 
 function verifyPilot(log = console.log) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'levels.js'), 'utf8');
-  const { LEVELS, LEVEL_ROLES } = new Function(src + '; return { LEVELS, LEVEL_ROLES };')();
-  const storyShapes = new Map(LEVELS.slice(0, 48).map((l, i) => [shapeKey(l.map), i + 1]));
+  const { STORY_PRE_VARIETY_LEVELS, LEVEL_ROLES } = new Function(src + '; return { STORY_PRE_VARIETY_LEVELS, LEVEL_ROLES };')();
+  const storyShapes = new Map(STORY_PRE_VARIETY_LEVELS.slice(0, 48).map((l, i) => [shapeKey(l.map), i + 1]));
   const regions = new Map(PILOT_REGIONS.map((r, i) => [r.id, i]));
   const shapes = new Map();
   let failed = 0, lastRegion = 0;

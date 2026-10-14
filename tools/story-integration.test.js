@@ -1,6 +1,6 @@
 const test = require('node:test'), assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
-const E = require('../src/engine'), { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_ORDER_V2, STORY_EXTENSION_LEVELS, LEGACY_STORY_LEVELS } = require('../src/levels');
+const E = require('../src/engine'), { LEVELS, CHAPTERS, STORY_ORDER, STORY_POSITION, STORY_ORDER_V2, STORY_EXTENSION_LEVELS, LEGACY_STORY_LEVELS, STORY_PRE_VARIETY_LEVELS } = require('../src/levels');
 const { PILOT_LEVELS } = require('../src/pilot');
 const source = fs.readFileSync(path.join(__dirname,'../src/game.js'),'utf8');
 const fn = name => source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`,'m'))?.[0]
@@ -21,7 +21,7 @@ function fixture(stored = {}) {
   `)(stored);
 }
 function record(index, id = index, move = null) {
-  const level=LEVELS[index],g=E.parseLevel(level);
+  const level=typeof id==='string'?STORY_PRE_VARIETY_LEVELS[index]:LEVELS[index],g=E.parseLevel(level);
   const start={pos:g.start.slice(),dir:'U',fish:[],nets:[],boats:g.boats.map(b=>b.slice()),moves:0,...(g.switches.length?{gate:0}:{})};
   const state={...start,history:[]};
   if(move){const r=E.turn(g,state.pos,move,new Set(),state.boats,state.gate);Object.assign(state,{pos:r.end,dir:move,boats:r.boats,moves:1,gate:r.gate,history:[start]});}
@@ -35,7 +35,7 @@ test('saved LEVELS indices keep the original 60 canals in place while the canals
   STORY_ORDER.forEach((index,position)=>assert.equal(STORY_POSITION[index],position));
   const sha=data=>crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
   // 2026-10-08 early curve: 1, 2, 25 and 31 were redesigned in place; their previous boards live on unchanged as legacy definitions.
-  const redesigned=[1,2,25,31],before=LEVELS.slice(0,48).map((l,i)=>redesigned.includes(i)?{...LEGACY_STORY_LEVELS[i],role:l.role}:l);
+  const redesigned=[1,2,25,31],before=STORY_PRE_VARIETY_LEVELS.slice(0,48).map((l,i)=>redesigned.includes(i)?{...LEGACY_STORY_LEVELS[i],role:l.role}:l);
   for(const i of redesigned) assert.notDeepEqual(LEVELS[i].map,LEGACY_STORY_LEVELS[i].map,'level index '+i);
   // The set-net rule (2026-10-08, docs/NET-RULE.md) redesigned 11, 29, 33 and 47 and gave 21, 30 and 32 a second net.
   const netRule=[11,21,29,30,32,33,47],kept=before.filter((_,i)=>!netRule.includes(i));
@@ -44,8 +44,8 @@ test('saved LEVELS indices keep the original 60 canals in place while the canals
   // 2026-10-08: star targets of net canals follow the set-net minimum.
   assert.equal(sha(before.map(l=>[l.name,l.map,l.nets||0,l.par,l.role||'regular'])),'d488393e46d5d0005734f05566ccd75f53c81e3f0066032ba6469161952fd411');
   const retargeted={11:['regular',10],12:['learn',9],17:['learn',8],20:['regular',13],23:['regular',11],33:['regular',10],37:['learn',9],43:['regular',17],46:['regular',13]};
-  for(const [i,[role,par]] of Object.entries(retargeted)) assert.deepEqual([LEVELS[i].role||'regular',LEVELS[i].par],[role,par],'level index '+i);
-  assert.deepEqual(LEVELS.slice(48,60),PILOT_LEVELS);assert.equal(PILOT_LEVELS,STORY_EXTENSION_LEVELS);
+  for(const [i,[role,par]] of Object.entries(retargeted)) assert.deepEqual([STORY_PRE_VARIETY_LEVELS[i].role||'regular',STORY_PRE_VARIETY_LEVELS[i].par],[role,par],'level index '+i);
+  assert.deepEqual(STORY_PRE_VARIETY_LEVELS.slice(48,60),PILOT_LEVELS);assert.equal(PILOT_LEVELS,STORY_EXTENSION_LEVELS);
   assert.ok(!fs.readFileSync(path.join(__dirname,'../src/shell.html'),'utf8').includes('id="pilotBtn"'));
 });
 test('legacy bests import once without adding stars twice, altering old progress or relocking an earned skin',()=>{

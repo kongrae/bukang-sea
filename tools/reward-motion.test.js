@@ -19,6 +19,8 @@ function scene({ stored={}, reduced=false }={}) {
     ${read('variety-reserves')}
     ${read('puzzle-catalog-v6')}
     ${read('puzzle-v6')}
+    ${read('puzzle-extra-v7')}
+    ${read('free-v7')}
     ${read('daily')}
     const Date=class extends NativeDate{constructor(...args){super(...(args.length?args:['2026-10-01T12:00:00']));}};
     let written=null,now=0,sequence=0,DAILY=null,FREE=null,PILOT=null,LVL=0,g,st,cleared=false,heroW=1;

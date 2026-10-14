@@ -24,6 +24,8 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     ${read('variety-reserves')}
     ${read('puzzle-catalog-v6')}
     ${read('puzzle-v6')}
+    ${read('puzzle-extra-v7')}
+    ${read('free-v7')}
     ${read('daily')}
     ${read('free')}
     let written=stored,hook=null,FREE=null,DAILY=null,PILOT=null,LVL=0,g,st,anim=null,cleared=false,deco=0,learned=['jet','boat','net','sand','whirl','gate'];
@@ -53,11 +55,12 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
       hint:()=>{save.hintUsage[freeId(FREE)]={count:2,lastUsed:123456};persist();},
       replay:()=>loadFree(FREE),
       move:step=>{st.history.push(copyTurn(st));st.nets=step.nets.slice();
-        const result=slide(g,st.pos,step.dir,new Set(st.nets),st.boats);
+        const mask=st.fish.reduce((n,i)=>n|(1<<i),0),result=turn(g,st.pos,step.dir,new Set(st.nets),st.boats,st.gate,st.crates,mask);
         if(!result.path.length)throw Error('blocked test step');
         for(const [x,y] of result.path)g.fish.forEach(([fx,fy],i)=>{if(x===fx&&y===fy&&!st.fish.includes(i))st.fish.push(i);});
-        st.pos=result.end;st.dir=step.dir;st.moves++;
-        if(result.win)onClear();else{st.boats=stepBoats(g,st.boats,st.pos[1]*g.w+st.pos[0],new Set(st.nets));checkpoint();}},
+        st.pos=result.end;st.dir=step.dir;st.moves++;st.boats=result.boats;
+        if(g.switches.length)st.gate=result.gate;if(g.crates.length)st.crates=result.crates;
+        if(result.win)onClear();else checkpoint();},
       finish:(stars=3)=>{st.fish=stars>=2?g.fish.map((_,i)=>i):[];st.moves=FREE.level.par+(stars===2?1:0);onClear();}
     };
   `)(stored, seeds.slice());
@@ -122,6 +125,26 @@ test('real solutions clear the free mode, count each run once, retain best stars
   restored.open();await restored.start(2,true);restored.finish(1);assert.equal(restored.save().free.completed[2],2);
 });
 
+test('fresh-player free handlers rotate every device, retain twelve ideas after reload, and clear gate/crate boards', async () => {
+  const C=require('./content-v7');
+  for(let difficulty=0;difficulty<3;difficulty++) {
+    let game=scene(null,Array.from({length:150},(_,i)=>i)),patterns=[],devices=new Set();game.learn([]);
+    for(let i=0;i<22;i++) {
+      game.open();await game.start(difficulty,true);const run=game.run(),g=E.parseLevel(run.level),cycle=difficulty===0?10:11;
+      assert.ok(!patterns.slice(-(cycle-1)).includes(run.level.family));patterns.push(run.level.family);
+      C.devices(run.level).forEach(d=>devices.add(d));
+      if(['gate','crate'].includes(run.level.family)){
+        const plan=E.plan(g,g.start,0,new Set(),g.nets,true);for(const step of plan.steps)game.move(step);
+        assert.equal(game.save().free.runs[difficulty].stars,3);
+      }
+      if(i===10){game=scene(game.saved(),Array.from({length:150},(_,n)=>n+100));game.learn([]);}
+    }
+    assert.equal(game.save().free.thinking[difficulty].length,12);
+    assert.deepEqual([...devices].sort(),['boat','crate','gate','jet','net','sand','whirl']);
+    assert.deepEqual(game.save().best,{});
+  }
+});
+
 test('a v1 run resumes its exact board and turns; requesting a new run upgrades only that difficulty', async () => {
   const old=F.makeFree(42,0,1),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
   const game=scene();game.generator(function*(){return old;});game.open();await game.start(0);game.move(plan.steps[0]);game.hint();
@@ -131,7 +154,7 @@ test('a v1 run resumes its exact board and turns; requesting a new run upgrades 
   assert.equal(reload.save().hintUsage[F.freeId(old)],undefined);
 });
 
-for(const version of [4,5])test(`v${version} challenge restores its board, turn and hints; only a new challenge upgrades`, async () => {
+for(const version of [4,5,6])test(`v${version} challenge restores its board, turn and hints; only a new challenge upgrades`, async () => {
   const old=F.makeFree(42,2,version,['jet']),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
   const game=scene();game.generator(function*(){return old;});game.open();await game.start(2);game.move(plan.steps[0]);game.hint();
   const previous=game.save(),reload=scene(game.saved(),[97,123,256]);reload.open();await reload.start(2);
@@ -162,8 +185,8 @@ test('v3 offers only story-taught devices, equals v2 once every device is learne
     else{const old=F.makeFree(seed,2,3);if(!old.level.nets)assert.deepEqual(run.level,old.level);}}
   assert.ok(nets>=5,'v4 still offers net canals');
   const game=scene(null,[7,8,9]);game.learn(['jet']);game.open();assert.equal(game.element('freeLearnNote').hidden,false);await game.start(2,true);
-  const first=game.run();assert.equal(first.version,F.FREE_VERSION);assert.deepEqual(devices(first.level).filter(d=>d!=='jet'),[]);
-  const reload=scene(game.saved());reload.learn(['jet','boat','net','sand','whirl','gate']);reload.open();assert.equal(reload.element('freeLearnNote').hidden,true);await reload.start(2);
+  const first=game.run();assert.equal(first.version,F.FREE_VERSION); // new v7 runs allow every device regardless of story learning
+  const reload=scene(game.saved());reload.learn(['jet','boat','net','sand','whirl','gate']);reload.open();assert.equal(reload.element('freeLearnNote').hidden,false);await reload.start(2);
   assert.deepEqual(reload.run().level.map,first.level.map,'learning more devices never changes a kept run');
 });
 

@@ -10,8 +10,8 @@ const { dailyStageId } = require('../src/daily.js');
 const { freeId } = require('../src/free.js');
 
 // Execute the actual hint handler, solver and allowance with a controllable wall clock.
-function hints({ stored = null, daily = null, free = null, pilot = null, index = 0, cancel = false, noRoute = false } = {}) {
-  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', 'FREE', 'freeId', 'PILOT', `
+function hints({ stored = null, daily = null, free = null, pilot = null, index = 0, cancel = false, noRoute = false, legacy = false } = {}) {
+  return new Function('stored', 'DAILY', 'LVL', 'cancel', 'noRoute', 'dailyStageId', 'FREE', 'freeId', 'PILOT', 'legacy', `
     ${engine}
     ${levels}
     let now = 100000, written = stored, tip = '', hint = null, hintRequest = 0, timers = 0, perf = 0;
@@ -23,7 +23,7 @@ function hints({ stored = null, daily = null, free = null, pilot = null, index =
     const elements = {hintBtn:{disabled:false},hintStatus:{textContent:''},gameScreen:{hidden:false}};
     const $ = id => elements[id], settingsOpen = () => false, guideOpen = () => false, haptic = () => {};
     const setTip = text => {tip = text;};
-    const g = parseLevel(noRoute ? {map:['#####','#S#E#','#####']} : LEVELS[LVL]);
+    const g = parseLevel(noRoute ? {map:['#####','#S#E#','#####']} : (legacy?STORY_PRE_VARIETY_LEVELS:LEVELS)[LVL]);
     const st = {pos:g.start.slice(),nets:[],boats:g.boats,moves:0};
     const anim = null, cleared = false, netSet = () => new Set(st.nets), fishMask = () => 0;
     const setTimeout = cb => {timers++;if(cancel){hintRequest++;cancel=false;} cb();};
@@ -34,7 +34,7 @@ function hints({ stored = null, daily = null, free = null, pilot = null, index =
       status:()=>({...elements.hintBtn,label:elements.hintStatus.textContent}),
       next:()=>{hint=null;hintRequest++;updateHintButton();},
       advance:ms=>{now+=ms;updateHintButton();}};
-  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId, free, freeId, pilot);
+  `)(stored, typeof daily === 'string' ? {date: daily} : daily, index, cancel, noRoute, dailyStageId, free, freeId, pilot, legacy);
 }
 
 test('free hints persist for the same run and reset only for a different run or difficulty', async () => {
@@ -224,7 +224,7 @@ function LEVELS_STORY(position) {
 
 test('under the set-net rule a net the hint did not ask for re-plans the hint at no cost instead of asking to take it back', async () => {
   const { STORY_ORDER } = require('../src/levels');
-  const game = hints({index: STORY_ORDER[24]});
+  const game = hints({index: STORY_ORDER[24],legacy:true}); // retain the original wrong-net regression coordinates
   await game.show(); assert.equal(game.usage().count, 1); assert.match(game.tip(), /밀어 보세요/);
   game.net(22);
   for (let k = 0; k < 40; k++) await null;

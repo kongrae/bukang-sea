@@ -7,6 +7,7 @@ const E = require('../src/engine.js');
 const { makeDaily, rng, place } = require('../src/daily.js');
 const { replayPlan } = require('./replay-plan.js');
 const LEVELS = new Function(fs.readFileSync(path.join(__dirname, '../src/levels.js'), 'utf8') + '; return LEVELS;')();
+const REGRESSION_LEVELS = require('../src/levels').STORY_PRE_VARIETY_LEVELS;
 // Keep the original bug repros independent of later level balancing (net pickup rule, kept for daily/free v1–v3).
 const NET_REGRESSIONS = [
   { number: 11, moves: 6, map: ['#E#####','#.f...#','#..f..#','#.....#','#..o<.#','#.....#','#^....#','#.....#','#o....#','####S##'] },
@@ -69,14 +70,14 @@ test('regression: original 11/34/47/48 use the actual reusable-net minimum under
 test('representative canals retain fish detours and the revised finale routes', () => {
   // 2026-10-08 net rule: 12, 34 and 48 were redesigned; 36 and 47 were re-rated with set nets that stay.
   for (const [n, minimum, escapeMoves] of [[6,7,5],[12,9,4],[24,10,7],[34,9,6],[36,11,7],[47,12,7],[48,12,9]]) {
-    const g = E.parseLevel(LEVELS[n - 1]);
+    const g = E.parseLevel(REGRESSION_LEVELS[n - 1]);
     assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, true).moves, minimum, 'full route ' + n);
     assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, false).moves, escapeMoves, 'escape route ' + n);
   }
-  assert.ok(E.parseLevel(LEVELS[46]).fish.some(([x,y]) => x >= 3 && x <= 5 && y >= 4 && y <= 5), 'fish inside the moat');
-  const final = E.parseLevel(LEVELS[47]), route = E.plan(final, final.start, 0, new Set(), final.nets, true);
+  assert.ok(E.parseLevel(REGRESSION_LEVELS[46]).fish.some(([x,y]) => x >= 3 && x <= 5 && y >= 4 && y <= 5), 'fish inside the moat');
+  const final = E.parseLevel(REGRESSION_LEVELS[47]), route = E.plan(final, final.start, 0, new Set(), final.nets, true);
   assert.equal(final.fish.length, 4);
-  assert.ok(final.fish.every(([x]) => x < 4) && LEVELS[47].map[0].indexOf('E') > 4, 'fish on the left, the sea beyond the whirlpool on the right');
+  assert.ok(final.fish.every(([x]) => x < 4) && REGRESSION_LEVELS[47].map[0].indexOf('E') > 4, 'fish on the left, the sea beyond the whirlpool on the right');
   assert.ok(route.steps.some(s => s.nets.length), 'the finale needs its one net');
 });
 
@@ -88,14 +89,14 @@ test('fish completion gates the move star at and above the target', () => {
 });
 
 test('a wrong set net stays: level 10 then has no route and the hint points to undo', () => {
-  const g = E.parseLevel(LEVELS[9]), nets = new Set([g.w + 4]);
+  const g = E.parseLevel(REGRESSION_LEVELS[9]), nets = new Set([g.w + 4]);
   assert.equal(E.plan(g, g.start, 0, nets, 0, true), null);
   assert.equal(E.plan(g, g.start, 0, nets, 0, false), null);
   assert.equal(E.plan(g, g.start, 0, new Set(), g.nets, true).moves, 5);
 });
 
 test('level 10 recovers from a wrong placed net with no unused inventory under the pickup rule', () => {
-  const g = E.parseLevel(LEVELS[9]), nets = new Set([g.w + 4]);
+  const g = E.parseLevel(REGRESSION_LEVELS[9]), nets = new Set([g.w + 4]);
   assert.equal(E.fixedNetPlan(g, g.start, 0, nets, 0, false), null);
   const p = E.plan(g, g.start, 0, nets, 0, true, undefined, undefined, true);
   assert.equal(p.moves, 5);
@@ -108,7 +109,7 @@ test('level 10 recovers from a wrong placed net with no unused inventory under t
 });
 
 test('a harmless existing net can stay in place when the remaining route needs no edits', () => {
-  const g = E.parseLevel(LEVELS[9]), pos = [1, 2], nets = new Set([3 * g.w + 1]);
+  const g = E.parseLevel(REGRESSION_LEVELS[9]), pos = [1, 2], nets = new Set([3 * g.w + 1]);
   const p = E.plan(g, pos, 1, nets, 0, true);
   assert.equal(p.moves, 2);
   assert.deepEqual(p.remove, []);
@@ -126,7 +127,7 @@ test('an already collected fish tile is available for a required optimal net pla
 });
 
 test('replan from every state of a two-net / two-boat route', () => {
-  const g = E.parseLevel(LEVELS[11]);
+  const g = E.parseLevel(REGRESSION_LEVELS[11]);
   let pos = g.start, mask = 0, boats = g.boats, nets = new Set();
   const original = E.plan(g, pos, mask, nets, g.nets, true);
   assert.equal(original.moves, 9);
@@ -189,7 +190,7 @@ test('pruned search matches exhaustive placements for both net rules, including 
 });
 
 test('chunked browser search yields and returns the same plan as synchronous tools', () => {
-  const g = E.parseLevel(LEVELS[11]), search = E.planSearch(g, g.start, 0, new Set(), g.nets, true);
+  const g = E.parseLevel(REGRESSION_LEVELS[11]), search = E.planSearch(g, g.start, 0, new Set(), g.nets, true);
   let result, batches = 0;
   do { result = search.next(); batches++; } while (!result.done);
   assert.ok(batches > 1);

@@ -1,6 +1,7 @@
 /* ---------- Free canals: seeded puzzles, independent of calendar dates ---------- */
-const FREE_VERSION = 6;
-const FREE_VERSIONS = [1, 2, 3, 4, 5, 6];   // every version a kept run may still be on
+const FREE_VERSION = 7;
+const FREE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];   // every version a kept run may still be on
+const F7 = typeof module !== 'undefined' && typeof require === 'function' ? require('./free-v7') : {selectFreeV7};
 const F6 = typeof module !== 'undefined' && typeof require === 'function' ? require('./puzzle-v6') : {selectV6};
 const FE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel };
 const FD = typeof module !== 'undefined' && typeof require === 'function' ? require('./daily.js')
@@ -15,9 +16,11 @@ const FREE_LEGACY_TIERS = FD.DAILY_STAGES.map((tier, difficulty) => ({ ...tier,
 }));
 const FREE_TIERS = FREE_LEGACY_TIERS.map((tier, difficulty) => ({ ...tier, ...FV.VARIETY_FREE_TIERS[difficulty],
   description: ['갈림길·순환로·작은 우회', '물살·순찰선·멈춤 자리', '넓은 수로·네 마리 수집·긴 우회'][difficulty] }));
+const FREE_V7_TIERS = FREE_TIERS.map((tier,difficulty)=>({...tier,
+  description:['모든 장치 · 짧고 간단한 해결','모든 장치 · 다양한 정지점','모든 장치 · 넓은 판과 긴 우회'][difficulty]}));
 // Base targets above remain the v2-v4 contract. Only new v5 challenge runs use the larger layouts.
 function freeTier(difficulty, version = FREE_VERSION) {
-  const tier = FREE_TIERS[difficulty];
+  const tier = (version>=7?FREE_V7_TIERS:FREE_TIERS)[difficulty];
   return tier && version >= 5 && difficulty === 2 ? FV.challengeTier(tier) : tier;
 }
 function freeId(run) { return `free:v${run.version}:${run.difficulty}:${run.serial}:${run.seed}`; }
@@ -59,7 +62,12 @@ function freeFamilies(tier, learned) {
 function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = null, family = null, history = [], puzzleId = null) {
   if (version === 1) return yield* makeFreeV1Search(seed, difficulty);
   const tier = freeTier(difficulty, version);
-  if (![2, 3, 4, 5, 6].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  if (![2, 3, 4, 5, 6, 7].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  if(version===7) {
+    yield;
+    const level=F7.selectFreeV7(seed,difficulty,tier,history,puzzleId);
+    return level?{version,seed,difficulty,fallback:false,level}:null;
+  }
   if(version===6) {
     yield;
     const level=F6.selectV6(seed,difficulty,learned,tier,history,puzzleId,family);

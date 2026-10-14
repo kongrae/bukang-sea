@@ -5,6 +5,8 @@
 
 ## 작업 규칙
 
+**2026-10-15 정식 수로/자유 v7**: 1–3번 기본 이동 안내를 유지하고 4–84번의 배치·풀이 행동 순서를 변경했다. 기존 전체 84판은 `STORY_PRE_VARIETY_LEVELS`로 보존하여 저장된 맵 서명에 따라 이어하기/재시작한다. 저장 인덱스·순서·해금·보상은 그대로이며 새 장치 도입 순서와 역할별 별 여유도 유지한다. 자유 v7은 진행도와 무관하게 모든 장치를 제공하고, 338개 풀/최근 12개 이력으로 유형을 순환한다. 일일 v6와 이전 자유 판은 동결한다. 현재 내용은 `docs/STORY-VARIETY-V7.md`가 아래 과거 개별 배치 설명보다 우선한다.
+
 - **작업을 마칠 때마다 자동으로 커밋한다**(사용자 요청, 2026-09-30). verify·빌드 통과 후 `master`에 바로 커밋, `.claude/`는 제외, 메시지는 한국어 요약.
 - **커밋한 뒤 GitHub Pages에도 항상 반영한다**(사용자 요청, 2026-10-08). `powershell -ExecutionPolicy Bypass -File tools/deploy-pages.ps1`(pwsh도 가능)이 `master` 푸시와 `www/` 빌드의 `gh-pages` 배포를 함께 한다. 배포 뒤 https://kongrae.github.io/bukang-sea/version.json 의 `sourceCommit`이 방금 커밋과 같은지 확인한다. 공개 저장소이므로 키·비밀번호 파일은 커밋하지 않는다.
 - `src/` 를 고쳤으면 `dist/`(build, build:artifact)도 다시 빌드해 함께 커밋한다.
