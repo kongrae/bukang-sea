@@ -1,0 +1,16 @@
+{
+  "baseline": "a3843ab",
+  "browser": "Edge Canvas and mobile emulation",
+  "physicalAndroid": false,
+  "checks": [
+    "Buoy opening shows water through its translucent shadow; switch is solid, lower when active, and retains distinct colour and symbol states",
+    "Both switch states render throughout the existing press phase without leaking Canvas state",
+    "All four jet directions retain a fixed opaque arrow during normal water motion and activation flashes",
+    "Both gate axes: closed centre opaque, open centre clear, intermediate shutters visible and no shutter remains at fully open",
+    "Four boat headings retain the forward arrow; all solids stay within their readable footprint and restore Canvas state",
+    "Top view and guide defaults remain pixel-identical to the previous build (11 samples)",
+    "Reduced-motion device pixels remain identical at t=0 and t=7"
+  ],
+  "errors": [],
+  "success": true
+}

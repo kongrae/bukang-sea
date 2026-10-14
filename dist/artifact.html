@@ -6012,7 +6012,34 @@ function drawFish(ctx, cx, cy, T, t, seed, scale = 1) {
   ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(l * 0.6, -w * 0.15, T * 0.018, 0, 7); ctx.fill();
   ctx.restore();
 }
-function drawBuoy(ctx, cx, cy, T, t) {
+function drawObliqueBuoy(ctx, cx, cy, T, t) {
+  const bob = reduceMotion ? 0 : Math.sin(t * 2 + cx) * .015, lift = .12;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(T, T); ctx.lineJoin = 'round';
+  // A hollow float, not a solid button: both the water shadow and the top preserve the hole.
+  ctx.strokeStyle = '#164d6540'; ctx.lineWidth = .17;
+  ctx.beginPath(); ctx.arc(.018, .045, .235, 0, Math.PI * 2); ctx.stroke();
+  ctx.translate(0, bob);
+  const side = ctx.createLinearGradient(0, -lift, 0, .32);
+  side.addColorStop(0, '#f6ab5e'); side.addColorStop(1, '#b95628');
+  ctx.beginPath(); ctx.arc(0, -lift, .32, 0, Math.PI); ctx.lineTo(-.32, 0);
+  ctx.arc(0, 0, .32, Math.PI, 0, true); ctx.closePath();
+  ctx.fillStyle = side; ctx.fill(); ctx.strokeStyle = '#964a26'; ctx.lineWidth = .018; ctx.stroke();
+  // The far inner wall gives depth without filling the opening with a dark disc.
+  ctx.beginPath(); ctx.arc(0, -lift, .15, Math.PI, Math.PI * 2); ctx.lineTo(.15, 0);
+  ctx.arc(0, 0, .15, Math.PI * 2, Math.PI, true); ctx.closePath(); ctx.fillStyle = '#ae5127'; ctx.fill();
+  const top = ctx.createLinearGradient(-.3, -.3-lift, .3, .3-lift);
+  top.addColorStop(0, '#ffdc9c'); top.addColorStop(.45, '#ffad59'); top.addColorStop(1, '#ec8135');
+  ctx.beginPath(); ctx.arc(0, -lift, .32, 0, Math.PI * 2); ctx.arc(0, -lift, .15, Math.PI * 2, 0, true);
+  ctx.fillStyle = top; ctx.fill(); ctx.strokeStyle = '#a7582e'; ctx.lineWidth = .018; ctx.stroke();
+  ctx.strokeStyle = '#fff5df'; ctx.lineWidth = .156;
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + .35; ctx.beginPath(); ctx.arc(0, -lift, .235, a-.19, a+.19); ctx.stroke(); }
+  ctx.strokeStyle = '#fff4d5'; ctx.lineWidth = .024;
+  ctx.beginPath(); ctx.arc(0, -lift, .294, Math.PI * 1.06, Math.PI * 1.86); ctx.stroke();
+  ctx.strokeStyle = '#dffff1a6'; ctx.lineWidth = .022;
+  ctx.beginPath(); ctx.arc(0, .018, .335, .1, Math.PI-.1); ctx.stroke(); ctx.restore();
+}
+function drawBuoy(ctx, cx, cy, T, t, raised = false) {
+  if (raised) { drawObliqueBuoy(ctx, cx, cy, T, t); return; }
   const r = T * .3, b = reduceMotion ? 0 : Math.sin(t * 2 + cx) * T * .015;
   ctx.save(); ctx.translate(cx, cy + b);
   ctx.strokeStyle = 'rgba(5,45,66,.3)'; ctx.lineWidth = r * .58;
@@ -6097,7 +6124,37 @@ function drawBoat(ctx, cx, cy, T, t, ang = 0, arrow = false, raised = false) {
   ctx.fillStyle = C['water-hi']; ctx.fillRect(-W * 0.4, -L * 0.3, W * 0.8, L * 0.08);
   ctx.restore();
 }
-function drawJet(ctx, x, y, T, dir, t, flash = 0) {
+function drawObliqueJet(ctx, x, y, T, dir, t, flash) {
+  const lift = .075, angle = ANG[dir];
+  const footprint = [[-.31,-.39],[.31,-.39],[.39,-.31],[.39,.31],[.31,.39],[-.31,.39],[-.39,.31],[-.39,-.31]];
+  const atHeight = (points, z) => deviceRotate(points, angle).map(([a,b]) => [a,b-z]);
+  ctx.save(); ctx.translate(x + T/2, y + T/2); ctx.scale(T,T); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  devicePolygon(ctx, footprint.map(([a,b])=>[a+.025,b+.04]), '#164d6533');
+  devicePrism(ctx, footprint, 0, lift, {top:'#91dcd9',shade:'#58b9c5',front:'#266c88',side:'#58acba',edge:'#285f76'});
+  const bed = ctx.createLinearGradient(-.3,-.3-lift,.3,.3-lift);
+  bed.addColorStop(0,'#155872'); bed.addColorStop(1,'#258ca4');
+  const inside = footprint.map(([a,b])=>[a*.82,b*.82-lift]);
+  devicePolygon(ctx, inside, bed, flash ? '#f0fffa' : '#c4f4e6', .022);
+  ctx.save(); ctx.clip(); ctx.translate(0,-lift); ctx.rotate(angle);
+  const off = reduceMotion ? 0 : (t * (1.4 + flash * 3) % 1) * .5;
+  ctx.strokeStyle = '#8ce4e2'; ctx.lineWidth = .035; ctx.globalAlpha = .27;
+  for (let k = -2; k <= 1; k++) {
+    const px = k * .5 + off;
+    ctx.beginPath(); ctx.moveTo(px-.12,-.23); ctx.lineTo(px+.08,0); ctx.lineTo(px-.12,.23); ctx.stroke();
+  }
+  ctx.restore();
+  // Low side rails describe a channel; no tall barrier crosses the direction of travel.
+  const rail = {top:'#d3f6ed',shade:'#9edbdc',front:'#468da2',side:'#89c3cc',edge:'#326f83'};
+  for (const side of [-1,1]) {
+    const a = side < 0 ? -.35 : .29, b = a + .06;
+    devicePrism(ctx, deviceRotate([[-.24,a],[.24,a],[.24,b],[-.24,b]],angle), lift, .035, rail);
+  }
+  // This opaque arrow stays fixed above the moving water, including during an activation flash.
+  devicePolygon(ctx, atHeight([[-.265,-.07],[.025,-.07],[.025,-.205],[.285,0],[.025,.205],[.025,.07],[-.265,.07]],lift+.006), '#fff4d5', '#184c64', .022);
+  ctx.restore();
+}
+function drawJet(ctx, x, y, T, dir, t, flash = 0, raised = false) {
+  if (raised) { drawObliqueJet(ctx, x, y, T, dir, t, flash); return; }
   ctx.save();
   const p = T * 0.08;
   ctx.beginPath();
@@ -6287,7 +6344,37 @@ function drawGate(ctx, x, y, T, open, axis = 'V', pulse = 0, raised = false) {
   ctx.restore();
 }
 // Switch: a raised orange button when off, a pressed mint button with a check when on (shape, not only colour, differs).
-function drawSwitch(ctx, x, y, T, on, press = 0) {
+function drawObliqueSwitch(ctx, x, y, T, on, press) {
+  const base = .075, travel = reduceMotion ? 0 : Math.sin(clamp01(press) * Math.PI) * .055;
+  const height = Math.max(.015, (on ? .045 : .18) - travel), r = on ? .235 : .25, topY = -base-height;
+  const footprint = [[-.25,-.34],[.25,-.34],[.34,-.25],[.34,.25],[.25,.34],[-.25,.34],[-.34,.25],[-.34,-.25]];
+  ctx.save(); ctx.translate(x+T/2,y+T/2); ctx.scale(T,T); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  devicePolygon(ctx, footprint.map(([a,b])=>[a+.02,b+.045]), '#164d6533');
+  devicePrism(ctx, footprint, 0, base, {top:'#fffdf0',shade:'#d6e7df',front:'#759daa',side:'#b9d3d4',edge:'#356c7c'});
+  ctx.fillStyle = '#316d78'; ctx.beginPath(); ctx.arc(0,-base,.274,0,Math.PI*2); ctx.fill();
+  // Cylinder height changes with the existing press phase; the square plinth stays planted.
+  const side = ctx.createLinearGradient(0,topY,0,.25-base);
+  side.addColorStop(0,on?'#5dcebc':'#f5ab60'); side.addColorStop(1,on?'#187d74':'#bd612e');
+  ctx.beginPath(); ctx.arc(0,topY,r,0,Math.PI); ctx.lineTo(-r,-base);
+  ctx.arc(0,-base,r,Math.PI,0,true); ctx.closePath(); ctx.fillStyle=side; ctx.fill();
+  ctx.strokeStyle='#356c7c'; ctx.lineWidth=.018; ctx.stroke();
+  const cap = ctx.createLinearGradient(-r,topY-r,r,topY+r);
+  cap.addColorStop(0,on?'#b6f6de':'#ffdc9b'); cap.addColorStop(1,on?'#4ac3af':'#f39b4b');
+  ctx.fillStyle=cap;ctx.beginPath();ctx.arc(0,topY,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.strokeStyle=on?'#ecfff1':'#fff2d6';ctx.lineWidth=.022;
+  ctx.beginPath();ctx.arc(0,topY,r-.032,Math.PI*1.08,Math.PI*1.83);ctx.stroke();
+  if(on) {
+    ctx.strokeStyle='#176b67';ctx.lineWidth=.046;
+    ctx.beginPath();ctx.moveTo(-.10,topY);ctx.lineTo(-.025,topY+.07);ctx.lineTo(.11,topY-.08);ctx.stroke();
+  } else devicePolygon(ctx, [[0,topY-.11],[.095,topY],[0,topY+.11],[-.095,topY]], '#fff5df','#a05a2d',.018);
+  ctx.strokeStyle=on?'#176b67':'#356c7c';ctx.lineWidth=.032;
+  ctx.beginPath();
+  if(on){ctx.moveTo(-.07,.28-base);ctx.lineTo(-.015,.315-base);ctx.lineTo(.08,.235-base);}
+  else {ctx.moveTo(-.07,.285-base);ctx.lineTo(.07,.285-base);}
+  ctx.stroke();ctx.restore();
+}
+function drawSwitch(ctx, x, y, T, on, press = 0, raised = false) {
+  if (raised) { drawObliqueSwitch(ctx, x, y, T, on, press); return; }
   const art = typeof BOARD_ART !== 'undefined' ? BOARD_ART : null, img = art && art.get(on ? 'switchOn' : 'switchOff', tilePixels(ctx, T));
   const s = 1 - 0.1 * Math.sin(clamp01(press) * Math.PI), cx = x + T / 2, cy = y + T / 2;
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
@@ -8093,10 +8180,10 @@ function draw(t) {
   }
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     const c = cellAt(g, x, y), px = x * T, py = y * T;
-    if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0);
+    if (JET[c]) drawJet(ctx, px, py, T, JET[c], t, jetFlash.get(y * g.w + x) || 0, q !== 1);
     else if (c === 'o') {
       const hit = contactPulse.get(y * g.w + x), pulse = hit ? Math.sin((clock - hit.at) / 0.32 * Math.PI) * hit.amp * 0.1 : 0;
-      drawBuoy(ctx, px + T / 2, py + T / 2, T * (1 + pulse), t);
+      drawBuoy(ctx, px + T / 2, py + T / 2, T * (1 + pulse), t, q !== 1);
     }
     else if (c === 'w') drawWhirl(ctx, px + T / 2, py + T / 2, T, t, jetFlash.get(y * g.w + x) || 0);
   }
@@ -8117,7 +8204,7 @@ function draw(t) {
     const swimming = anim && anim.t < anim.dur, gate0 = anim ? anim.gateFrom : st.gate, boats0 = anim ? anim.boatsFrom : st.boats;
     const span = (start, len) => !anim ? 1 : len > 0 ? clamp01((anim.t - start) / len) : anim.t >= start ? 1 : 0;
     const gateAt = anim ? anim.dur + anim.crateDur : 0, pressK = anim && anim.pressed ? span(anim.dur, anim.gateDur) : 1;
-    g.switches.forEach(i => drawSwitch(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, (swimming ? gate0 : st.gate) === 1, reduceMotion || pressK >= 1 ? 0 : pressK));
+    g.switches.forEach(i => drawSwitch(ctx, (i % g.w) * T, Math.floor(i / g.w) * T, T, (swimming ? gate0 : st.gate) === 1, reduceMotion || pressK >= 1 ? 0 : pressK, q !== 1));
     g.gates.forEach(i => {
       const held0 = boats0.some(b => b[0] === i), held1 = st.boats.some(b => b[0] === i);
       const from = gateIsOpen(g, i, gate0) || held0 ? 1 : 0, to = gateIsOpen(g, i, st.gate) || held1 ? 1 : 0;
