@@ -5,7 +5,6 @@ const css = getComputedStyle(document.documentElement);
 const C = {};
 ['harbor','water','water-hi','sea','concrete','concrete-2','rail','park','ink','text','muted','buoy','star','net','shark','shark-2','hero-paper']
   .forEach(k => C[k] = css.getPropertyValue('--' + k).trim());
-const SHIRTS = ['#e4572e', '#f3a712', '#29335c', '#a8c686', '#ffffff', '#669bbc', '#b56576', '#2b2d42'];
 const ANG = { R: 0, D: Math.PI / 2, L: Math.PI, U: -Math.PI / 2 };
 const DIR_KO = { U: '위로', D: '아래로', L: '왼쪽으로', R: '오른쪽으로' };
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
@@ -662,7 +661,9 @@ function drawJet(ctx, x, y, T, dir, t, flash = 0) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x + p, y + p, T - p * 2, T - p * 2, T * 0.13);
   else ctx.rect(x + p, y + p, T - p * 2, T - p * 2);
-  ctx.fillStyle = '#176781'; ctx.fill();
+  const bed = ctx.createLinearGradient(x, y, x + T, y + T);
+  bed.addColorStop(0, '#144f6a'); bed.addColorStop(1, '#24859b');
+  ctx.fillStyle = bed; ctx.fill();
   ctx.strokeStyle = flash ? '#fff' : C['water-hi']; ctx.lineWidth = Math.max(1.25, T * 0.035); ctx.stroke();
   ctx.clip();
   ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
@@ -693,17 +694,15 @@ function drawNet(ctx, x, y, T, ghost, t, scale = 1) {
     const m = y + p + (s * i) / 4; ctx.moveTo(x + p, m); ctx.lineTo(x + p + s, m);
   }
   ctx.stroke(); ctx.setLineDash([]);
+  // Thicker floating rope encloses the same tile; the fine mesh and orange corner floats keep nets distinct from gates.
+  ctx.lineWidth = Math.max(2, T * .055); ctx.strokeRect(x + p, y + p, s, s);
   ctx.fillStyle = ghost ? C.star : C.buoy;
   for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(x + p + a * s, y + p + b * s, T * 0.055, 0, 7); ctx.fill(); }
+  if (!ghost) {
+    ctx.fillStyle = '#fff5d8';
+    for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { ctx.beginPath(); ctx.arc(x + p + a * s - T * .012, y + p + b * s - T * .012, T * .022, 0, 7); ctx.fill(); }
+  }
   ctx.restore();
-}
-function drawPerson(ctx, px, py, T, seed) {
-  const r = T * 0.075;
-  ctx.fillStyle = SHIRTS[Math.floor(seed * SHIRTS.length)];
-  ctx.beginPath(); ctx.ellipse(px, py, r * 1.6, r * 1.05, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = seed > 0.8 ? '#c9a27a' : '#2a2320';
-  ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
-  if (seed > 0.45) { ctx.fillStyle = '#e9fbff'; ctx.fillRect(px + r * 0.6, py - r * 1.6, r * 0.8, r * 1.1); }
 }
 // Sluice works quay dressing (promenade tiles only, never water): a short blue pipe with a valve wheel, mooring bollards.
 function drawPipe(ctx, px, py, T, seed) {
@@ -723,19 +722,22 @@ function drawBollard(ctx, x, y, T) {
   ctx.fillStyle = '#5f8fb4'; ctx.beginPath(); ctx.arc(x, y, T * 0.045, 0, 7); ctx.fill();
 }
 function drawExit(ctx, x, y, T, g, gx, gy, t) {
-  const grad = ctx.createLinearGradient(x, y, x, y + T);
-  grad.addColorStop(0, C.sea); grad.addColorStop(1, C.water);
-  ctx.fillStyle = grad; ctx.fillRect(x, y, T, T);
   let dir = 'U';
   if (gy !== 0) { if (gy === g.h - 1) dir = 'D'; else if (gx === 0) dir = 'L'; else dir = 'R'; }
+  // A light mouth opens into the sea. Keep side-exit labels inside the visible part of the cropped outer column.
+  const cx = x + T * (dir === 'R' ? .35 : dir === 'L' ? .65 : .5), cy = y + T * .48;
   ctx.save(); ctx.translate(x + T / 2, y + T / 2); ctx.rotate(ANG[dir]);
-  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(2, T * 0.06); ctx.lineCap = 'round';
-  const bob = reduceMotion ? 0 : Math.sin(t * 3) * T * 0.06;
+  const glow = ctx.createLinearGradient(-T / 2, 0, T / 2, 0);
+  glow.addColorStop(0, 'rgba(158,245,235,0)'); glow.addColorStop(1, 'rgba(158,245,235,.25)');
+  ctx.fillStyle = glow; ctx.fillRect(-T / 2, -T / 2, T, T); ctx.restore();
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(ANG[dir]);
+  ctx.strokeStyle = '#effff8'; ctx.lineWidth = Math.max(2, T * 0.055); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const bob = reduceMotion ? 0 : Math.sin(t * 2.4) * T * 0.035;
   for (const k of [-0.12, 0.1]) { ctx.beginPath(); ctx.moveTo(k * T + bob - T * 0.08, -T * 0.16); ctx.lineTo(k * T + bob + T * 0.08, 0); ctx.lineTo(k * T + bob - T * 0.08, T * 0.16); ctx.stroke(); }
   ctx.restore();
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = `700 ${Math.round(T * 0.2)}px ${css.getPropertyValue('--font-body')}`;
+  ctx.fillStyle = '#f4fffb'; ctx.font = `700 ${Math.max(8, Math.round(T * 0.2))}px ${css.getPropertyValue('--font-body')}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('바다', x + T / 2, dir === 'U' ? y + T * 0.8 : y + T * 0.2);
+  ctx.fillText('바다', cx, dir === 'U' ? y + T * 0.82 : y + T * 0.18);
 }
 // sandbar: a low mound of sand in the water, with a foam line where the water laps it
 function drawSand(ctx, x, y, T, seed) {
@@ -2188,17 +2190,66 @@ function buildSea() {
   }
 }
 const cellType = (x, y) => (x < 0 || y < 0 || x >= g.w || y >= g.h) ? (seaCells.has(x + ',' + y) ? '~' : '#') : cellAt(g, x, y);
-// Region surfaces for the board (water, sea, quay, seams, rails, plantings, frame). Story canals and North Harbor keep the
-// shared look. Devices, fish, nets and exits keep their colours in every region; decoration stays on promenade tiles.
+// Board-only materials: warm stone, shallow turquoise water and cool sluice masonry. Gameplay/device colours stay shared.
 let boardSurface = null;
 function setBoardRegion(regionId, preview = false) {
   const region = typeof PILOT_REGIONS !== 'undefined' && regionId ? PILOT_REGIONS.find(r => r.id === regionId) : null, p = region && region.palette;
-  boardSurface = { water: p ? p.water : C.water, sea: p ? p.sea : C.sea, land: p ? p.land : ['#f8f8e8', '#dcebdc'], seam: p ? p.seam : C['concrete-2'],
-    rail: p ? p.rail : C.rail, park: p ? p.park : C.park, decor: p ? 'sluice' : 'park', preview };
+  boardSurface = { water: p ? p.water : '#269db0', sea: p ? p.sea : '#16839f', land: p ? p.land : ['#f6f1df', '#e5eadb'], seam: p ? p.seam : '#b8c5b4',
+    rail: p ? p.rail : '#fffcf0', park: p ? p.park : C.park, edge: p ? '#8babb3' : '#9ead9f', decor: p ? 'sluice' : 'park', preview };
   frameEl.style.setProperty('--board-frame', p ? p.frame : '');
   $('gameScreen').dataset.region = region ? region.id : '';
 }
 const isLand = (x, y) => cellType(x, y) === '#';
+// One exact collision edge. The cap/face stay on land; only a shallow water wash and soft shadow enter the water.
+// Shared with device demos. All board copies are baked into staticLayer, never rebuilt by the animation loop.
+function drawQuayEdge(ctx, x, y, size, dx, dy, P) {
+  ctx.save(); ctx.translate(x + size * (.5 + dx * .5), y + size * (.5 + dy * .5));
+  ctx.rotate(Math.atan2(-dx, dy));
+  const depth = Math.max(2.5, size * .115), face = Math.max(1, size * .045), wash = size * .2;
+  const shallow = ctx.createLinearGradient(0, 0, 0, wash);
+  shallow.addColorStop(0, 'rgba(133,229,207,.34)'); shallow.addColorStop(1, 'rgba(133,229,207,0)');
+  ctx.fillStyle = shallow; ctx.fillRect(-size / 2, 0, size, wash);
+  const shadow = ctx.createLinearGradient(0, 0, 0, size * .11);
+  shadow.addColorStop(0, dy === 1 || dx === 1 ? 'rgba(9,59,68,.32)' : 'rgba(9,59,68,.17)'); shadow.addColorStop(1, 'rgba(9,59,68,0)');
+  ctx.fillStyle = shadow; ctx.fillRect(-size / 2, 0, size, size * .11);
+  ctx.fillStyle = P.edge || '#9ead9f'; ctx.fillRect(-size / 2, -depth, size, depth);
+  ctx.fillStyle = P.rail; ctx.fillRect(-size / 2, -depth, size, depth - face);
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(.6, size * .012); ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(-size / 2, -depth); ctx.lineTo(size / 2, -depth); ctx.stroke();
+  ctx.strokeStyle = 'rgba(57,93,83,.24)'; ctx.lineWidth = Math.max(.6, size * .015);
+  ctx.beginPath(); ctx.moveTo(0, -depth + .5); ctx.lineTo(0, -face); ctx.stroke();
+  ctx.restore();
+}
+function drawPlanting(ctx, x, y, size, seed, P) {
+  const cx = x + size * (.42 + seed * .3), cy = y + size * .5;
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.fillStyle = 'rgba(51,85,60,.12)'; ctx.beginPath(); ctx.ellipse(size * .06, size * .09, size * .27, size * .23, -.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b8c7a8'; ctx.beginPath(); ctx.ellipse(0, size * .04, size * .27, size * .22, -.3, 0, Math.PI * 2); ctx.fill();
+  const foliage = ctx.createLinearGradient(-size * .2, -size * .2, size * .2, size * .22);
+  foliage.addColorStop(0, '#bbd8ab'); foliage.addColorStop(.45, P.park); foliage.addColorStop(1, '#58998b');
+  ctx.fillStyle = foliage;
+  for (const [px,py,r] of [[-.1,.02,.16],[.1,.01,.18],[0,-.12,.17]]) { ctx.beginPath(); ctx.arc(px * size, py * size, r * size, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = 'rgba(239,251,211,.45)'; ctx.lineWidth = Math.max(1, size * .024); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(-size * .03, -size * .1, size * .12, 3.6, 4.9); ctx.stroke(); ctx.restore();
+}
+// Outside the playable rectangle only: a continuous opening rather than a tile-shaped dead end.
+function drawSeaMouth(ctx, ex, ey, P) {
+  const [dx,dy] = DIRS[exitDir(ex,ey)], cx = (ex + .5 + dx * .5) * T, cy = (ey + .5 + dy * .5) * T;
+  const reach = Math.max(CW,CH) + T, half = T / 2, spread = reach * .48;
+  const point = (a,b) => [cx - dy * a + dx * b, cy + dx * a + dy * b];
+  const mouth = new Path2D(); mouth.moveTo(...point(-half,0)); mouth.lineTo(...point(half,0));
+  mouth.lineTo(...point(half+spread,reach)); mouth.lineTo(...point(-half-spread,reach)); mouth.closePath();
+  const paint = ctx.createLinearGradient(cx,cy,cx+dx*reach,cy+dy*reach);
+  paint.addColorStop(0,P.water); paint.addColorStop(.55,P.sea); paint.addColorStop(1,P.sea);
+  // Draw the rim first, then cover its inner half with water. No decorative pixel touches a playable cell.
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(...point(-reach,0)); ctx.lineTo(...point(reach,0));
+  ctx.lineTo(...point(reach,reach)); ctx.lineTo(...point(-reach,reach)); ctx.closePath(); ctx.clip();
+  ctx.beginPath();
+  for(const side of [-1,1]) { ctx.moveTo(...point(side*half,0)); ctx.lineTo(...point(side*(half+spread),reach)); }
+  ctx.strokeStyle = P.rail; ctx.lineWidth = Math.max(4,T*.16); ctx.lineCap='butt'; ctx.stroke();
+  ctx.fillStyle = paint; ctx.fill(mouth); ctx.restore(); waterPath.addPath(mouth);
+}
 function buildStatic() {
   buildSea();
   staticLayer = document.createElement('canvas');
@@ -2207,6 +2258,8 @@ function buildStatic() {
   const P = boardSurface || (setBoardRegion(null), boardSurface);
   const landPaint = s.createLinearGradient(0, -OY, CW, CH - OY);
   landPaint.addColorStop(0, P.land[0]); landPaint.addColorStop(1, P.land[1]);
+  const waterPaint = s.createLinearGradient(0, -OY, CW * .8, CH - OY);
+  waterPaint.addColorStop(0, 'rgba(182,255,235,.12)'); waterPaint.addColorStop(.5, 'rgba(182,255,235,0)'); waterPaint.addColorStop(1, 'rgba(7,74,103,.13)');
   // North Harbor's last canal previews the sluice works: pipes appear on the quay near its exit.
   const exits = []; for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === 'E') exits.push([i % g.w, Math.floor(i / g.w)]);
   const sluiceDecor = (x, y) => P.decor === 'sluice' || (P.preview && exits.some(([ex, ey]) => Math.abs(ex - x) + Math.abs(ey - y) <= 4));
@@ -2219,60 +2272,45 @@ function buildStatic() {
       // open sea: deepens with distance from the canal
       const d = Math.max(Math.abs(Math.min(x, g.w - 1 - x, 0)), Math.abs(Math.min(y, g.h - 1 - y, 0)));
       s.fillStyle = P.sea; s.fillRect(px, py, T, T);
-      s.fillStyle = `rgba(3,20,30,${Math.min(0.45, d * 0.07).toFixed(3)})`; s.fillRect(px, py, T, T);
+      s.fillStyle = `rgba(3,39,65,${Math.min(0.24, d * 0.035).toFixed(3)})`; s.fillRect(px, py, T, T);
       waterPath.rect(px, py, T, T); continue;
     }
-    if (c !== '#') { s.fillStyle = P.water; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); if (c === 's') drawSand(s, px, py, T, x * 31 + y * 17 + deco); continue; }
+    if (c !== '#') { s.fillStyle = P.water; s.fillRect(px, py, T, T); s.fillStyle = waterPaint; s.fillRect(px, py, T, T); waterPath.rect(px, py, T, T); continue; }
     s.fillStyle = landPaint; s.fillRect(px, py, T, T);
-    s.strokeStyle = P.seam; s.lineWidth = 1; s.globalAlpha = 0.23;
-    s.beginPath(); s.moveTo(px, py + T / 2 + .5); s.lineTo(px + T, py + T / 2 + .5);
-    const off = (((y % 2) + 2) % 2) * T / 2; s.moveTo(px + off + .5, py); s.lineTo(px + off + .5, py + T / 2); s.moveTo(px + ((off + T / 2) % T) + .5, py + T / 2); s.lineTo(px + ((off + T / 2) % T) + .5, py + T); s.stroke(); s.globalAlpha = 1;
+    // Large staggered stone slabs: fewer seams than the logical grid, low contrast under the gameplay objects.
+    s.strokeStyle = P.seam; s.lineWidth = .75; s.globalAlpha = .22;
+    s.beginPath(); s.moveTo(px, py + .5); s.lineTo(px + T, py + .5);
+    if ((x + y) % 2 === 0) { s.moveTo(px + .5, py); s.lineTo(px + .5, py + T); } s.stroke(); s.globalAlpha = 1;
+    const grain = hash(x * 59 + y * 71 + deco);
+    s.fillStyle = 'rgba(122,137,112,.07)';
+    if (T >= 30) for (let k = 0; k < 3; k++) s.fillRect(px + hash(grain * 91 + k) * T, py + hash(grain * 73 + k) * T, T * .025, T * .014);
   }
-  // shade on water next to land, railings and onlookers on land next to water
+  // Exact shoreline, quiet land-only dressing, no decoration competing with devices.
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const px = x * T, py = y * T, seed = hash(y * 97 + x * 31 + deco * 7);
     const inside = x >= 0 && y >= 0 && x < g.w && y < g.h;
     const nb = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-    if (!isLand(x, y)) {
-      s.fillStyle = 'rgba(6,51,75,.23)';
-      nb.forEach(([dx, dy]) => {
-        if (!isLand(x + dx, y + dy)) return;
-        const w = Math.max(3, T * 0.09);
-        if (dy === -1) s.fillRect(px, py, T, w); if (dy === 1) s.fillRect(px, py + T - w, T, w);
-        if (dx === -1) s.fillRect(px, py, w, T); if (dx === 1) s.fillRect(px + T - w, py, w, T);
-      });
-      continue;
-    }
+    if (!isLand(x, y)) continue;
     const waterSides = nb.filter(([dx, dy]) => !isLand(x + dx, y + dy));
     if (!waterSides.length) {
       if (seed < (inside ? 0.25 : 0.16)) {
         if (sluiceDecor(x, y)) { if (seed < (inside ? 0.13 : 0.08)) drawPipe(s, px, py, T, seed); continue; }   // pipes read heavier than shrubs
-        s.save(); s.globalAlpha = 0.6; s.fillStyle = P.park;
-        s.beginPath(); s.arc(px + T * (0.3 + seed), py + T * 0.5, T * 0.26, 0, 7); s.fill();
-        s.fillStyle = 'rgba(255,255,255,.1)'; s.beginPath(); s.arc(px + T * (0.25 + seed), py + T * 0.43, T * 0.1, 0, 7); s.fill(); s.restore();
+        drawPlanting(s, px, py, T, seed, P);
       }
       continue;
     }
     waterSides.forEach(([dx, dy], k) => {
-      s.strokeStyle = P.rail; s.lineWidth = Math.max(2.5, T * 0.065); s.lineCap = 'round';
-      s.beginPath();
-      if (dy === -1) { s.moveTo(px, py + 2); s.lineTo(px + T, py + 2); }
-      if (dy === 1) { s.moveTo(px, py + T - 2); s.lineTo(px + T, py + T - 2); }
-      if (dx === -1) { s.moveTo(px + 2, py); s.lineTo(px + 2, py + T); }
-      if (dx === 1) { s.moveTo(px + T - 2, py); s.lineTo(px + T - 2, py + T); }
-      s.stroke();
-      if (T < 44 || waterSides.length !== 1 || seed > 0.18) return; // keep small boards and narrow islands free of onlookers
-      const n = 1;
-      for (let j = 0; j < n; j++) {
-        const sd = hash(x * 13 + y * 7 + j * 5 + k * 3 + deco), along = (j + 0.5) / n + (sd - 0.5) * 0.2, inset = T * 0.3;
-        let qx = px + T * along, qy = py + T * along;
-        if (dy === -1) qy = py + inset; if (dy === 1) qy = py + T - inset;
-        if (dx === -1) qx = px + inset; if (dx === 1) qx = px + T - inset;
-        if (dy) qx = px + T * along; else qy = py + T * along;
-        s.save(); s.globalAlpha = 0.4; if (sluiceDecor(x, y)) { s.globalAlpha = 0.8; drawBollard(s, qx, qy, T); } else drawPerson(s, qx, qy, T, sd); s.restore();
-      }
+      drawQuayEdge(s, px, py, T, dx, dy, P);
+      if (T < 40 || waterSides.length !== 1 || seed > 0.12) return; // clear narrow islands and small boards
+      const along = .5 + (hash(x * 13 + y * 7 + k * 3 + deco) - .5) * .2, inset = T * .3;
+      const qx = dx === -1 ? px + inset : dx === 1 ? px + T - inset : px + T * along;
+      const qy = dy === -1 ? py + inset : dy === 1 ? py + T - inset : py + T * along;
+      drawBollard(s, qx, qy, T);
     });
   }
+  for (const [ex,ey] of exits) drawSeaMouth(s,ex,ey,P);
+  // Sand is above shallow-water shading; its stopping surface must never look submerged or clipped by a quay.
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 's') drawSand(s, x * T, y * T, T, x * 31 + y * 17 + deco);
 }
 
 /* One bounded frame chain; frozen scenes repaint only when their content changes. */
@@ -2443,7 +2481,7 @@ function draw(t) {
   if (!causticPat) causticPat = ctx.createPattern(caustic, 'repeat');
   const ct = reduceMotion ? 0 : t, sc = T / 60;
   ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = causticPat;
-  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.02], [-ct * 5, ct * 6, sc * 1.4, 0.012]]) {
+  for (const [ox, oy, s, al] of [[ct * 7, ct * 4, sc, 0.014], [-ct * 5, ct * 6, sc * 1.4, 0.008]]) {
     ctx.save(); ctx.globalAlpha = al; ctx.scale(s, s); ctx.translate(ox % 128, oy % 128);
     ctx.fillRect(-OX / s - 256, -OY / s - 256, CW / s + 512, CH / s + 512); ctx.restore();
   }
@@ -2997,10 +3035,25 @@ function drawDeviceDemo() {
   const sample = sampleDeviceDemo(guideDemo, guideTime), phase = sample.phase;
   x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = C.water; x.fillRect(0, 0, rect.width, rect.height);
   x.translate((rect.width - size * grid.w) / 2, (rect.height - size * grid.h) / 2);
+  // The tutorial uses the same exact shoreline and material hierarchy as the playable board.
+  const surface = { rail: '#fffcf0', edge: '#9ead9f' };
+  grid.cells.forEach((cell, i) => {
+    if (cell !== '#') return;
+    const gx = i % grid.w, gy = Math.floor(i / grid.w), px = gx * size, py = gy * size;
+    x.fillStyle = '#f0efdf'; x.fillRect(px, py, size, size);
+  });
+  grid.cells.forEach((cell, i) => {
+    if (cell !== '#') return;
+    const gx = i % grid.w, gy = Math.floor(i / grid.w);
+    for (const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      if (gx+dx >= 0 && gy+dy >= 0 && gx+dx < grid.w && gy+dy < grid.h && grid.cells[(gy+dy)*grid.w+gx+dx] !== '#') {
+        drawQuayEdge(x,gx*size,gy*size,size,dx,dy,surface);
+      }
+    }
+  });
   grid.cells.forEach((cell, i) => {
     const px = i % grid.w * size, py = Math.floor(i / grid.w) * size;
-    if (cell === '#') { x.fillStyle = C.concrete; x.fillRect(px, py, size, size); }
-    else { x.strokeStyle = 'rgba(255,255,255,.09)'; x.lineWidth = 1; x.strokeRect(px, py, size, size); }
+    if (cell !== '#') { x.strokeStyle = 'rgba(255,255,255,.06)'; x.lineWidth = 1; x.strokeRect(px, py, size, size); }
     if (cell === 'o') drawBuoy(x, px + size / 2, py + size / 2, size, guideTime);
     if (JET[cell]) drawJet(x, px, py, size, JET[cell], guideTime);
     if (cell === 's') drawSand(x, px, py, size, i);
