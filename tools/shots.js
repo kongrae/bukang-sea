@@ -43,9 +43,9 @@ const scenes = [
     await sleep(1200);` },
   { name: '5-sluice', save: { best: before(sluice), last: sluice }, run: open(sluice) + play(route(sluice, 3)) },
   { name: '6-chapters', save: { best: done(27), last: STORY_ORDER[27] }, run: `
-    $('stagePicker').open = true; await sleep(300);
+    $('stagePicker').click(); await sleep(300);
     document.querySelector('.chapter-btn[data-chapter="2"]').click(); await sleep(400);
-    $('stagePicker').scrollIntoView(); await sleep(300);` },
+    $('mapCard').scrollTop = 0; await sleep(300);` },
 ];
 
 async function cdp() {

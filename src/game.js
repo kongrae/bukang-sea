@@ -15,10 +15,11 @@ function invalidateScenes() { gameNeedsPaint = heroNeedsPaint = endingNeedsPaint
 const SWIPE = 18;   // px of finger travel that commits a swipe (fires during the move, not on release)
 
 /* ---------- sheets: logical close now, short visual exit, isolated input ---------- */
-const SHEET_IDS = ['journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay', 'chapterOverlay'];
+const SHEET_IDS = ['mapOverlay', 'helpOverlay', 'journeyOverlay', 'endingOverlay', 'dailyOverlay', 'freeOverlay', 'pilotOverlay', 'journalOverlay', 'skinsOverlay', 'settingsOverlay', 'clearOverlay', 'guideOverlay', 'chapterOverlay'];
 const sheetExits = new Map(), sheetOrigins = new Map();
 // Every dismissal goes through the menu's own cleanup/return path. Results require an explicit action.
 const sheetDismiss = {
+  mapOverlay: () => closeMap(), helpOverlay: () => closeHelp(),
   journeyOverlay: () => closeJourney(), endingOverlay: () => closeEnding(), dailyOverlay: () => closeDaily(),
   freeOverlay: () => closeFree(), pilotOverlay: () => closePilot(), journalOverlay: () => closeJournal(),
   skinsOverlay: () => closeSkins(), settingsOverlay: () => closeSettings(), guideOverlay: () => closeGuide(),
@@ -96,7 +97,7 @@ function sheetClick(e) {
   if (close && !sheetExits.size) sheetDismiss[close.dataset.sheetClose]?.();
 }
 function syncSheetInput() {
-  $('app').inert = sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
+  $('app').inert = $('app').classList.contains('launching') || sheetExits.size > 0 || SHEET_IDS.some(id => !$(id).hidden);
   invalidateScenes();
 }
 function finishSheetExit(id, restore = true) {
@@ -280,16 +281,17 @@ function renderJourney() {
   $('journeyEndingBtn').hidden = !endingAvailable(progress);
 }
 function openJourney() {
+  if (!$('mapOverlay').hidden) closeMap(false);
   renderJourney(); openSheet('journeyOverlay');
   consumeRewardMarks(rewardPending.journey, $('journeyChapters'), 'data-journey', 'reward-route', true);
   $('journeyCard').scrollTop = 0; $('journeyTitle').focus({ preventScroll: true });
 }
 function closeJourney() {
-  closeSheet('journeyOverlay', 'journeyBtn');
+  closeSheet('journeyOverlay', null, false); openMap();
 }
 function selectJourneyChapter(ci) {
   if (!CHAPTERS[ci]) return;
-  closeSheet('journeyOverlay', null, false); selectedChapter = ci; $('stagePicker').open = true; renderLevelGrid();
+  closeSheet('journeyOverlay', null, false); selectedChapter = ci; mapScroll = 0; openMap();
   $('chapterPicker').querySelector(`[data-chapter="${ci}"]`).focus();
 }
 function openEnding(from = 'title') {
@@ -1598,7 +1600,7 @@ function pulseRewardMark(el, className) {
 }
 function applyStoryRewards() {
   if ($('titleScreen').hidden) return;
-  if ($('stagePicker').open) {
+  if (!$('mapOverlay').hidden) {
     consumeRewardMarks(rewardPending.stars, $('levelGrid'), 'data-i', 'reward-updated', true);
     consumeRewardMarks(rewardPending.levels, $('levelGrid'), 'data-i', 'reward-unlock', true);
     consumeRewardMarks(rewardPending.chapters, $('chapterPicker'), 'data-chapter', 'reward-unlock', true);
@@ -2811,6 +2813,17 @@ function netLevelBadge(nets) {
   return `<span class="level-net${nets ? ' available' : ''}">${nets ? `그물 ${nets}개` : '그물 없음'}</span>`;
 }
 let selectedChapter = null;
+let mapScroll = 0, homeScroll = 0;
+function openMap() {
+  renderLevelGrid(); openSheet('mapOverlay'); applyStoryRewards();
+  $('mapCard').scrollTop = mapScroll; $('mapTitle').focus({ preventScroll: true });
+}
+function closeMap(animate = true) {
+  mapScroll = $('mapCard').scrollTop;
+  closeSheet('mapOverlay', 'stagePicker', animate);
+}
+function openHelp() { openSheet('helpOverlay'); $('helpTitle').focus({ preventScroll: true }); }
+function closeHelp() { closeSheet('helpOverlay', 'helpBtn'); }
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? storyResumeId() : nextLevel();
   if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
@@ -3044,24 +3057,32 @@ function closeGuide() {
 function show(which, animate = true) {
   sfx.clear();
   flushSheetExits();
+  if (which === 'game' && !$('titleScreen').hidden) homeScroll = $('titleScreen').scrollTop;
+  if (!$('mapOverlay').hidden) closeMap(false);
+  closeSheet('helpOverlay', null, false);
   if (which === 'title') cancelClearPresentation();
   if (which === 'title') { pauseGame(); closeSheet('guideOverlay', null, false); closeSheet('chapterOverlay', null, false); guideKeys = []; guideDemo = null; guidePlaying = false; cleared = false; }
   const el = which === 'title' ? $('titleScreen') : $('gameScreen');
   $('titleScreen').hidden = which !== 'title';
   $('gameScreen').hidden = which !== 'game';
-  el.classList.remove('enter-fwd', 'enter-back');
+  $('titleScreen').classList.remove('home-reveal', 'enter-fwd', 'enter-back');
+  $('gameScreen').classList.remove('enter-fwd', 'enter-back');
   if (animate && !reduceMotion) { void el.offsetWidth; el.classList.add(which === 'game' ? 'enter-fwd' : 'enter-back'); }
   resetHero();
-  if (which === 'title') { closeSheet('clearOverlay', null, false); $('stagePicker').open = false; renderLevelGrid(true); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = 0; }
+  if (which === 'title') { closeSheet('clearOverlay', null, false); renderLevelGrid(); renderDaily(); renderFreeCard(); renderSkinCard(); $('titleScreen').scrollTop = homeScroll; }
   else requestAnimationFrame(resize);
 }
-function startLevel(i) { if (!unlocked(i)) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
+function startLevel(i) { if (!unlocked(i) || !$('gameScreen').hidden) return; const keep = storySession(i); show('game'); loadLevel(i, keep); }
 
 $('levelGrid').addEventListener('click', e => { const b = e.target.closest('.lv'); if (b && !b.disabled) { ac(); startLevel(+b.dataset.i); } });
-$('stagePicker').addEventListener('toggle', () => { if ($('stagePicker').open) applyStoryRewards(); });
+$('stagePicker').addEventListener('click', openMap);
+$('helpBtn').addEventListener('click', openHelp);
+$('mapOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeMap(); });
+$('helpOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeHelp(); });
 $('chapterPicker').addEventListener('click', e => {
   const b = e.target.closest('.chapter-btn'); if (!b) return;
   selectedChapter = +b.dataset.chapter; renderLevelGrid();
+  mapScroll = 0; $('mapCard').scrollTop = 0;
   $('chapterPicker').querySelector(`[data-chapter="${selectedChapter}"]`).focus({ preventScroll: true });
 });
 $('playBtn').addEventListener('click', () => { ac(); startLevel(storySession() ? storyResumeId() : nextLevel()); });
@@ -3191,7 +3212,10 @@ gameScreen.addEventListener('pointerup', e => {
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });
 window.addEventListener('keydown', e => {
+  if ($('app').classList.contains('launching')) return;
   if (sheetKeydown(e)) return;
+  if (!$('mapOverlay').hidden) { if (e.key === 'Escape') closeMap(); return; }
+  if (!$('helpOverlay').hidden) { if (e.key === 'Escape') closeHelp(); return; }
   if (endingOpen()) { if (e.key === 'Escape') closeEnding(); return; }
   if (journeyOpen()) { if (e.key === 'Escape') closeJourney(); return; }
   if (journalOpen()) { if (e.key === 'Escape') closeJournal(); return; }
@@ -3220,8 +3244,11 @@ $('titleScreen').addEventListener('scroll', updateHeroVisibility, { passive: tru
 // native app (Capacitor + @capacitor/app): hardware back returns to the level list, exits from the list
 const capApp = window.Capacitor?.Plugins?.App;
 if (capApp) capApp.addListener('backButton', () => {
+  if ($('app').classList.contains('launching')) return;
   if (sheetExits.size) return;
-  if (endingOpen()) closeEnding();
+  if (!$('mapOverlay').hidden) closeMap();
+  else if (!$('helpOverlay').hidden) closeHelp();
+  else if (endingOpen()) closeEnding();
   else if (journeyOpen()) closeJourney();
   else if (journalOpen()) closeJournal();
   else if (dailyOpen()) closeDaily();
@@ -3264,7 +3291,36 @@ function start(data) {
 window.claude?.hot?.snapshot?.(() => { pauseGame(); return { screen: $('gameScreen').hidden ? 'title' : 'game', lvl: LVL, daily: DAILY ? DAILY.date : null,
   free: FREE ? { difficulty: FREE.difficulty, id: freeId(FREE) } : null, pilot: PILOT ? PILOT.index : null,
   dailyStage: DAILY?.stage, dailyVersion: DAILY?.version, st: st && !anim ? st : null }; });
-const boot = () => window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+const launch = createLaunchGate({
+  prepare: () => new Promise(resolve => {
+    const ready = data => { start(data); resolve(); };
+    if (window.claude?.hot?.ready) window.claude.hot.ready(ready);
+    else ready(window.claude?.hot?.data ?? {});
+  }),
+  paint: () => {
+    if (!$('titleScreen').hidden) drawHero(0);
+    else if (g) { resize(); draw(clock); }
+  },
+  reveal: () => {
+    const app = $('app'), screen = $('launchScreen');
+    app.classList.remove('launching'); app.removeAttribute('aria-busy'); syncSheetInput();
+    screen.setAttribute('aria-hidden', 'true'); screen.inert = true;
+    if (reduceMotion || document.hidden) screen.hidden = true;
+    else {
+      screen.classList.add('launch-leaving');
+      if (!$('titleScreen').hidden) $('titleScreen').classList.add('home-reveal');
+      setTimeout(() => { screen.hidden = true; }, 240);
+    }
+  },
+  fail: error => {
+    console.error('App startup failed', error);
+    $('launchStatus').textContent = '화면을 열지 못했어요. 다시 시도해 주세요.';
+    $('launchRetry').hidden = false;
+  },
+});
+$('launchRetry').addEventListener('click', () => location.reload());
+$('launchShark').addEventListener('error', e => { e.currentTarget.hidden = true; });
+if ($('launchShark').complete && !$('launchShark').naturalWidth) $('launchShark').hidden = true;
 if (typeof SHARK_ART !== 'undefined') {
   SHARK_ART.onReady = () => {
     invalidateScenes(); guidePaintTime = -1;
@@ -3288,5 +3344,10 @@ if (typeof BOARD_ART !== 'undefined') {
 $('clearMascot').addEventListener('error', e => { e.currentTarget.hidden = true; });
 $('clearUnlocks').addEventListener('click', e => { const b = e.target.closest('[data-wear]'); if (b && b.getAttribute('aria-disabled') !== 'true') wearSkin(b.dataset.wear, b); });
 if (typeof MENU_ART !== 'undefined') MENU_ART.load();
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot, boot); else boot();
+const boot = () => launch.run([
+  document.fonts?.ready,
+  typeof SHARK_ART !== 'undefined' ? SHARK_ART.ready('hero') : null,
+  typeof SHARK_ART !== 'undefined' ? SHARK_ART.ready('portrait', currentSkin()) : null,
+]);
+boot();
 })();

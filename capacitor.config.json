@@ -2,7 +2,7 @@
   "appId": "kr.hongrae.sharksos",
   "appName": "상어 SOS: 바다로 보내줘!",
   "webDir": "www",
-  "backgroundColor": "#c6f3f4",
+  "backgroundColor": "#e8f8f5",
   "plugins": {
     "SystemBars": {
       "style": "LIGHT",

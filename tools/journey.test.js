@@ -16,13 +16,13 @@ function functionSource(name) {
 function scene(stored = {}, reduced = false) {
   const story = source.slice(source.indexOf('/* ---------- story journey:'), source.indexOf('/* ---------- shark skins:'));
   const rewardSource = source.slice(source.indexOf('/* ---------- reward presentation:'), source.indexOf('function onClear()'));
-  const functions = ['chapterOf','persist','onClear','renderLevelGrid','netLevelBadge','nextLevel'].map(functionSource).join('\n');
+  const functions = ['chapterOf','persist','onClear','renderLevelGrid','netLevelBadge','nextLevel','openMap','closeMap'].map(functionSource).join('\n');
   return new Function('stored','reduceMotion', `
     ${engine}
     ${levels}
     ${pilot}
     const save = Object.assign({best:{},last:0,sessions:{dailyStages:{}},daily:{},owned:['basic'],skin:'basic',journal:{days:{}}},JSON.parse(JSON.stringify(stored)));
-    let written=null,DAILY=null,FREE=null,PILOT=null,LVL=0,g,st,cleared=false,selectedChapter=null,loaded=null,dailyOpened=0,dailyContinued=0,sharkDraws=[];
+    let written=null,DAILY=null,FREE=null,PILOT=null,LVL=0,g,st,cleared=false,selectedChapter=null,mapScroll=0,loaded=null,dailyOpened=0,dailyContinued=0,sharkDraws=[];
     const noop=()=>{},performance={now:()=>1000},window={devicePixelRatio:1},C={water:'#164b60',sea:'#367e85',concrete:'#ddd5c2'};
     const currentSkin=()=>({id:save.skin}),drawShark=(...args)=>sharkDraws.push(args);
     const ctx=new Proxy({createLinearGradient:()=>({addColorStop:noop})},{get:(obj,key)=>obj[key]||noop});
@@ -115,7 +115,7 @@ test('missing earlier escape cannot unlock ending through last-level clear or da
 test('journey can preview a locked chapter without opening its levels; reduced-motion ending immediately shows selected shark in sea', () => {
   const game=scene({skin:'starsea'},true);game.journey();assert.match(game.element('journeyChapters').innerHTML,/4장 둘러보기/);
   game.select(3);assert.match(game.element('levelGrid').innerHTML,/외항 물길/);
-  assert.equal(game.element('stagePicker').open,true,'journey selection reveals its chapter before focus moves');
+  assert.equal(game.element('mapOverlay').hidden,false,'journey selection reveals its chapter sheet before focus moves');
   assert.match(game.element('levelGrid').innerHTML,/disabled/);assert.equal(game.stats().loaded,null);
   const ending=scene({best:bestThrough(ALL),skin:'starsea',owned:['basic','starsea']},true);
   ending.ending();const args=ending.stats().sharkDraws[0];

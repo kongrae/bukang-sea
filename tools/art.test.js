@@ -36,6 +36,19 @@ test('loaded sprites reuse skin bitmaps and notify frozen scenes to repaint', ()
   assert.notEqual(api.get('portrait', skin), first);
 });
 
+test('launch waits only for the selected portrait; completion and failure both settle without duplicate loads', async () => {
+  const { api, pending } = art(); api.load();
+  const skin = { id: 'coral' }; let ready = false;
+  const selected = api.ready('portrait', skin).then(() => { ready = true; });
+  const second = api.ready('portrait', skin);
+  assert.equal(pending.length, 4);
+  pending[0].onload(); pending[1].onload(); await Promise.resolve();
+  assert.equal(ready, false, 'the base portrait does not mean the selected skin is ready');
+  pending[3].onerror(); await Promise.all([selected, second]);
+  assert.equal(ready, true); await api.ready('portrait', skin);
+  assert.equal(pending.length, 4, 'a failed optional skin is not retried during launch');
+});
+
 test('authored skins decode lazily once, keep both views separate, and supersede the tint fallback', () => {
   const { api, pending } = art(); api.load(); pending.slice().forEach(image => image.onload());
   assert.equal(pending.length, 3, 'startup only decodes the base mascot');

@@ -40,7 +40,9 @@ for (const [name, source] of [['before', before], ['after', current]]) {
     .replace('const pilotUnlocked = i => i === 0 || pilotStars(i - 1) > 0;', 'const pilotUnlocked = i => true;')
     .replace('const boot = () =>', controls + '\nconst boot = () =>');
   if (!game.includes('qaPanel')) throw Error('QA insertion marker changed');
-  let body = gameBody().replace(current, game)
+  const shell = source.includes('createLaunchGate') ? {} : Object.fromEntries(['shell.html','art-theme.css'].map(file =>
+    [file, cp.execFileSync('git', ['show', ref + ':src/' + file], {cwd:root, encoding:'utf8'})]));
+  let body = gameBody({...shell,'game.js':game})
     .replaceAll('@media (prefers-reduced-motion: reduce)', '@media (max-width: 0px)')
     .replace(/<link[^>]*fonts\.[^>]*>/g, '');
   const fonts = [400, 500, 700].map(w => `@font-face{font-family:'Bukang Body';font-weight:${w};src:url('/assets/fonts/noto-sans-kr-${w}.woff2')}`)

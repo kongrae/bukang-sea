@@ -101,13 +101,13 @@ test('only new or improved story records queue stars, next level and chapter; re
   game.finish(ORDER[23],1);assert.deepEqual(game.pending().levels,[ORDER[24]]);assert.deepEqual(game.pending().chapters,[2]);
 });
 
-test('collapsed stage picker retains unlock and star cues until the player opens it',()=>{
+test('closed map sheet retains unlock and star cues until the player opens it',()=>{
   const game=scene();game.finish(0,3);
   game.element('titleScreen').hidden=false;
   game.element('levelGrid').innerHTML='<button data-i="0"></button><button data-i="1"></button>';
-  game.element('stagePicker').open=false;game.apply();
+  game.element('mapOverlay').hidden=true;game.apply();
   assert.deepEqual(game.pending().stars,[0]);assert.deepEqual(game.pending().levels,[1]);
-  game.element('stagePicker').open=true;game.apply();
+  game.element('mapOverlay').hidden=false;game.apply();
   assert.deepEqual(game.pending().stars,[]);assert.deepEqual(game.pending().levels,[]);
   const [cleared,unlocked]=game.element('levelGrid').children;
   assert.equal(cleared.classList.contains('reward-updated'),true);

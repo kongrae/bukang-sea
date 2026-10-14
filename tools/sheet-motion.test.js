@@ -14,6 +14,7 @@ function scene(reduced = false) {
     const closeJourney=()=>dismiss('journeyOverlay'),closeEnding=()=>dismiss('endingOverlay'),closeDaily=()=>dismiss('dailyOverlay');
     const closeFree=()=>dismiss('freeOverlay'),closePilot=()=>dismiss('pilotOverlay'),closeJournal=()=>dismiss('journalOverlay');
     const closeSkins=()=>dismiss('skinsOverlay'),closeSettings=()=>dismiss('settingsOverlay'),closeGuide=()=>dismiss('guideOverlay');
+    const closeMap=()=>dismiss('mapOverlay'),closeHelp=()=>dismiss('helpOverlay');
     function dismiss(id){calls.push(id);closeSheet(id);}
     const invalidateScenes=()=>{};
     const timers=new Map(),elements=new Map(),document={hidden:false,activeElement:null};
@@ -123,7 +124,7 @@ test('cancel, extra pointer, menu replacement and resize cleanup leave no captur
 });
 
 test('every dismissible menu routes through its handler; reduced motion resets without a return timer', () => {
-  for(const id of ['journeyOverlay','endingOverlay','dailyOverlay','freeOverlay','pilotOverlay','journalOverlay','skinsOverlay','settingsOverlay','guideOverlay']){
+  for(const id of ['mapOverlay','helpOverlay','journeyOverlay','endingOverlay','dailyOverlay','freeOverlay','pilotOverlay','journalOverlay','skinsOverlay','settingsOverlay','guideOverlay']){
     const ui=scene(true);ui.open(id);ui.down(ui.pointer(id,100,400));ui.advance(200);
     ui.move(ui.pointer(id,100,550));ui.up(ui.pointer(id,100,550));assert.deepEqual(ui.calls,[id]);assert.equal(ui.timers(),0);
   }

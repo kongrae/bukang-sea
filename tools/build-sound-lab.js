@@ -20,6 +20,9 @@ for (const [name, source] of [['before', old], ['after', current]]) {
     .replace('const boot = () =>', controls + '\nconst boot = () =>');
   if (!game.includes('qaAudioPanel')) throw Error('QA marker missing');
   const style = `#qaAudioPanel{position:fixed;z-index:50;bottom:0;left:0;right:0;background:#fff4cd;color:#123;padding:5px;font:12px system-ui;max-height:140px;overflow:auto}#qaAudioPanel button{padding:6px;margin:2px}#qaAudioLog{white-space:pre-wrap;margin:0}#app{height:calc(100% - 140px)}`;
-  fs.writeFileSync(path.join(folder,`game-${name}.html`),`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sound game ${name}</title><style>${style}</style><body>${gameBody().replace(current,game)}</body></html>`);
+  // A historical runtime needs its own shell (before the launch gate / map sheet existed).
+  const shell = source.includes('createLaunchGate') ? {} : Object.fromEntries(['shell.html','art-theme.css'].map(file =>
+    [file, cp.execFileSync('git', ['show', baseline + ':src/' + file], {cwd:root, encoding:'utf8'})]));
+  fs.writeFileSync(path.join(folder,`game-${name}.html`),`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sound game ${name}</title><style>${style}</style><body>${gameBody({...shell,'game.js':game})}</body></html>`);
 }
 console.log(`Built outputs/audio/index.html and game-{before,after}.html; baseline ${baseline}`);

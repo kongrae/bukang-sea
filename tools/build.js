@@ -17,15 +17,15 @@ const FONTS = [
   { family: 'Bukang Body', weight: 500, file: 'noto-sans-kr-500.woff2' },
   { family: 'Bukang Body', weight: 700, file: 'noto-sans-kr-700.woff2' },
 ];
-const APP = { name: '상어 SOS: 바다로 보내줘!', short: '상어 SOS', color: '#c6f3f4', description: '수로에 갇힌 상어에게 바다로 가는 길을 열어 주는 구출 슬라이드 퍼즐' };
+const APP = { name: '상어 SOS: 바다로 보내줘!', short: '상어 SOS', color: '#e8f8f5', description: '수로에 갇힌 상어에게 바다로 가는 길을 열어 주는 구출 슬라이드 퍼즐' };
 
 const page = (head, extra = '', content = body) => `<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 ${head}</head>
-<body style="margin:0">
+<body style="margin:0;background:#e8f8f5">
 ${content}
 ${extra}</body>
 </html>

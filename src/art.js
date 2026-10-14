@@ -18,7 +18,7 @@ const MENU_ART = (() => {
 })();
 /* Shared, optional art. Gameplay never waits for a network image or changes on load failure. */
 const SHARK_ART = (() => {
-  const images = {}, tinted = new Map(), requested = new Set();
+  const images = {}, tinted = new Map(), requested = new Set(), waiting = new Map();
   const urls = { hero: '@@ART_HERO@@', portrait: '@@ART_PORTRAIT@@', swim: '@@ART_SWIM@@' };
   const skinUrls = {
     sakura: { portrait: '@@ART_SKIN_SAKURA_PORTRAIT@@', swim: '@@ART_SKIN_SAKURA_SWIM@@' },
@@ -34,12 +34,26 @@ const SHARK_ART = (() => {
     if (requested.has(name)) return;
     requested.add(name);
     const img = new Image();
-    img.onload = () => { images[name] = img; tinted.delete(name); api.onReady(name); };
-    img.onerror = () => { images[name] = null; api.onReady(name); };
+    const done = image => {
+      images[name] = image; tinted.delete(name);
+      waiting.get(name)?.forEach(resolve => resolve()); waiting.delete(name);
+      api.onReady(name);
+    };
+    img.onload = () => done(img);
+    img.onerror = () => done(null);
     img.src = src;
   }
   const api = {
     onReady: () => {},
+    ready(name, skin) {
+      const src = skinUrls[skin?.id]?.[name] || urls[name];
+      if (skinUrls[skin?.id]?.[name]) name += ':' + skin.id;
+      if (Object.prototype.hasOwnProperty.call(images, name)) return Promise.resolve();
+      return new Promise(resolve => {
+        if (!waiting.has(name)) waiting.set(name, []);
+        waiting.get(name).push(resolve); request(name, src);
+      });
+    },
     load() {
       for (const [name, src] of Object.entries(urls)) request(name, src);
     },
