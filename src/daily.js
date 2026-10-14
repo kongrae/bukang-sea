@@ -98,8 +98,9 @@ function makeDaily(date) {
   return null;
 }
 /* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
-const DAILY_OPERATION_VERSION = 5;
-const DAILY_OPERATION_VERSIONS = [1, 2, 3, 4, 5];   // every version a started date may still be on
+const DAILY_OPERATION_VERSION = 6;
+const DAILY_OPERATION_VERSIONS = [1, 2, 3, 4, 5, 6];   // every version a started date may still be on
+const D6 = typeof module !== 'undefined' && typeof require === 'function' ? require('./puzzle-v6') : {selectV6,v6History,v6Eligible};
 const DV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
   : { VARIETY_DAILY_THEMES, variedCanalSearch, varietyFamilyKnown, challengeTier };
 const DAILY_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
@@ -181,7 +182,19 @@ const DAILY_SUBSTITUTES = ['sand', 'patrol', 'current', 'branches', 'pockets', '
 function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION, learned = null) {
   if (version === 1) return yield* makeDailyStageV1Search(date, stage);
   const tier = dailyStageTier(stage, version), theme = dailyTheme(date);
-  if (![2, 3, 4, 5].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  if (![2, 3, 4, 5, 6].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  if(version===6) {
+    const history=[],day=Math.floor(Date.parse(date+'T00:00:00Z')/86400000);let level;
+    for(let i=0;i<=stage;i++) {
+      yield;
+      const target=dailyStageTier(i,version),families=[...new Set(D6.v6Eligible(i,learned,target).map(p=>p.pattern))]
+        .filter(f=>!history.some(r=>r.pattern===f));
+      const family=families[(day+i)%families.length];
+      level=D6.selectV6(dailySeed(`operation-v6-${date}-${i}`),i,learned,target,history,null,family,Math.floor(day/families.length));
+      if(!level)return null;history.push(D6.v6History(level));
+    }
+    return {date,stage,version,tier,theme:'세 가지 해결법',fallback:false,level};
+  }
   const seed = dailySeed(`shark-sos-operation-v2-${date}-${stage}`), planned = theme.families[stage], placed = version >= 4;
   let families = [planned];
   if (version >= 3) {

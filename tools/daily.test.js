@@ -9,7 +9,7 @@ const { replayPlan } = require('./replay-plan');
 const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
 const dailySource = fs.readFileSync(path.join(__dirname, '../src/daily.js'), 'utf8');
 const engineSource = fs.readFileSync(path.join(__dirname, '../src/engine.js'), 'utf8');
-const varietySource = ['variety', 'variety-reserves'].map(name => fs.readFileSync(path.join(__dirname, '../src/', name + '.js'), 'utf8')).join('\n');
+const varietySource = ['variety', 'variety-reserves', 'puzzle-catalog-v6', 'puzzle-v6'].map(name => fs.readFileSync(path.join(__dirname, '../src/', name + '.js'), 'utf8')).join('\n');
 const functionSource = name => {
   const match = source.match(new RegExp(`^function ${name}\\([^\\n]*}\\s*$`, 'm'))
     || source.match(new RegExp(`function ${name}\\([^]*?\\n}`));
@@ -189,16 +189,16 @@ test('a date started on v2 stays on v2; a v3 date keeps the devices learned when
   fresh.date('2026-10-27');fresh.open();await fresh.start(0);assert.deepEqual(fresh.save().dailyDevices.devices,['jet','boat','net','sand','whirl']);
 });
 
-test('a started v4 date keeps its learned-device snapshot and challenge after the v5 update', async () => {
-  const date='2026-10-20',learned=['jet'],old=D.makeDailyStage(date,2,4,learned),setup=operation(JSON.stringify({
-    best:{},dailyOps:{[date]:{version:4,stars:[3,3,0]}},dailyDevices:{date,devices:learned}
+for(const version of [4,5])test(`a started v${version} date keeps its learning snapshot and challenge after an update`, async () => {
+  const date='2026-10-20',learned=['jet'],old=D.makeDailyStage(date,2,version,learned),setup=operation(JSON.stringify({
+    best:{},dailyOps:{[date]:{version,stars:[3,3,0]}},dailyDevices:{date,devices:learned}
   }));
   setup.date(date);setup.load(old);
   const g=E.parseLevel(old.level);setup.move(E.plan(g,g.start,0,new Set(),g.nets,true).seq[0]);
   const game=operation(setup.saved());game.date(date);game.open();await game.start(2);
-  assert.equal(game.active().version,4);assert.deepEqual(game.active().level,old.level);assert.deepEqual(game.state(),setup.state());
+  assert.equal(game.active().version,version);assert.deepEqual(game.active().level,old.level);assert.deepEqual(game.state(),setup.state());
   assert.deepEqual(game.save().dailyDevices,{date,devices:learned});game.clear(3);
-  game.date('2026-10-21');game.open();await game.start(0);assert.equal(game.active().version,5);
+  game.date('2026-10-21');game.open();await game.start(0);assert.equal(game.active().version,D.DAILY_OPERATION_VERSION);
   assert.deepEqual(game.progress(date).stars,[3,3,3]);
 });
 

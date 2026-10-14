@@ -1,6 +1,7 @@
 /* ---------- Free canals: seeded puzzles, independent of calendar dates ---------- */
-const FREE_VERSION = 5;
-const FREE_VERSIONS = [1, 2, 3, 4, 5];   // every version a kept run may still be on
+const FREE_VERSION = 6;
+const FREE_VERSIONS = [1, 2, 3, 4, 5, 6];   // every version a kept run may still be on
+const F6 = typeof module !== 'undefined' && typeof require === 'function' ? require('./puzzle-v6') : {selectV6};
 const FE = typeof module !== 'undefined' && typeof require === 'function' ? require('./engine.js') : { parseLevel };
 const FD = typeof module !== 'undefined' && typeof require === 'function' ? require('./daily.js')
   : { MASKS, rng, place, dailySeed, operationPlan, placedOperationPlan, DAILY_STAGES, DAILY_FALLBACKS };
@@ -55,10 +56,15 @@ function freeFamilies(tier, learned) {
   const known = tier.families.filter(family => FV.varietyFamilyKnown(family, learned));
   return known.length >= 2 ? known : [...new Set([...known, ...FREE_BASE_FAMILIES])];
 }
-function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
+function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = null, family = null, history = [], puzzleId = null) {
   if (version === 1) return yield* makeFreeV1Search(seed, difficulty);
   const tier = freeTier(difficulty, version);
-  if (![2, 3, 4, 5].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  if (![2, 3, 4, 5, 6].includes(version) || !Number.isInteger(difficulty) || !tier || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return null;
+  if(version===6) {
+    yield;
+    const level=F6.selectV6(seed,difficulty,learned,tier,history,puzzleId,family);
+    return level?{version,seed,difficulty,fallback:false,level}:null;
+  }
   const mixed = FD.dailySeed(`shark-sos-free-v2-${difficulty}-${seed}`), families = version === 2 ? tier.families : freeFamilies(tier, learned);
   const chosen = version >= 3 && FV.VARIETY_FAMILIES[family] ? family : families[mixed % families.length];
   const order = version >= 4 && !family ? [chosen, ...families.filter(f => f !== chosen)] : [chosen];
@@ -69,8 +75,8 @@ function* makeFreeSearch(seed, difficulty, version = FREE_VERSION, learned = nul
   }
   return null;
 }
-function makeFree(seed, difficulty, version = FREE_VERSION, learned = null, family = null) {
-  const search = makeFreeSearch(seed, difficulty, version, learned, family); let step;
+function makeFree(seed, difficulty, version = FREE_VERSION, learned = null, family = null, history = [], puzzleId = null) {
+  const search = makeFreeSearch(seed, difficulty, version, learned, family, history, puzzleId); let step;
   do { step = search.next(); } while (!step.done);
   return step.value;
 }

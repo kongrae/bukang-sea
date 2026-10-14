@@ -167,6 +167,8 @@ save.free.runs = save.free.runs.slice(0, 3);
 save.free.completed = [0, 1, 2].map(i => Number.isSafeInteger(save.free.completed?.[i]) && save.free.completed[i] >= 0 ? save.free.completed[i] : 0);
 save.free.recent = [0, 1, 2].map(i => Array.isArray(save.free.recent?.[i])
   ? save.free.recent[i].filter(key => typeof key === 'string' && key.length <= 4096).slice(-6) : []);
+save.free.thinking = [0, 1, 2].map(i => Array.isArray(save.free.thinking?.[i])
+  ? save.free.thinking[i].filter(r => r && typeof r.id === 'string' && typeof r.pattern === 'string' && typeof r.signature === 'string').slice(-6) : []);
 // Keep the previous single puzzle separately so starting an operation never overwrites it.
 if (save.sessions.daily && /^\d{4}-\d{2}-\d{2}$/.test(save.sessions.daily.id)) {
   save.sessions.dailyLegacy = save.sessions.daily; delete save.sessions.daily; persist();
@@ -2016,7 +2018,7 @@ function renderDaily() {
 function renderOperation() {
   const date = dailyDate(), progress = dailyProgress(date), version = dailyOperationVersion(date);
   shownDailyDate = date;
-  $('operationDate').textContent = `${dateLabel(date)} · ${version >= 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
+  $('operationDate').textContent = `${dateLabel(date)} · ${version >= 6 ? '세 가지 해결법 · ' : version >= 2 ? dailyTheme(date).label + ' · ' : ''}${progress.count} / 3 완료 · ★ ${progress.total} / 9`;
   $('operationNote').textContent = progress.count === 3 ? '오늘의 작전을 마쳤어요! 별을 더 모으거나 내일 새 수로에 도전해요.'
     : save.daily[date] ? (progress.count ? '오늘 참여가 인정됐어요. 나머지 수로도 이어서 도전해요.' : '이전 수로의 참여 기록은 유지돼요. 새 작전에도 도전해 보세요.')
     : '한 수로만 완료해도 연속 기록이 이어져요.';
@@ -2309,7 +2311,7 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
       if (!Number.isSafeInteger(serial)) throw new Error('free serial exhausted');
       for (let attempt = 0; attempt < (create ? 12 : 1); attempt++) {
         const seed = create ? newFreeSeed() : previous.seed, search = makeFreeSearch(seed, difficulty, create ? FREE_VERSION : previous.version,
-          learnedDevices(), create ? null : previous.family);
+          learnedDevices(), create ? null : previous.family, create ? save.free.thinking[difficulty] : [], create ? null : previous.puzzleId);
         let step;
         do {
           if (request !== freeRequest) return;
@@ -2321,7 +2323,7 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
         const candidate = { ...step.value, serial }, layout = levelSignature(candidate.level);
         if (create && previous?.layout === layout) continue;
         if (create && save.free.recent[difficulty].includes(varietyLayoutKey(candidate.level))) continue;
-        if (create && attempt < 8 && previous && (previous.family === candidate.level.family || previous.maskId === candidate.level.maskId)) continue;
+        if (create && candidate.version < 6 && attempt < 8 && previous && (previous.family === candidate.level.family || previous.maskId === candidate.level.maskId)) continue;
         if (!create && previous.layout !== layout) throw new Error('free layout changed');
         run = candidate; break;
       }
@@ -2330,8 +2332,10 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
     if (!run) throw new Error('no different free layout');
     // Commit only a finished, distinct puzzle. Cancellation and failed searches preserve the previous turn.
     if (create) {
-      save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId };
+      save.free.runs[difficulty] = { version: run.version, difficulty, seed: run.seed, serial: run.serial, stars: 0, layout: levelSignature(run.level), family: run.level.family, maskId: run.level.maskId,
+        ...(run.version >= 6 ? {puzzleId:run.level.puzzleId} : {}) };
       save.free.recent[difficulty] = [...save.free.recent[difficulty], varietyLayoutKey(run.level)].slice(-6);
+      if(run.version>=6)save.free.thinking[difficulty]=[...save.free.thinking[difficulty],v6History(run.level)].slice(-6);
       delete save.sessions['free' + difficulty];
       for (const key of Object.keys(save.hintUsage)) if (FREE_VERSIONS.some(version => key.startsWith(`free:v${version}:${difficulty}:`))) delete save.hintUsage[key];
       if (previous) freeCache.delete(freeId(previous));

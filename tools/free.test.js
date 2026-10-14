@@ -22,6 +22,8 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
     ${read('engine')}
     ${read('variety')}
     ${read('variety-reserves')}
+    ${read('puzzle-catalog-v6')}
+    ${read('puzzle-v6')}
     ${read('daily')}
     ${read('free')}
     let written=stored,hook=null,FREE=null,DAILY=null,PILOT=null,LVL=0,g,st,anim=null,cleared=false,deco=0,learned=['jet','boat','net','sand','whirl','gate'];
@@ -129,13 +131,13 @@ test('a v1 run resumes its exact board and turns; requesting a new run upgrades 
   assert.equal(reload.save().hintUsage[F.freeId(old)],undefined);
 });
 
-test('v4 challenge restores its board, turn and hints; only an explicit new challenge upgrades to v5', async () => {
-  const old=F.makeFree(42,2,4,['jet']),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
+for(const version of [4,5])test(`v${version} challenge restores its board, turn and hints; only a new challenge upgrades`, async () => {
+  const old=F.makeFree(42,2,version,['jet']),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
   const game=scene();game.generator(function*(){return old;});game.open();await game.start(2);game.move(plan.steps[0]);game.hint();
   const previous=game.save(),reload=scene(game.saved(),[97,123,256]);reload.open();await reload.start(2);
-  assert.equal(reload.run().version,4);assert.deepEqual(reload.run().level,old.level);assert.deepEqual(reload.state(),game.state());
+  assert.equal(reload.run().version,version);assert.deepEqual(reload.run().level,old.level);assert.deepEqual(reload.state(),game.state());
   assert.deepEqual(reload.save().hintUsage,previous.hintUsage);
-  reload.open();await reload.start(2,true);assert.equal(reload.run().version,5);assert.equal(reload.run().serial,2);
+  reload.open();await reload.start(2,true);assert.equal(reload.run().version,F.FREE_VERSION);assert.equal(reload.run().serial,2);
   assert.ok(E.parseLevel(reload.run().level).w>=10);assert.equal(reload.state().moves,0);
   for(const key of ['best','last','owned','skin','daily','journal'])assert.deepEqual(reload.save()[key],previous[key]);
 });
@@ -192,6 +194,7 @@ test('closing during preparation and failed or repeated generation preserve the 
   const game=scene(null,[42,42,42,42,42,42]);game.open();await game.start(0);game.hint();const before=game.save();
   game.open();game.hook(()=>game.close());await game.start(0,true);
   assert.deepEqual(game.save(),before);assert.equal(game.element('freeOverlay').hidden,true);
+  const repeated=game.run();game.generator(function*(){return repeated;});
   game.open();await game.start(0,true);assert.deepEqual(game.save(),before);
   assert.match(game.element('freeStatus').textContent,/기존 진행은 남아/);
   game.generator(function*(){throw Error('search failure');});await game.start(0,true);assert.deepEqual(game.save(),before);
