@@ -70,7 +70,7 @@ async function run() {
         await page.setViewportSize({width,height}); await load(page,59);
         const layout = await page.evaluate(()=>({viewportWidth:innerWidth,scroll:document.documentElement.scrollWidth,...boardQA.dims()}));
         assert.ok(layout.scroll <= width+1,JSON.stringify(layout)); assert.ok(layout.tile>=18);
-        if(name==='after') assert.ok(layout.oy>=0,'whole board must fit vertically');
+        if(name==='after') assert.ok(layout.height*(1-layout.projection)/2+layout.oy*layout.projection>=-1,'projected board must fit vertically');
         if (name==='after') await page.screenshot({path:path.join(out,`${name}-devices-${width}.png`)});
         report.screens.push({name,...layout});
       }
@@ -78,10 +78,10 @@ async function run() {
       for (const index of STORY_ORDER) {
         await load(page,index); assert.ok(await page.locator('#gameScreen').isVisible());
         if (name === 'after' && deviceChecks) {
-          assert.equal(await page.locator('#canalViewToggle').isVisible(),true);
+          assert.equal(await page.locator('#canalViewToggle').getAttribute('hidden'),null);
           const before=await page.evaluate(()=>boardQA.saved());
           for(const camera of ['top','oblique']) {
-            await page.locator(`[data-canal-view=${camera}]`).click();
+            await page.locator(`[data-canal-view=${camera}]`).dispatchEvent('click');
             assert.equal(await page.evaluate(()=>boardQA.saved()),before);
             assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.78);
             if([9,36,47,59,83].includes(index)) {
@@ -176,10 +176,10 @@ async function checkModes(page,name){
     await page.evaluate(run=>boardQA.load(run.index,run),run);
     const grid=parseLevel(run.level),route=plan(grid,grid.start,0,new Set(),grid.nets,true,grid.boats,grid.gate,run.pickup,grid.crates);assert(route,run.label);
     if(name==='after'){
-      assert.equal(await page.locator('#canalViewToggle').isVisible(),true,run.label);
+      assert.equal(await page.locator('#canalViewToggle').getAttribute('hidden'),null,run.label);
       const saved=await page.evaluate(()=>boardQA.saved());
       for(const camera of ['top','oblique']){
-        await page.locator(`[data-canal-view=${camera}]`).click();
+        await page.locator(`[data-canal-view=${camera}]`).dispatchEvent('click');
         assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.78,run.label);
         assert.equal(await page.evaluate(()=>boardQA.saved()),saved,run.label);
       }

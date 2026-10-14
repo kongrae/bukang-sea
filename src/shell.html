@@ -403,7 +403,9 @@ h1 .sea { color: var(--title-alert); }
 .net-callout::after { content: ""; position: absolute; right: -10px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left-color: #e3a43a; border-right: 0; }
 .level-net { font: 11px/1.3 var(--font-body); border-radius: 6px; padding: 2px 5px; background: #e2eeec; color: #456a72; }
 .level-net.available { background: #ffe5a4; color: #714211; box-shadow: inset 0 0 0 1px #dba349; }
-.tip { font-size: 14px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.3; margin: 0; text-wrap: balance; display: flex; align-items: center; justify-content: center; }
+.tip { flex: 1; font-size: 14px; color: var(--muted); text-align: start; line-height: 1.4; margin: 0; text-wrap: pretty; }
+.board-notice { position: absolute; z-index: 2; inset-inline: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; max-height: 45%; overflow-y: auto; border-radius: 14px; background: #fffdf4f5; box-shadow: 0 3px 14px #163f5226; touch-action: pan-y; }
+.board-notice .icon-btn { flex: 0 0 44px; width: 44px; height: 44px; }
 .tip.hint { color: var(--star); }
 .tip.flash { animation: tip-in .3s var(--ease-out); }
 @keyframes tip-in { from { transform: translateY(4px); opacity: 0; } }
@@ -717,14 +719,13 @@ button:disabled:active { transform: none; }
       <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
     </div>
     <div class="stats" id="stats"></div>
-    <p class="tip" id="tip"></p>
-    <div class="canal-view" id="canalViewToggle" role="group" aria-label="수로 시점 비교" hidden>
-      <span>시점 비교</span>
-      <button type="button" data-canal-view="top" aria-pressed="false">탑뷰</button>
-      <button type="button" data-canal-view="oblique" aria-pressed="true">입체 시점</button>
-      <small id="canalViewNote" hidden>이 스킨은 기존 모습으로 표시돼요.</small>
+    <div class="board" id="board">
+      <div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div>
+      <div class="board-notice" id="boardNotice" hidden>
+        <p class="tip" id="tip" role="status" aria-live="polite" aria-atomic="true"></p>
+        <button class="icon-btn" id="tipDismiss" type="button" aria-label="안내 닫기">✕</button>
+      </div>
     </div>
-    <div class="board" id="board"><div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div></div>
     <div class="controls" id="controls">
       <button class="ctrl" id="undoBtn" type="button">
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5"/><path d="M4 10h10a5 5 0 010 10h-3"/></svg>되돌리기
@@ -878,6 +879,12 @@ button:disabled:active { transform: none; }
     </div>
     <label class="switch"><span>소리<small>숭어·장치·구출 효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <div class="canal-view" id="canalViewToggle" role="group" aria-label="화면 시점" hidden>
+      <span>화면 시점</span>
+      <button type="button" data-canal-view="top" aria-pressed="false">탑뷰</button>
+      <button type="button" data-canal-view="oblique" aria-pressed="true">입체 시점</button>
+      <small id="canalViewNote" hidden>이 스킨은 기존 모습으로 표시돼요.</small>
+    </div>
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
     <p class="settings-about">버전 @@APP_VERSION@@ · <a href="https://kongrae.github.io/bukang-sea/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="mailto:sky7700sky@naver.com">문의</a></p>

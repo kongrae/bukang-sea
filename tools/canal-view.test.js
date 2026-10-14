@@ -13,7 +13,7 @@ function camera({ stored = null, fail = false } = {}) {
     const buttons = ['top', 'oblique'].map(mode => ({dataset:{canalView:mode},setAttribute(k,v){this[k]=v;}}));
     const elements = {canalViewToggle:{hidden:false,querySelectorAll:()=>buttons},canalViewNote:{hidden:true}};
     const $ = id => elements[id], SHARK_ART = {hasOblique:()=>true}, currentSkin=()=>({id:'basic'});
-    let paints = 0; const buildStatic=()=>{},invalidateScenes=()=>{},draw=()=>paints++;
+    let paints = 0; const resize=()=>{},invalidateScenes=()=>{},draw=()=>paints++;
     ${cameraSource}
     return {projection:boardProjection, gridY:boardGridY, set:setCanalView, update:updateCanalView, writes, elements, buttons,
       scope: (mode,index=0,legacy=false) => {DAILY=mode==='daily'?{}:null;FREE=mode==='free'?{}:null;PILOT=mode==='pilot'?{}:null;LVL=index;STORY=legacy?{}:LEVELS[index];g=mode==='empty'?null:{};updateCanalView();},
@@ -63,7 +63,7 @@ test('raised quays leave every water/device cell centre visible and retain the r
   const { LEVELS } = require('../src/levels');
   const quay = source.slice(source.indexOf('function drawObliqueQuay'), source.indexOf('function drawObliqueShark'));
   const render = new Function('map', `
-    const T=40, dpr=1, OX=0, OY=0, CW=map[0].length*T, CH=map.length*T, deco=0;
+    const T=40, dpr=1, OX=0, OY=0, CW=map[0].length*T, CH=map.length*T, staticTop=0, staticHeight=CH, deco=0;
     const boardSurface={land:['#eef5fa','#dbe6ed'],decor:'sluice'}, fills=[], colours=[];
     const noop=()=>{}, gradient={addColorStop:(at,colour)=>colours.push(colour)};
     const s=new Proxy({fillRect:(...r)=>fills.push(r),createLinearGradient:()=>gradient},{get:(o,k)=>o[k]||noop});

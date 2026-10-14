@@ -1065,6 +1065,7 @@ const caustic = (() => {
 let LVL = 0, g = null, st = null, anim = null, bump = null, hint = null, cleared = false;
 let hintRequest = 0;
 let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
+let staticTop = 0, staticHeight = 0, quayForeground = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
@@ -1372,6 +1373,8 @@ function coachDone(kind) {
 function setTip(text, isHint) {
   gameNeedsPaint = true;
   const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
+  // Stage descriptions no longer reserve space. Action feedback remains readable and dismissible over the board.
+  $('boardNotice').hidden = !text || text === curLevel().tip;
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 function updateHud() {
@@ -1462,7 +1465,7 @@ function tryMove(d) {
     if (!reduceMotion && st.crates && ax >= 0 && ay >= 0 && ax < g.w && ay < g.h && st.crates.includes(ay * g.w + ax)) crateWobble.set(ay * g.w + ax, { at: clock, d });
     return;
   }
-  hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
+  hint = null; setTip(curLevel().tip);
   pushHistory(); endDeviceSpot();   // the spotlight has done its job once the player moves
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const eats = [], jets = [];
@@ -2360,14 +2363,14 @@ function setCanalView(mode) {
   try { localStorage.setItem(CANAL_VIEW_KEY, mode); } catch (_) {}
   updateCanalView();
   // Keep the current turn, interpolation, queued swipe and undo history untouched.
-  buildStatic(); invalidateScenes(); draw(clock);
+  resize(); invalidateScenes(); draw(clock);
 }
 function drawObliqueQuay() {
   const s = staticLayer.getContext('2d'), P = boardSurface;
-  s.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);
+  s.setTransform(dpr, 0, 0, dpr, OX * dpr, (OY - staticTop) * dpr);
   // Raise only the quay. Keep the shared region water, sea mouth and gameplay surfaces underneath.
   const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T);
-  const y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  const y0 = Math.floor((staticTop - OY) / T) - 1, y1 = Math.ceil((staticTop + staticHeight - OY) / T);
   const height = T * .23;
   const top = s.createLinearGradient(0, -OY, CW, CH - OY);
   top.addColorStop(0, P.land[0]); top.addColorStop(1, P.land[1]);
@@ -2434,7 +2437,9 @@ function resize() {
   if (!g || $('gameScreen').hidden) return;
   const r = board.getBoundingClientRect();
   CW = Math.floor(r.width); CH = Math.floor(r.height);
-  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / g.h, 132)));
+  // Fit the projected board, including a small margin for raised silhouettes, instead of shrinking it twice.
+  const q = boardProjection();
+  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / (q === 1 ? g.h : (g.h + .3) * q), 132)));
   OX = Math.round((CW - g.w * T) / 2); OY = Math.round((CH - g.h * T) / 2);
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
@@ -2525,9 +2530,11 @@ function drawSeaMouth(ctx, ex, ey, P) {
 }
 function buildStatic() {
   buildSea();
+  // Align the offscreen origin to device pixels so adjacent water tiles do not develop hairline seams.
+  staticTop = Math.floor((CH - CH / boardProjection()) * dpr / 2) / dpr; staticHeight = CH - staticTop * 2;
   staticLayer = document.createElement('canvas');
-  staticLayer.width = cvs.width; staticLayer.height = cvs.height;
-  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  staticLayer.width = cvs.width; staticLayer.height = Math.ceil(staticHeight * dpr);
+  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY - staticTop);
   const P = boardSurface || (setBoardRegion(null), boardSurface);
   const landPaint = s.createLinearGradient(0, -OY, CW, CH - OY);
   landPaint.addColorStop(0, P.land[0]); landPaint.addColorStop(1, P.land[1]);
@@ -2537,7 +2544,7 @@ function buildStatic() {
   const exits = []; for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === 'E') exits.push([i % g.w, Math.floor(i / g.w)]);
   const sluiceDecor = (x, y) => P.decor === 'sluice' || (P.preview && exits.some(([ex, ey]) => Math.abs(ex - x) + Math.abs(ey - y) <= 4));
   // every cell that is at least partly on screen
-  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor((staticTop - OY) / T) - 1, y1 = Math.ceil((staticTop + staticHeight - OY) / T);
   waterPath = new Path2D();
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const px = x * T, py = y * T, c = cellType(x, y);
@@ -2583,7 +2590,20 @@ function buildStatic() {
   }
   for (const [ex,ey] of exits) drawSeaMouth(s,ex,ey,P);
   if (boardProjection() !== 1) drawObliqueQuay();
-  // Sand is above shallow-water shading; its stopping surface must never look submerged or clipped by a quay.
+  // Only the north overhang of a nearer quay occludes objects behind it. Reuse the exact baked stone pixels;
+  // redrawing all land here would incorrectly cut off silhouettes standing in front of a farther quay.
+  quayForeground = null;
+  if (boardProjection() !== 1) {
+    quayForeground = document.createElement('canvas');
+    quayForeground.width = staticLayer.width; quayForeground.height = staticLayer.height;
+    const front = quayForeground.getContext('2d');
+    front.beginPath();
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (isLand(x,y) && !isLand(x,y-1)) front.rect((OX+x*T)*dpr,(OY-staticTop+(y-.23)*T)*dpr,T*dpr,.23*T*dpr);
+    }
+    front.clip(); front.drawImage(staticLayer,0,0);
+  }
+  // Sand stays on the water surface; the cached nearer quay also occludes its outer foam, never its stopping centre.
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 's') drawSand(s, x * T, y * T, T, x * 31 + y * 17 + deco);
 }
 
@@ -2748,12 +2768,7 @@ function draw(t) {
   const zx = exitZoom ? (OX + (exitZoom.x + 0.5) * T) * (1 - zs) : 0, zy = exitZoom ? (OY + (exitZoom.y + 0.5) * T) * (1 - zs) : 0;
   const q = boardProjection(), offset = CH * (1 - q) / 2;
   ctx.save();
-  if (q !== 1) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = C.harbor; ctx.fillRect(0, 0, CW * dpr, CH * dpr);
-    ctx.beginPath(); ctx.rect(0, offset * dpr, CW * dpr, CH * q * dpr); ctx.clip();
-  }
-  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + zy * q) * dpr);
+  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + ((q === 1 ? 0 : staticTop) * zs + zy) * q) * dpr);
   ctx.drawImage(staticLayer, 0, 0);
   ctx.setTransform(dpr * zs, 0, 0, dpr * zs * q, (OX * zs + zx) * dpr, (offset + (OY * zs + zy) * q) * dpr);   // from here on: grid coordinates
   const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
@@ -2860,7 +2875,8 @@ function draw(t) {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
     const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
     const heading = anim && anim.t < boatStart ? anim.boatsFrom[k][1] : b[1];
-    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim, q !== 1);
+    const [dx,dy] = DIRS[heading], arrow = !anim && (q === 1 || !isLand(Math.round(x)+dx,Math.round(y)+dy));
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], arrow, q !== 1);
   });
   for (const [i, at] of netRetract) {
     const k = clamp01((clock - at) / 0.18);
@@ -2904,6 +2920,7 @@ function draw(t) {
   if (q === 1 || !drawObliqueShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, T * size, stretch, alpha)) {
     drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim && anim.t < anim.dur, stretch, alpha);
   }
+  if (q !== 1 && quayForeground) ctx.drawImage(quayForeground,-OX,staticTop-OY,CW,staticHeight);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim && !hint.remove.length && !hint.nets.length) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
@@ -3528,10 +3545,11 @@ $('canalViewToggle').addEventListener('click', e => {
   const button = e.target.closest('[data-canal-view]');
   if (button) setCanalView(button.dataset.canalView);
 });
+$('tipDismiss').addEventListener('click', () => { $('boardNotice').hidden = true; });
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
-  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
+  if ((e.target.closest && e.target.closest('button, .board-notice')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
   gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
   ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
 });

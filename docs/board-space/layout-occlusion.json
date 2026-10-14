@@ -1,0 +1,582 @@
+{
+  "baseline": "de442d7",
+  "browser": "Edge mobile emulation",
+  "physicalAndroid": false,
+  "checks": [
+    "No stage-description/camera rows in gameplay; settings retains both views; hint/error feedback stays visible, dismissible and does not change board size or consume input",
+    "Previously overlapping canals 2/3/79 reproduced; all 84 current maps preserve exact opaque foreground-stone pixels",
+    "390px board gains more than 80px height; 320px dense canal also gains tile size without cropping the projected board"
+  ],
+  "layouts": {
+    "before-390": {
+      "tile": 38,
+      "ox": -10,
+      "oy": 40,
+      "width": 360,
+      "height": 535,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78,
+      "boardHeight": 535.53125
+    },
+    "before-320": {
+      "tile": 22,
+      "ox": 35,
+      "oy": 3,
+      "width": 290,
+      "height": 269,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78,
+      "boardHeight": 269.671875
+    },
+    "after-390": {
+      "tile": 38,
+      "ox": -10,
+      "oy": 89,
+      "width": 360,
+      "height": 633,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78,
+      "boardHeight": 633.921875
+    },
+    "after-320": {
+      "tile": 30,
+      "ox": -5,
+      "oy": 10,
+      "width": 290,
+      "height": 380,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78,
+      "boardHeight": 380.234375
+    }
+  },
+  "occlusion": [
+    {
+      "name": "before",
+      "number": 2,
+      "checked": 12160,
+      "mismatched": 2152
+    },
+    {
+      "name": "before",
+      "number": 3,
+      "checked": 10640,
+      "mismatched": 1004
+    },
+    {
+      "name": "before",
+      "number": 79,
+      "checked": 12480,
+      "mismatched": 820
+    },
+    {
+      "name": "after",
+      "number": 1,
+      "checked": 27216,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 2,
+      "checked": 11712,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 3,
+      "checked": 10192,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 7,
+      "checked": 8232,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 10,
+      "checked": 8232,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 13,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 4,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 5,
+      "checked": 23040,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 12,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 25,
+      "checked": 16688,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 31,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 33,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 14,
+      "checked": 14448,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 35,
+      "checked": 14856,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 9,
+      "checked": 14448,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 23,
+      "checked": 23184,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 8,
+      "checked": 11760,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 26,
+      "checked": 14896,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 15,
+      "checked": 10584,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 32,
+      "checked": 12080,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 19,
+      "checked": 12288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 42,
+      "checked": 14896,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 20,
+      "checked": 10640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 29,
+      "checked": 12288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 47,
+      "checked": 14112,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 59,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 21,
+      "checked": 20520,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 71,
+      "checked": 9156,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 24,
+      "checked": 14112,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 27,
+      "checked": 13608,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 54,
+      "checked": 20520,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 22,
+      "checked": 20520,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 66,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 34,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 28,
+      "checked": 10080,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 36,
+      "checked": 14112,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 37,
+      "checked": 8232,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 38,
+      "checked": 18720,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 48,
+      "checked": 17640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 50,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 55,
+      "checked": 8232,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 53,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 51,
+      "checked": 17388,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 58,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 44,
+      "checked": 17640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 56,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 57,
+      "checked": 17640,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 60,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 6,
+      "checked": 10824,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 11,
+      "checked": 15288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 30,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 18,
+      "checked": 15288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 61,
+      "checked": 10528,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 62,
+      "checked": 12288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 64,
+      "checked": 23712,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 65,
+      "checked": 15796,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 63,
+      "checked": 19748,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 67,
+      "checked": 16340,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 68,
+      "checked": 15472,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 72,
+      "checked": 16860,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 16,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 17,
+      "checked": 12684,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 39,
+      "checked": 8232,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 40,
+      "checked": 15336,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 41,
+      "checked": 10584,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 43,
+      "checked": 12936,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 45,
+      "checked": 16304,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 46,
+      "checked": 15744,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 49,
+      "checked": 8176,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 52,
+      "checked": 7056,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 69,
+      "checked": 21660,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 70,
+      "checked": 18740,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 73,
+      "checked": 9600,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 74,
+      "checked": 12480,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 75,
+      "checked": 16680,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 76,
+      "checked": 12480,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 77,
+      "checked": 10944,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 78,
+      "checked": 12288,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 79,
+      "checked": 12384,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 80,
+      "checked": 9408,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 81,
+      "checked": 15416,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 82,
+      "checked": 11760,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 83,
+      "checked": 10752,
+      "mismatched": 0
+    },
+    {
+      "name": "after",
+      "number": 84,
+      "checked": 16264,
+      "mismatched": 0
+    }
+  ],
+  "errors": [],
+  "success": true
+}

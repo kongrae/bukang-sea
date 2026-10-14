@@ -3,7 +3,7 @@ html, body { background: #e8f8f5; }
 #app { max-width: 480px; margin-inline: auto; height: 100dvh; min-height: 0; }
 #gameScreen { padding: max(12px, env(safe-area-inset-top)) 18px max(12px, env(safe-area-inset-bottom)); gap: 8px; overflow-y: auto; touch-action: pan-y; }
 .lab-heading, .lab-switch, .lab-skins, .lab-caption, #stats { flex-shrink: 0; }
-#gameScreen .topbar, #tip, #gameScreen .kbd, #controls, #titleScreen, #canalViewToggle { display: none !important; }
+#gameScreen .topbar, #boardNotice, #gameScreen .kbd, #controls, #titleScreen, #canalViewToggle { display: none !important; }
 .lab-heading { display: flex; align-items: center; gap: 12px; padding: 4px 0 7px; }
 .lab-heading a { display: grid; place-items: center; min-width: 44px; min-height: 44px; color: #376771; text-decoration: none; font-size: 32px; background: #d8eeea; border-radius: 16px; }
 .lab-heading small { color: #5b7f87; font-size: 12px; }

@@ -403,7 +403,9 @@ h1 .sea { color: var(--title-alert); }
 .net-callout::after { content: ""; position: absolute; right: -10px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left-color: #e3a43a; border-right: 0; }
 .level-net { font: 11px/1.3 var(--font-body); border-radius: 6px; padding: 2px 5px; background: #e2eeec; color: #456a72; }
 .level-net.available { background: #ffe5a4; color: #714211; box-shadow: inset 0 0 0 1px #dba349; }
-.tip { font-size: 14px; color: var(--muted); text-align: center; min-height: 2.6em; line-height: 1.3; margin: 0; text-wrap: balance; display: flex; align-items: center; justify-content: center; }
+.tip { flex: 1; font-size: 14px; color: var(--muted); text-align: start; line-height: 1.4; margin: 0; text-wrap: pretty; }
+.board-notice { position: absolute; z-index: 2; inset-inline: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; max-height: 45%; overflow-y: auto; border-radius: 14px; background: #fffdf4f5; box-shadow: 0 3px 14px #163f5226; touch-action: pan-y; }
+.board-notice .icon-btn { flex: 0 0 44px; width: 44px; height: 44px; }
 .tip.hint { color: var(--star); }
 .tip.flash { animation: tip-in .3s var(--ease-out); }
 @keyframes tip-in { from { transform: translateY(4px); opacity: 0; } }
@@ -717,14 +719,13 @@ button:disabled:active { transform: none; }
       <button class="icon-btn" id="settingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
     </div>
     <div class="stats" id="stats"></div>
-    <p class="tip" id="tip"></p>
-    <div class="canal-view" id="canalViewToggle" role="group" aria-label="수로 시점 비교" hidden>
-      <span>시점 비교</span>
-      <button type="button" data-canal-view="top" aria-pressed="false">탑뷰</button>
-      <button type="button" data-canal-view="oblique" aria-pressed="true">입체 시점</button>
-      <small id="canalViewNote" hidden>이 스킨은 기존 모습으로 표시돼요.</small>
+    <div class="board" id="board">
+      <div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div>
+      <div class="board-notice" id="boardNotice" hidden>
+        <p class="tip" id="tip" role="status" aria-live="polite" aria-atomic="true"></p>
+        <button class="icon-btn" id="tipDismiss" type="button" aria-label="안내 닫기">✕</button>
+      </div>
     </div>
-    <div class="board" id="board"><div class="frame" id="boardFrame"><canvas id="boardCanvas" aria-label="수로 퍼즐 판" role="img"></canvas></div></div>
     <div class="controls" id="controls">
       <button class="ctrl" id="undoBtn" type="button">
         <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5L4 10l5 5"/><path d="M4 10h10a5 5 0 010 10h-3"/></svg>되돌리기
@@ -878,6 +879,12 @@ button:disabled:active { transform: none; }
     </div>
     <label class="switch"><span>소리<small>숭어·장치·구출 효과음</small></span><input type="checkbox" id="optSound"><span class="track" aria-hidden="true"></span></label>
     <label class="switch"><span>진동<small>숭어·그물·탈출·버튼</small></span><input type="checkbox" id="optVibe"><span class="track" aria-hidden="true"></span></label>
+    <div class="canal-view" id="canalViewToggle" role="group" aria-label="화면 시점" hidden>
+      <span>화면 시점</span>
+      <button type="button" data-canal-view="top" aria-pressed="false">탑뷰</button>
+      <button type="button" data-canal-view="oblique" aria-pressed="true">입체 시점</button>
+      <small id="canalViewNote" hidden>이 스킨은 기존 모습으로 표시돼요.</small>
+    </div>
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
     <p class="settings-about">버전 1.7 (8) · <a href="https://kongrae.github.io/bukang-sea/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="mailto:sky7700sky@naver.com">문의</a></p>
@@ -6457,6 +6464,7 @@ const caustic = (() => {
 let LVL = 0, g = null, st = null, anim = null, bump = null, hint = null, cleared = false;
 let hintRequest = 0;
 let T = 40, staticLayer = null, dpr = 1, waterPath = null, causticPat = null;
+let staticTop = 0, staticHeight = 0, quayForeground = null;
 const particles = [], wake = [];
 const view = { x: 0, y: 0, ang: 0, target: 0 };
 let settle = null, pop = null, queued = null, clock = 0;
@@ -6764,6 +6772,8 @@ function coachDone(kind) {
 function setTip(text, isHint) {
   gameNeedsPaint = true;
   const el = $('tip'); el.textContent = text; el.classList.toggle('hint', !!isHint);
+  // Stage descriptions no longer reserve space. Action feedback remains readable and dismissible over the board.
+  $('boardNotice').hidden = !text || text === curLevel().tip;
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
 }
 function updateHud() {
@@ -6854,7 +6864,7 @@ function tryMove(d) {
     if (!reduceMotion && st.crates && ax >= 0 && ay >= 0 && ax < g.w && ay < g.h && st.crates.includes(ay * g.w + ax)) crateWobble.set(ay * g.w + ax, { at: clock, d });
     return;
   }
-  hint = null; if ($('tip').classList.contains('hint')) setTip(curLevel().tip);
+  hint = null; setTip(curLevel().tip);
   pushHistory(); endDeviceSpot();   // the spotlight has done its job once the player moves
   const fishIdx = new Map(g.fish.map((f, i) => [f[1] * g.w + f[0], i]));
   const eats = [], jets = [];
@@ -7752,14 +7762,14 @@ function setCanalView(mode) {
   try { localStorage.setItem(CANAL_VIEW_KEY, mode); } catch (_) {}
   updateCanalView();
   // Keep the current turn, interpolation, queued swipe and undo history untouched.
-  buildStatic(); invalidateScenes(); draw(clock);
+  resize(); invalidateScenes(); draw(clock);
 }
 function drawObliqueQuay() {
   const s = staticLayer.getContext('2d'), P = boardSurface;
-  s.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);
+  s.setTransform(dpr, 0, 0, dpr, OX * dpr, (OY - staticTop) * dpr);
   // Raise only the quay. Keep the shared region water, sea mouth and gameplay surfaces underneath.
   const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T);
-  const y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  const y0 = Math.floor((staticTop - OY) / T) - 1, y1 = Math.ceil((staticTop + staticHeight - OY) / T);
   const height = T * .23;
   const top = s.createLinearGradient(0, -OY, CW, CH - OY);
   top.addColorStop(0, P.land[0]); top.addColorStop(1, P.land[1]);
@@ -7826,7 +7836,9 @@ function resize() {
   if (!g || $('gameScreen').hidden) return;
   const r = board.getBoundingClientRect();
   CW = Math.floor(r.width); CH = Math.floor(r.height);
-  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / g.h, 132)));
+  // Fit the projected board, including a small margin for raised silhouettes, instead of shrinking it twice.
+  const q = boardProjection();
+  T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / (q === 1 ? g.h : (g.h + .3) * q), 132)));
   OX = Math.round((CW - g.w * T) / 2); OY = Math.round((CH - g.h * T) / 2);
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
@@ -7917,9 +7929,11 @@ function drawSeaMouth(ctx, ex, ey, P) {
 }
 function buildStatic() {
   buildSea();
+  // Align the offscreen origin to device pixels so adjacent water tiles do not develop hairline seams.
+  staticTop = Math.floor((CH - CH / boardProjection()) * dpr / 2) / dpr; staticHeight = CH - staticTop * 2;
   staticLayer = document.createElement('canvas');
-  staticLayer.width = cvs.width; staticLayer.height = cvs.height;
-  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY);
+  staticLayer.width = cvs.width; staticLayer.height = Math.ceil(staticHeight * dpr);
+  const s = staticLayer.getContext('2d'); s.scale(dpr, dpr); s.translate(OX, OY - staticTop);
   const P = boardSurface || (setBoardRegion(null), boardSurface);
   const landPaint = s.createLinearGradient(0, -OY, CW, CH - OY);
   landPaint.addColorStop(0, P.land[0]); landPaint.addColorStop(1, P.land[1]);
@@ -7929,7 +7943,7 @@ function buildStatic() {
   const exits = []; for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === 'E') exits.push([i % g.w, Math.floor(i / g.w)]);
   const sluiceDecor = (x, y) => P.decor === 'sluice' || (P.preview && exits.some(([ex, ey]) => Math.abs(ex - x) + Math.abs(ey - y) <= 4));
   // every cell that is at least partly on screen
-  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T), y0 = Math.floor((staticTop - OY) / T) - 1, y1 = Math.ceil((staticTop + staticHeight - OY) / T);
   waterPath = new Path2D();
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const px = x * T, py = y * T, c = cellType(x, y);
@@ -7975,7 +7989,20 @@ function buildStatic() {
   }
   for (const [ex,ey] of exits) drawSeaMouth(s,ex,ey,P);
   if (boardProjection() !== 1) drawObliqueQuay();
-  // Sand is above shallow-water shading; its stopping surface must never look submerged or clipped by a quay.
+  // Only the north overhang of a nearer quay occludes objects behind it. Reuse the exact baked stone pixels;
+  // redrawing all land here would incorrectly cut off silhouettes standing in front of a farther quay.
+  quayForeground = null;
+  if (boardProjection() !== 1) {
+    quayForeground = document.createElement('canvas');
+    quayForeground.width = staticLayer.width; quayForeground.height = staticLayer.height;
+    const front = quayForeground.getContext('2d');
+    front.beginPath();
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (isLand(x,y) && !isLand(x,y-1)) front.rect((OX+x*T)*dpr,(OY-staticTop+(y-.23)*T)*dpr,T*dpr,.23*T*dpr);
+    }
+    front.clip(); front.drawImage(staticLayer,0,0);
+  }
+  // Sand stays on the water surface; the cached nearer quay also occludes its outer foam, never its stopping centre.
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 's') drawSand(s, x * T, y * T, T, x * 31 + y * 17 + deco);
 }
 
@@ -8140,12 +8167,7 @@ function draw(t) {
   const zx = exitZoom ? (OX + (exitZoom.x + 0.5) * T) * (1 - zs) : 0, zy = exitZoom ? (OY + (exitZoom.y + 0.5) * T) * (1 - zs) : 0;
   const q = boardProjection(), offset = CH * (1 - q) / 2;
   ctx.save();
-  if (q !== 1) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = C.harbor; ctx.fillRect(0, 0, CW * dpr, CH * dpr);
-    ctx.beginPath(); ctx.rect(0, offset * dpr, CW * dpr, CH * q * dpr); ctx.clip();
-  }
-  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + zy * q) * dpr);
+  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + ((q === 1 ? 0 : staticTop) * zs + zy) * q) * dpr);
   ctx.drawImage(staticLayer, 0, 0);
   ctx.setTransform(dpr * zs, 0, 0, dpr * zs * q, (OX * zs + zx) * dpr, (offset + (OY * zs + zy) * q) * dpr);   // from here on: grid coordinates
   const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
@@ -8252,7 +8274,8 @@ function draw(t) {
     const from = anim && anim.boatsFrom ? anim.boatsFrom[k][0] : b[0];
     const x = (from % g.w) + ((b[0] % g.w) - (from % g.w)) * bk, y = Math.floor(from / g.w) + (Math.floor(b[0] / g.w) - Math.floor(from / g.w)) * bk;
     const heading = anim && anim.t < boatStart ? anim.boatsFrom[k][1] : b[1];
-    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], !anim, q !== 1);
+    const [dx,dy] = DIRS[heading], arrow = !anim && (q === 1 || !isLand(Math.round(x)+dx,Math.round(y)+dy));
+    drawBoat(ctx, x * T + T / 2, y * T + T / 2, T, t, BOAT_ANG[heading], arrow, q !== 1);
   });
   for (const [i, at] of netRetract) {
     const k = clamp01((clock - at) / 0.18);
@@ -8296,6 +8319,7 @@ function draw(t) {
   if (q === 1 || !drawObliqueShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, T * size, stretch, alpha)) {
     drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim && anim.t < anim.dur, stretch, alpha);
   }
+  if (q !== 1 && quayForeground) ctx.drawImage(quayForeground,-OX,staticTop-OY,CW,staticHeight);
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim && !hint.remove.length && !hint.nets.length) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
@@ -8920,10 +8944,11 @@ $('canalViewToggle').addEventListener('click', e => {
   const button = e.target.closest('[data-canal-view]');
   if (button) setCanalView(button.dataset.canalView);
 });
+$('tipDismiss').addEventListener('click', () => { $('boardNotice').hidden = true; });
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
-  if ((e.target.closest && e.target.closest('button')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
+  if ((e.target.closest && e.target.closest('button, .board-notice')) || !$('clearOverlay').hidden || settingsOpen() || guideOpen()) return;
   gest = { x: e.clientX, y: e.clientY, id: e.pointerId, fired: false, onBoard: board.contains(e.target) };
   ac(); try { gameScreen.setPointerCapture(e.pointerId); } catch (_) {}
 });

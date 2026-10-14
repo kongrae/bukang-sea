@@ -23,12 +23,16 @@ const pass=text=>{report.checks.push(text);console.log('PASS',text);};
     const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
     const record=()=>page.evaluate(()=>localStorage.getItem('bukang-sea-v1'));
     const session=async()=>JSON.parse(await record()).sessions.story;
-    const choose=mode=>page.locator(`[data-canal-view=${mode}]`).click();
+    const choose=async mode=>{
+      if(!await page.locator('#canalViewToggle').isVisible())await page.locator('#settingsBtn').click();
+      await page.locator(`[data-canal-view=${mode}]`).click();
+      if(await page.locator('#settingsOverlay').isVisible())await page.locator('#settingsDone').click();
+    };
     async function enter(chapter,index){
       if(await page.locator('#gameScreen').isVisible())await page.locator('#backBtn').click();
       await page.locator('#stagePicker').click();await page.locator(`[data-chapter="${chapter}"]`).click();
       await page.locator(`#levelGrid [data-i="${index}"]`).click();
-      await page.locator('#canalViewToggle').waitFor({state:'visible'});
+      await page.locator('#gameScreen').waitFor({state:'visible'});
       if(await page.locator('#guideClose').isVisible())await page.locator('#guideClose').click();
     }
     await page.goto(base);await page.locator('#launchScreen').waitFor({state:'hidden'});
@@ -50,7 +54,9 @@ const pass=text=>{report.checks.push(text);console.log('PASS',text);};
     for(const [width,height,text] of [[320,568,100],[360,640,100],[390,844,100],[430,932,100],[320,568,200],[390,844,200]]){
       await page.setViewportSize({width,height});await page.evaluate(text=>document.documentElement.style.fontSize=text+'%',text);
       await page.waitForTimeout(180);
+      await page.locator('#settingsBtn').click();
       const dimensions=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,board:document.querySelector('#board').getBoundingClientRect().height,buttons:[...document.querySelectorAll('[data-canal-view]')].map(b=>b.getBoundingClientRect().height)}));
+      await page.locator('#settingsDone').click();
       assert.equal(dimensions.overflow,false);assert(dimensions.buttons.every(h=>h>=44));
       assert(dimensions.board>=216,`12 rows fit at least 18px: ${JSON.stringify({width,height,text,...dimensions})}`);
       await choose('top');await choose('oblique');
@@ -73,7 +79,7 @@ const pass=text=>{report.checks.push(text);console.log('PASS',text);};
           await page.locator(kind==='daily'?'#dailyBtn':'#freeBtn').click();
           await page.locator(kind==='daily'?`#dailyStages [data-stage="${index}"]`:`#freeTiers [data-free="${index}"]`).first().click();
           await page.locator('#gameScreen').waitFor({state:'visible'});
-          await page.locator('#canalViewToggle').waitFor({state:'visible'});
+          assert.equal(await page.locator('#canalViewToggle').getAttribute('hidden'),null);
         };
         const active=()=>page.evaluate(({kind,index})=>{const s=JSON.parse(localStorage.getItem('bukang-sea-v1')).sessions;return kind==='daily'?s.dailyStages[index]:s['free'+index];},{kind,index});
         await enterMode();
