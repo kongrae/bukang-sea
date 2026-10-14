@@ -92,6 +92,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   const html = page(head, register, webBody);
   const icons = ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
   const hash = crypto.createHash('sha1').update(html);
+  hash.update('main-navigation-scope-v2'); // include service-worker routing changes in the cache version
   icons.forEach(f => hash.update(fs.readFileSync(path.join(root, 'assets', 'icons', f))));
   FONTS.forEach(f => hash.update(fs.readFileSync(path.join(root, 'assets', 'fonts', f.file))));
   const version = hash.digest('hex').slice(0, 10);
@@ -123,6 +124,9 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== location.origin) return;
   if (req.mode === 'navigate') {
+    const url = new URL(req.url), base = new URL(self.registration.scope);
+    // Separate comparison pages must never overwrite the offline main game.
+    if (url.pathname !== base.pathname && url.pathname !== base.pathname + 'index.html') return;
     // page: network first so a new build shows up right away, cache when offline
     e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return res; })
       .catch(() => caches.match('index.html')));
@@ -143,6 +147,7 @@ self.addEventListener('fetch', e => {
     .forEach(f => fs.copyFileSync(path.join(root, 'assets', 'fonts', f), path.join(root, 'www', 'fonts', f)));
   fs.copyFileSync(path.join(root, 'assets', 'privacy.html'), path.join(root, 'www', 'privacy.html'));
   console.log(`copied icons, fonts and privacy.html, cache version ${version}`);
+  require('./build-view-lab').buildViewLab();
 } else {
   write('dist/index.html', page(''));
 }

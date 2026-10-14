@@ -39,6 +39,8 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 
 ## 구조
 
+2026-10-14 시점 비교: `/compare/`는 첫 수로에서 기존 탑뷰와 입체 시점을 바꾸는 별도 비교판이다. `src/view-lab/`·`tools/build-view-lab.js`·`assets/art/oblique-v1/`을 사용하고 본 게임의 규칙·저장 키·기본 그림은 변경하지 않는다. `build:web`에서 함께 생성한다. 범위와 검증은 `docs/VIEW-COMPARISON.md` 참고.
+
 2026-10-14 UI/UX: `src/launch.js`가 필수 자산 준비·실패 상한·첫 프레임 공개를 관리한다. 메인의 수로 선택과 게임 방법은 별도 시트이며 수로 선택/스크롤을 유지한다. 시작 테마와 WebView 배경은 `#e8f8f5`, AndroidX 스플래시는 웹 로딩 이미지 준비까지 유지한다. 현재 디자인·검증 기준은 `docs/NATIVE-UI-UX.md`이며 아래 과거 메인 구성 설명보다 우선한다. 자산은 기존 상어 아트를 재사용한다.
 
 ```

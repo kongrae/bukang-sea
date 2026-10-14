@@ -1,0 +1,50 @@
+{
+  "basic-R.webp": {
+    "left": 28,
+    "top": 145,
+    "width": 589,
+    "height": 375
+  },
+  "basic-L.webp": {
+    "left": 641,
+    "top": 142,
+    "width": 587,
+    "height": 381
+  },
+  "basic-D.webp": {
+    "left": 98,
+    "top": 654,
+    "width": 477,
+    "height": 438
+  },
+  "basic-U.webp": {
+    "left": 715,
+    "top": 718,
+    "width": 406,
+    "height": 442
+  },
+  "lighthouse-R.webp": {
+    "left": 41,
+    "top": 168,
+    "width": 578,
+    "height": 379
+  },
+  "lighthouse-L.webp": {
+    "left": 637,
+    "top": 168,
+    "width": 577,
+    "height": 378
+  },
+  "lighthouse-D.webp": {
+    "left": 112,
+    "top": 681,
+    "width": 457,
+    "height": 468
+  },
+  "lighthouse-U.webp": {
+    "left": 738,
+    "top": 665,
+    "width": 391,
+    "height": 489
+  }
+}

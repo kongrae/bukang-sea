@@ -1,0 +1,44 @@
+/* A separate, playable first-canal comparison. Never loaded by the normal game. */
+html, body { background: #e8f8f5; }
+#app { max-width: 480px; margin-inline: auto; height: 100dvh; min-height: 0; }
+#gameScreen { padding: max(12px, env(safe-area-inset-top)) 18px max(12px, env(safe-area-inset-bottom)); gap: 8px; overflow-y: auto; touch-action: pan-y; }
+.lab-heading, .lab-switch, .lab-skins, .lab-caption, #stats { flex-shrink: 0; }
+#gameScreen .topbar, #tip, #gameScreen .kbd, #controls, #titleScreen { display: none !important; }
+.lab-heading { display: flex; align-items: center; gap: 12px; padding: 4px 0 7px; }
+.lab-heading a { display: grid; place-items: center; min-width: 44px; min-height: 44px; color: #376771; text-decoration: none; font-size: 32px; background: #d8eeea; border-radius: 16px; }
+.lab-heading small { color: #5b7f87; font-size: 12px; }
+.lab-heading h1 { margin: 4px 0 0; color: #193f4c; font: 700 20px/1.35 system-ui, sans-serif; letter-spacing: -.7px; }
+.lab-switch { display: grid; grid-template-columns: 1fr 1fr; background: #d4e9e4; padding: 4px; border-radius: 18px; }
+.lab-switch button { min-height: 48px; border: 0; border-radius: 14px; background: transparent; color: #4d727b; font-size: 15px; font-weight: 700; }
+.lab-switch button[aria-pressed=true] { background: #fffdf5; color: #123f4c; box-shadow: 0 2px 7px #23596016; }
+.lab-switch span { font-size: 11px; color: #508d93; margin-left: 3px; }
+.lab-skins { display: flex; justify-content: center; gap: 8px; }
+.lab-skins button { min-height: 48px; border: 1px solid transparent; border-radius: 16px; background: transparent; display: flex; align-items: center; gap: 7px; padding: 0 12px; font-size: 13px; color: #476c76; }
+.lab-skins button[aria-pressed=true] { background: #f9f9eb; border-color: #98c4bb; color: #163f4b; }
+.lab-skins img { width: 42px; height: 34px; object-fit: contain; }
+.lab-caption { margin: 0; min-height: 20px; text-align: center; color: #607e83; font-size: 11px; }
+#stats { justify-content: center; padding: 0; gap: 10px; }
+#stats .chip { background: transparent; font-size: 12px; padding: 2px; }
+#board { margin: 0 -18px; flex: 1 0 290px; min-height: 290px; touch-action: none; }
+#boardFrame { border-radius: 0; box-shadow: none; }
+#boardFrame::after { display: none; }
+#boardFrame.enter { animation: none; }
+.lab-bottom { flex-shrink: 0; }
+.lab-bottom p { text-align: center; font-size: 12px; color: #5e7d82; margin: 5px 0 9px; }
+.lab-pad { display: flex; justify-content: center; gap: 10px; }
+.lab-pad button { width: 54px; min-height: 48px; border: 0; border-radius: 16px; background: #d6eae6; color: #245663; font-size: 24px; }
+.lab-actions { display: flex; justify-content: center; gap: 6px; margin-top: 5px; }
+.lab-actions button { min-height: 44px; padding: 0 12px; background: transparent; border: 0; color: #4b6e75; font-size: 12px; }
+.lab-bottom .lab-note { margin: 0; font-size: 10px; color: #7b9294; }
+.lab-result { border: 0; color: #194650; background: #fffdf5; border-radius: 24px; padding: 28px; text-align: center; box-shadow: 0 16px 60px #0c424648; max-width: min(340px, 90vw); }
+.lab-result::backdrop { background: #133e4a66; }
+.lab-result h2 { margin: 0 0 12px; }
+.lab-result p { color: #557980; font-size: 14px; }
+.lab-result button { display: block; width: 100%; min-height: 48px; border: 0; border-radius: 16px; background: #137b8d; color: white; font-size: 15px; margin-top: 20px; }
+.lab-result a { display: inline-block; color: #567982; padding: 16px 8px 0; font-size: 13px; }
+.lab-heading, .lab-switch, .lab-skins, .lab-caption, .lab-bottom, .lab-result { font-family: system-ui, sans-serif; }
+button { cursor: pointer; }
+.lab-switch button:active, .lab-skins button:active, .lab-pad button:active, .lab-actions button:active { transform: scale(.96); }
+button:focus-visible, a:focus-visible { outline: 3px solid #187b99; outline-offset: 2px; }
+@media (max-height: 720px) { #gameScreen { gap: 4px; } .lab-heading h1 { font-size: 18px; } }
+@media (prefers-reduced-motion: reduce) { button:active { transform: none !important; } }

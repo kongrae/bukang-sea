@@ -1,0 +1,18 @@
+{
+  "browser": "Edge Chromium",
+  "physicalDevice": false,
+  "checks": [
+    "two skins and both views preserve the same position, history and move count",
+    "real first-canal solution clears in 6 moves; undo and restart work",
+    "front pose through real downward movement; Escape returns to a fresh comparison",
+    "production save is byte-for-byte unchanged after skin switches, play, clear and reset",
+    "switching views during motion, 20 rapid taps and mid-move reset leave no duplicate turn or input lock",
+    "pagehide/pageshow interruption preserves committed movement (simulated lifecycle, not a physical phone)",
+    "320×568, 390×844, 430×932: no horizontal overflow; controls at least 44 CSS px; small screens scroll",
+    "200% comparison text remains readable with vertical scrolling; reduced-motion play works",
+    "comparison reloads and plays offline after its first completed cache installation",
+    "visiting comparison under the main service worker never replaces the offline main-game cache",
+    "all image decodes failing does not block startup or first movement"
+  ],
+  "errors": []
+}
