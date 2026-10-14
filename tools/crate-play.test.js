@@ -361,7 +361,7 @@ test('the crate guide is a sheet with an example, listed after the sluice; the l
   assert.match(scene.el('guideItems').innerHTML, /바로 옆에서는 밀리지 않아요/);
   scene.close(); assert.deepEqual(scene.seen(), ['crate']);
   const legend = new Function(`
-    const drawn = [], noop = () => {}, C = {}, ctx = new Proxy({}, {get: () => noop});
+    const drawn = [], noop = () => {}, C = {}, ctx = new Proxy({}, {get: () => noop}), canalProjection = () => 1;
     const drawFish = noop, drawBuoy = noop, drawBoat = noop, drawJet = noop, drawNet = noop, drawExit = noop, drawSand = noop, drawWhirl = noop, drawGate = noop, drawSwitch = noop;
     const drawCrate = (c, x, y, size) => drawn.push([x, y, size]);
     const items = []; const $ = () => ({ set innerHTML(v) { items.push(v); }, querySelectorAll: () => [] });

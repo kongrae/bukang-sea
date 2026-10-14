@@ -1,0 +1,16 @@
+[
+  {
+    "archive": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "mode": "development",
+    "htmlSha256": "8f970d965a4c7fe7f6d1fe4d2eb7d093e860c1ae11362ecb6a4ed4649dac7957",
+    "comparisonEntries": 2,
+    "physicalAndroid": false
+  },
+  {
+    "archive": "android/app/build/outputs/bundle/release/app-release.aab",
+    "mode": "release",
+    "htmlSha256": "36b71bdfef410317f56cb2a6d7c971a41c3e3bd5ec08988385cf728754c09313",
+    "comparisonEntries": 0,
+    "physicalAndroid": false
+  }
+]

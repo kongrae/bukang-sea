@@ -19,6 +19,7 @@ const sdk = process.env.ANDROID_HOME || path.join(process.env.LOCALAPPDATA || pa
 if (!fs.existsSync(sdk)) { console.error(`Android SDK not found at ${sdk}. Finish the Android Studio setup wizard first.`); process.exit(1); }
 
 const release = process.argv[2] === 'release';
+if (release) require('./check-release').assertReleaseAssets(path.join(root, 'android/app/src/main/assets/public'));
 if (release && !fs.existsSync(path.join(root, 'android', 'keystore.properties'))) {
   console.error('android/keystore.properties missing: create the upload key first (docs/RELEASE.md).'); process.exit(1);
 }

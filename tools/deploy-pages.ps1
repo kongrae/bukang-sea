@@ -43,7 +43,7 @@ try {
     if ($LASTEXITCODE -ne 0) { Run-Git -GitArgs @('remote', 'add', 'origin', $repoUrl) }
     elseif ($origin -ne $repoUrl) { throw 'origin 주소가 배포 저장소와 다릅니다.' }
 
-    & npm.cmd run build:web
+    & npm.cmd run build:web:dev
     if ($LASTEXITCODE -ne 0) { throw '웹 빌드 실패' }
     Run-Git -GitArgs @('push', '-u', 'origin', 'master')
 

@@ -1,0 +1,13 @@
+{
+  "url": "http://localhost:5182/www/",
+  "physicalAndroid": false,
+  "checks": [
+    "All 84 story canals enabled with zero manufactured stars; real last-canal entry succeeds",
+    "All nine skins equip through the real UI without modifying normal-player ownership",
+    "Third daily canal starts without clearing earlier canals",
+    "Development movement/skin choice survives reload and offline; normal progress and camera preference remain byte-for-byte unchanged",
+    "Release on the same origin restores normal locks/ownership despite development saves and all/dev query parameters"
+  ],
+  "errors": [],
+  "success": true
+}

@@ -2,6 +2,15 @@
 
 순서: **웹(PWA) → Android(Capacitor) → iOS**. 게임 코드(`src/`)는 세 경로 모두 같다.
 
+## 개발 빌드와 출시 빌드 (2026-10-14)
+
+- 개발용: `npm run build:web:dev` 또는 `npm run android:debug`. 모든 수로/스킨을 열고 별도 기록으로 저장한다. 디버그 앱 이름은 **상어 SOS DEV**, ID는 `kr.hongrae.sharksos.dev`다. 현재 Pages 배포도 개발용이다.
+- 출시용: **`npm run android:release`**. 정상 해금 웹을 새로 빌드하고 Android에 복사한 다음 검증해 AAB를 만든다. 개발 해금을 손으로 삭제할 필요가 없다. 출시 앱 ID `kr.hongrae.sharksos`와 정식 저장 키는 유지한다.
+- Android Studio에서 직접 출시 빌드를 해도 `preReleaseBuild`가 실제 패키징할 자산을 검사한다. 개발 자산이 남아 있거나 빌드 해시가 다르면 실패한다. 먼저 `npm run cap:sync`로 출시 자산을 준비한다.
+- `npm run build:web`는 정상 해금 웹이다. 개발 빌드에서 남은 `/compare/`를 제거한다. 개발 표시·해금·기록 키와 비교 화면은 출시 자산에 포함되지 않는다.
+
+세부 동작과 확인 결과는 [DEVELOPMENT-BUILD.md](DEVELOPMENT-BUILD.md). 출시 AAB는 기존대로 업로드마다 `versionCode`를 올려야 하며, 빌드 명령은 Play Console 업로드를 수행하지 않는다.
+
 ## 1. 웹 (PWA)
 
 공개 주소: https://kongrae.github.io/bukang-sea/
@@ -44,7 +53,7 @@ npm run cap:open           # Android Studio 에서 열기 → 기기/에뮬레�
 - **디버그 APK**: `npm run android:debug` → `android/app/build/outputs/apk/debug/app-debug.apk` (2026-09-30 첫 빌드 성공, 4.9MB).
 - 세로 고정(`AndroidManifest.xml` screenOrientation=portrait), 상태바는 어두운 배경용(SystemBars style DARK). 여백은 `--safe-area-inset-*` CSS 변수로 들어온다(shell.html에서 env()와 함께 사용).
 
-게임 코드를 고친 뒤에는 `npm run cap:sync`만 다시 하면 된다.
+게임 코드를 고친 뒤 개발 앱에는 `npm run cap:sync:dev`, 출시 앱에는 `npm run cap:sync`로 자산을 복사한다. APK/AAB 생성 명령은 각 과정을 자동으로 수행한다.
 
 ### 출시 전에 정할 것
 - **appId**: `kr.hongrae.sharksos`(2026-10-01 첫 업로드 전 `kr.hongrae.lostshark`에서 변경). 첫 업로드 전까지는 바꿀 수 있다(`capacitor.config.json` + `android/app/build.gradle`의 namespace·applicationId + `strings.xml` + java 패키지 폴더). 업로드 후에는 **영구히 못 바꾼다**.

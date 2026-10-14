@@ -1,0 +1,10 @@
+{
+  "baseline": "042932c",
+  "physicalAndroid": false,
+  "checks": [
+    "All eight guides render and step through real demo phases; six device renderers and help icons receive the oblique style",
+    "Examples leave active game/save state unchanged, follow the saved top view, and remain operable at 320px with 200% root text"
+  ],
+  "errors": [],
+  "success": true
+}

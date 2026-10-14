@@ -109,7 +109,7 @@ test('guide redraw reuses its bitmap; allocation only occurs when dimensions cha
     const window={devicePixelRatio:2},C={},JET={},ANG={U:0};
     const guideDemo={duration:5,grid:{w:1,h:1,nets:0,cells:['.']}};
     const sampleDeviceDemo=()=>({phase:{kind:'move'},nets:[],boats:[],crates:[],pos:[0,0],dir:'U',scale:1,moves:0,text:'move'});
-    const drawShark=noop;
+    const drawShark=noop,canalProjection=()=>1;
     ${fn('drawDeviceDemo')}
     return {draw:()=>{guideTime+=.016;drawDeviceDemo();},resize:()=>width=300,writes:()=>writes};
   `)();

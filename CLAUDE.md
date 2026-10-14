@@ -14,13 +14,15 @@
 ```bash
 npm run build            # src/ → dist/index.html (브라우저에서 바로 열리는 단일 파일)
 npm run build:artifact   # src/ → dist/artifact.html (<html>/<head> 없이, Claude 아티팩트 게시용)
-npm run build:web        # src/ → www/ (PWA: manifest, 서비스 워커, 아이콘. Capacitor webDir 겸용)
+npm run build:web        # 출시용 www/: 정상 해금, 개발/비교 화면 제외, 출시 자산 검사
+npm run build:web:dev    # 개발용 www/: 전체 해금, 별도 기록, DEV 표시, 비교 화면 포함
 npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 붙이면 같은 Wi-Fi 휴대폰에서 접속)
 npm run icons            # assets/icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, 적응형 전경·배경 포함) → assets/icons/*.png, icon.svg(파비콘 래퍼), 적응형/스플래시 소스 (Chrome 헤드리스 필요)
 npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 → assets/fonts/ (build:web 이 누락 글자를 경고하면 실행)
 node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
-npm run cap:sync         # build:web + Capacitor android 동기화
-npm run android:debug    # cap:sync + 디버그 APK 빌드(JDK 21: ~/.jdks/jdk-21*, 시스템 JDK 17은 그대로)
+npm run cap:sync         # 출시용 build:web + Android 동기화 + 출시 자산 검사
+npm run cap:sync:dev     # 개발용 웹 자산을 Android에 동기화
+npm run android:debug    # cap:sync:dev + 전체 해금 DEV APK (별도 앱 ID, JDK 21)
 npm run android:release  # cap:sync + 서명된 AAB(업로드 키: ~/.android-keys, 비밀번호는 android/keystore.properties, 둘 다 커밋 금지)
 npm run verify           # 정식 수로 84개 해법·별 기준·플레이 순서(장마다 새 장치 1개, 장 끝 도전) 검사 + verify-pilot
 npm run verify:pilot     # 이전 시험 코스 p01–p12(저장 인덱스 48–59): 역할별 별 기준·기록 해법·수문 필수성·벽 구조 중복
@@ -38,6 +40,8 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 게임과 tools/ 는 외부 의존성 없음(Node 18+). Capacitor(앱 빌드)만 npm 패키지와 Node 22+ 가 필요하다. 출시 절차는 docs/RELEASE.md.
 
 ## 구조
+
+2026-10-14 개발 해금·장치 예시: `drawDeviceDemo()`와 도움말 아이콘은 저장된 시점의 88% 투영/입체 장치 및 상어 외형을 사용한다. 개발 해금은 `tools/development-build.js`가 빌드할 때만 삽입한다. Pages는 현재 요청에 따라 개발 빌드, 디버그 앱은 `kr.hongrae.sharksos.dev`다. 개발 진행/시점 키는 별도이며 정식 기록을 읽거나 덮지 않는다. 출시 소스·dist·기본 웹·AAB는 정상 해금이다. `check-release.js`와 Gradle `preReleaseBuild`가 개발 자산·비교 화면·변조된 빌드 결과를 차단한다. 사용법/검증은 `docs/DEVELOPMENT-BUILD.md` 참고. 이는 기존 관찰용 playtest와 별개인 개발자용 빌드다.
 
 2026-10-14 입체 비율 조정: 지면 투영을 세로 78%에서 **88%**로 완화했다. 기본·항해사 외 스킨과 이미지 실패 대체 그림도 `drawShark()`의 선택적 `projection` 인자로 역보정해 외형이 눌리지 않게 한다. 탑뷰/안내/메인의 기본값은 1이다. 실제 비교와 검증은 `docs/BOARD-PROPORTIONS.md` 참고.
 

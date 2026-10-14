@@ -8,7 +8,9 @@ const crypto = require('crypto');
 
 const root = path.join(__dirname, '..');
 const { gameBody } = require('./build-source');
-const body = gameBody();
+const development = process.argv.includes('--dev');
+if (development && (!process.argv.includes('--web') || process.argv.includes('--artifact') || process.argv.includes('--playtest'))) throw Error('--dev is only supported with --web');
+const body = development ? require('./development-build').developmentBody(gameBody()) : gameBody();
 
 // subset copies from tools/fonts.js, renamed (OFL reserved font names) — see --font-* tokens in shell.html
 const FONTS = [
@@ -136,6 +138,7 @@ self.addEventListener('fetch', e => {
 });
 `;
   write('www/index.html', html);
+  write('www/build-info.json', JSON.stringify({ mode: development ? 'development' : 'release', htmlSha256: crypto.createHash('sha256').update(html).digest('hex') }, null, 2) + '\n');
   write('www/manifest.webmanifest', JSON.stringify(manifest, null, 2) + '\n');
   write('www/sw.js', sw);
   fs.mkdirSync(path.join(root, 'www', 'icons'), { recursive: true });
@@ -147,7 +150,14 @@ self.addEventListener('fetch', e => {
     .forEach(f => fs.copyFileSync(path.join(root, 'assets', 'fonts', f), path.join(root, 'www', 'fonts', f)));
   fs.copyFileSync(path.join(root, 'assets', 'privacy.html'), path.join(root, 'www', 'privacy.html'));
   console.log(`copied icons, fonts and privacy.html, cache version ${version}`);
-  require('./build-view-lab').buildViewLab();
+  if (development) require('./build-view-lab').buildViewLab();
+  else {
+    // www is generated output. Remove the known comparison subtree left by a previous development build.
+    const generatedRoot = path.resolve(root, 'www'), compareDir = path.resolve(generatedRoot, 'compare');
+    if (path.dirname(compareDir) !== generatedRoot) throw Error('Unexpected comparison output path');
+    fs.rmSync(compareDir, { recursive: true, force: true });
+    require('./check-release').assertReleaseAssets(generatedRoot);
+  }
 } else {
   write('dist/index.html', page(''));
 }

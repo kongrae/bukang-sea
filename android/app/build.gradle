@@ -33,6 +33,10 @@ android {
         }
     }
     buildTypes {
+        debug {
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
             if (keystorePropsFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
@@ -62,6 +66,15 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// Guard the actual packaged web assets even when building directly in Android Studio.
+def verifyReleaseWeb = tasks.register('verifyReleaseWeb', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'node', 'tools/check-release.js', 'android/app/src/main/assets/public'
+}
+tasks.configureEach {
+    if (name == 'preReleaseBuild') dependsOn verifyReleaseWeb
+}
 
 try {
     def servicesJSON = file('google-services.json')

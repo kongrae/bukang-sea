@@ -2351,7 +2351,8 @@ let canalView = 'oblique';
 try { if (localStorage.getItem(CANAL_VIEW_KEY) === 'top') canalView = 'top'; } catch (_) {}
 const canalComparison = () => !!g;
 // A mild 12% ground foreshortening keeps depth without making canals and devices look vertically squeezed.
-const boardProjection = () => canalComparison() && canalView === 'oblique' ? .88 : 1;
+const canalProjection = () => canalView === 'oblique' ? .88 : 1;
+const boardProjection = () => canalComparison() ? canalProjection() : 1;
 const boardGridY = screenY => ((screenY - CH * (1 - boardProjection()) / 2) / boardProjection() - OY) / T;
 function updateCanalView() {
   const visible = canalComparison();
@@ -2407,9 +2408,9 @@ function drawObliqueQuay() {
   }
 }
 
-function drawObliqueShark(context, cx, cy, size, stretch, alpha) {
+function drawObliqueShark(context, cx, cy, size, stretch, alpha, heading = view.target, projection = boardProjection()) {
   const skin = currentSkin();
-  const direction = ['R', 'D', 'L', 'U'][(Math.round(view.target / (Math.PI / 2)) % 4 + 4) % 4];
+  const direction = ['R', 'D', 'L', 'U'][(Math.round(heading / (Math.PI / 2)) % 4 + 4) % 4];
   const sprite = SHARK_ART.getOblique(skin, direction);
   if (!sprite?.naturalWidth) return false;
   const horizontal = direction === 'R' || direction === 'L';
@@ -2418,7 +2419,7 @@ function drawObliqueShark(context, cx, cy, size, stretch, alpha) {
   context.fillStyle = '#12596845'; context.beginPath(); context.ellipse(0, size * .06, size * .37, size * .22, 0, 0, Math.PI * 2); context.fill();
   context.strokeStyle = '#e0fffb7a'; context.lineWidth = size * .018;
   context.beginPath(); context.ellipse(0, size * .06, size * .47, size * .26, 0, 0, Math.PI * 2); context.stroke();
-  context.scale(1, 1 / boardProjection());
+  context.scale(1, 1 / projection);
   const maxWidth = size * (horizontal ? 1.03 : .81), maxHeight = size * (horizontal ? .76 : .80);
   const scale = Math.min(maxWidth / sprite.naturalWidth, maxHeight / sprite.naturalHeight);
   const w = sprite.naturalWidth * scale, h = sprite.naturalHeight * scale;
@@ -3163,7 +3164,7 @@ function closeMap(animate = true) {
   mapScroll = $('mapCard').scrollTop;
   closeSheet('mapOverlay', 'stagePicker', animate);
 }
-function openHelp() { openSheet('helpOverlay'); $('helpTitle').focus({ preventScroll: true }); }
+function openHelp() { renderLegend(); openSheet('helpOverlay'); $('helpTitle').focus({ preventScroll: true }); }
 function closeHelp() { closeSheet('helpOverlay', 'helpBtn'); }
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? storyResumeId() : nextLevel();
@@ -3218,16 +3219,18 @@ function renderLegend() {
 function drawLegendIcon(c) {
   const x = c.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); const S = 36, k = c.dataset.k;
   x.fillStyle = C.water; x.fillRect(0, 0, S, S);
+  const q = canalProjection(), raised = q !== 1;
+  x.translate(0, S * (1 - q) / 2); x.scale(1, q);
   if (k === 'fish') drawFish(x, 18, 18, S * 1.4, 0.4, 0.1);
-  if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0);
-  if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true);
-  if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2);
+  if (k === 'buoy') drawBuoy(x, 18, 18, S * 1.3, 0, raised);
+  if (k === 'boat') drawBoat(x, 18, 18, S * 1.2, 0, Math.PI / 2, true, raised);
+  if (k === 'jet') drawJet(x, 0, 0, S, 'R', 0.2, 0, raised);
   if (k === 'net') drawNet(x, 0, 0, S, false, 0);
   if (k === 'exit') drawExit(x, 0, 0, S, { w: 3, h: 3 }, 1, 0, 0);
   if (k === 'sand') drawSand(x, 0, 0, S, 5);
   if (k === 'whirl') drawWhirl(x, 18, 18, S, 0.4);
-  if (k === 'gate') { drawGate(x, 0, 0, S * 0.62, 0); drawSwitch(x, S * 0.4, S * 0.38, S * 0.6, false); }
-  if (k === 'crate') drawCrate(x, -S * 0.05, -S * 0.05, S * 1.1, 0);
+  if (k === 'gate') { drawGate(x, 0, 0, S * 0.62, 0, 'V', 0, raised); drawSwitch(x, S * 0.4, S * 0.38, S * 0.6, false, 0, raised); }
+  if (k === 'crate') drawCrate(x, -S * 0.05, -S * 0.05, S * 1.1, 0, 0, raised);
 }
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
@@ -3334,16 +3337,18 @@ function drawDeviceDemo() {
   if (canvas.width === width && canvas.height === height && guidePaintTime === guideTime) return;
   if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
   guidePaintTime = guideTime;
-  const x = canvas.getContext('2d'), grid = guideDemo.grid, size = Math.min(rect.width / grid.w, rect.height / grid.h);
+  const x = canvas.getContext('2d'), grid = guideDemo.grid, q = canalProjection(), raised = q !== 1;
+  const size = Math.min(rect.width / grid.w, rect.height / (grid.h * q));
   const sample = sampleDeviceDemo(guideDemo, guideTime), phase = sample.phase;
-  x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = C.water; x.fillRect(0, 0, rect.width, rect.height);
-  x.translate((rect.width - size * grid.w) / 2, (rect.height - size * grid.h) / 2);
+  x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = '#f0efdf'; x.fillRect(0, 0, rect.width, rect.height);
+  x.translate((rect.width - size * grid.w) / 2, (rect.height - size * grid.h * q) / 2); x.scale(1, q);
+  x.fillStyle = C.water; x.fillRect(0, 0, size * grid.w, size * grid.h);
   // The tutorial uses the same exact shoreline and material hierarchy as the playable board.
   const surface = { rail: '#fffcf0', edge: '#9ead9f' };
   grid.cells.forEach((cell, i) => {
     if (cell !== '#') return;
     const gx = i % grid.w, gy = Math.floor(i / grid.w), px = gx * size, py = gy * size;
-    x.fillStyle = '#f0efdf'; x.fillRect(px, py, size, size);
+    x.fillStyle = '#f0efdf'; x.fillRect(px, py, size + .5, size + .5);
   });
   grid.cells.forEach((cell, i) => {
     if (cell !== '#') return;
@@ -3357,14 +3362,14 @@ function drawDeviceDemo() {
   grid.cells.forEach((cell, i) => {
     const px = i % grid.w * size, py = Math.floor(i / grid.w) * size;
     if (cell !== '#') { x.strokeStyle = 'rgba(255,255,255,.06)'; x.lineWidth = 1; x.strokeRect(px, py, size, size); }
-    if (cell === 'o') drawBuoy(x, px + size / 2, py + size / 2, size, guideTime);
-    if (JET[cell]) drawJet(x, px, py, size, JET[cell], guideTime);
+    if (cell === 'o') drawBuoy(x, px + size / 2, py + size / 2, size, guideTime, raised);
+    if (JET[cell]) drawJet(x, px, py, size, JET[cell], guideTime, 0, raised);
     if (cell === 's') drawSand(x, px, py, size, i);
     if (cell === 'w') drawWhirl(x, px + size / 2, py + size / 2, size, guideTime);
-    if (cell === 'p') drawSwitch(x, px, py, size, sample.gate === 1, phase.kind === 'gate' && !reduceMotion ? sample.progress : 0);
+    if (cell === 'p') drawSwitch(x, px, py, size, sample.gate === 1, phase.kind === 'gate' && !reduceMotion ? sample.progress : 0, raised);
     if (cell === 'G') {   // the gate phase turns the shutter between the two recorded engine states
       const from = gateIsOpen(grid, i, phase.from.gate) ? 1 : 0, to = gateIsOpen(grid, i, phase.to.gate) ? 1 : 0;
-      drawGate(x, px, py, size, phase.kind === 'gate' ? from + (to - from) * sample.progress : to, gatePassage(grid, i));
+      drawGate(x, px, py, size, phase.kind === 'gate' ? from + (to - from) * sample.progress : to, gatePassage(grid, i), 0, raised);
     }
   });
   // A fixed route remains available when automatic motion is disabled.
@@ -3378,9 +3383,12 @@ function drawDeviceDemo() {
     x.restore();
   }
   for (const index of sample.nets) drawNet(x, index % grid.w * size, Math.floor(index / grid.w) * size, size, false, guideTime);
-  for (const crate of sample.crates) drawCrate(x, crate.x * size, crate.y * size, size, guideTime);   // glides in its 'crate' phase
-  for (const boat of sample.boats) drawBoat(x, (boat.x + .5) * size, (boat.y + .5) * size, size, guideTime, ANG[boat.dir] + Math.PI / 2, true);
-  drawShark(x, (sample.pos[0] + .5) * size, (sample.pos[1] + .5) * size, ANG[sample.dir], size * Math.max(.05, sample.scale), guideTime, phase.kind === 'move');
+  for (const crate of sample.crates) drawCrate(x, crate.x * size, crate.y * size, size, guideTime, 0, raised);   // glides in its 'crate' phase
+  for (const boat of sample.boats) drawBoat(x, (boat.x + .5) * size, (boat.y + .5) * size, size, guideTime, ANG[boat.dir] + Math.PI / 2, true, raised);
+  const sx = (sample.pos[0] + .5) * size, sy = (sample.pos[1] + .5) * size, sharkSize = size * Math.max(.05, sample.scale);
+  if (!raised || !drawObliqueShark(x, sx, sy, sharkSize, 1, 1, ANG[sample.dir], q)) {
+    drawShark(x, sx, sy, ANG[sample.dir], sharkSize, guideTime, phase.kind === 'move', 1, 1, undefined, q);
+  }
   if (phase.kind === 'cue' || phase.kind === 'tap') {
     const tapping = phase.kind === 'tap', [dx, dy] = DIRS[phase.dir || 'R'];
     const pos = tapping ? phase.tap : phase.from.pos, progress = sample.progress;
