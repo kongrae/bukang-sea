@@ -7,7 +7,7 @@ const artSource = fs.readFileSync(path.join(__dirname, '../src/art.js'), 'utf8')
 const cameraSource = source.slice(source.indexOf('const CANAL_VIEW_KEY'), source.indexOf('function drawObliqueQuay'));
 function camera({ stored = null, fail = false } = {}) {
   return new Function('stored', 'fail', `
-    const LEVELS = Array.from({length:84},()=>({})); let STORY = LEVELS[0], LVL = 0, DAILY = null, FREE = null, PILOT = null;
+    const LEVELS = Array.from({length:84},()=>({})); let STORY = LEVELS[0], LVL = 0, DAILY = null, FREE = null, PILOT = null, g = {};
     const T = 48, CH = 480, OY = 72, clock = 3, writes = [];
     const localStorage = {getItem: () => { if(fail) throw Error(); return stored; }, setItem: (...args) => { if(fail) throw Error(); writes.push(args); }};
     const buttons = ['top', 'oblique'].map(mode => ({dataset:{canalView:mode},setAttribute(k,v){this[k]=v;}}));
@@ -16,15 +16,18 @@ function camera({ stored = null, fail = false } = {}) {
     let paints = 0; const buildStatic=()=>{},invalidateScenes=()=>{},draw=()=>paints++;
     ${cameraSource}
     return {projection:boardProjection, gridY:boardGridY, set:setCanalView, update:updateCanalView, writes, elements, buttons,
-      scope: (mode,index=0,legacy=false) => {DAILY=mode==='daily'?{}:null;FREE=mode==='free'?{}:null;PILOT=mode==='pilot'?{}:null;LVL=index;STORY=legacy?{}:LEVELS[index];updateCanalView();},
+      scope: (mode,index=0,legacy=false) => {DAILY=mode==='daily'?{}:null;FREE=mode==='free'?{}:null;PILOT=mode==='pilot'?{}:null;LVL=index;STORY=legacy?{}:LEVELS[index];g=mode==='empty'?null:{};updateCanalView();},
       paints:()=>paints};
   `)(stored, fail);
 }
-test('camera is available on all current story canals, never daily/free/pilot or restored legacy maps', () => {
+test('camera covers every playable mode and restored map while staying disabled before a board exists', () => {
   const c = camera();
-  for (const [mode,index,legacy] of [['daily',0,false],['free',0,false],['pilot',0,false],['story',0,true],['story',59,true],['story',84,false]]) {
-    c.scope(mode,index,legacy); assert.equal(c.projection(),1); assert.equal(c.elements.canalViewToggle.hidden,true);
-    c.set('oblique'); assert.equal(c.writes.length,0);
+  c.scope('empty'); assert.equal(c.projection(),1); assert.equal(c.elements.canalViewToggle.hidden,true);
+  c.set('oblique'); assert.equal(c.writes.length,0);
+  for (const [mode,index,legacy] of [['daily',0,false],['free',0,false],['pilot',0,false],['story',0,true],['story',59,true]]) {
+    c.scope(mode,index,legacy); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);
+    c.set('top'); assert.equal(c.projection(),1);
+    c.set('oblique'); assert.equal(c.projection(),.78);
   }
   for (let index=0;index<84;index++) {
     c.scope('story',index); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);

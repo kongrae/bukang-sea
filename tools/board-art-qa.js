@@ -1,27 +1,34 @@
 // Local-only real-renderer comparison. No QA hook or unlocked progress enters a release build.
-// node tools/board-art-qa.js <existing playwright module> [baseline ref] [capture|check|devices]
+// node tools/board-art-qa.js <existing playwright module> [baseline ref] [capture|check|devices|all]
 const fs = require('node:fs'), path = require('node:path'), cp = require('node:child_process');
 const assert = require('node:assert/strict');
 const { gameBody } = require('./build-source');
-const { LEVELS, STORY_ORDER, STORY_POSITION } = require('../src/levels');
+const { LEVELS, STORY_ORDER, STORY_POSITION, LEGACY_STORY_LEVELS, STORY_EXTENSION_LEVELS } = require('../src/levels');
 const { parseLevel, plan } = require('../src/engine');
 const { chromium } = require(process.argv[2] || 'playwright');
 const root = path.join(__dirname, '..'), out = path.join(root, 'outputs/qa/board-art');
 const ref = process.argv[3] || '310c28d', mode = process.argv[4] || 'capture';
+const deviceChecks = mode === 'devices' || mode === 'all';
 if (!/^[a-zA-Z0-9_./-]+$/.test(ref) || ref.startsWith('-')) throw Error('Invalid baseline ref');
 const origin = process.env.QA_ORIGIN || 'http://127.0.0.1:5182';
 fs.mkdirSync(out, { recursive: true });
 const hooks = `
 window.boardQA = {
-  load(i) {
+  load(i, run = null, packet = null) {
     save.sound = save.vibe = false; save.coachSwipe = save.coachNet = true;
     save.seenDevices = DEVICE_GUIDES.map(d => d.key);
-    show('game', false); loadLevel(i, null, LEVELS[i]);
+    const level=run?.level || LEVELS[i], keep=packet ? restoreSession(packet,level,packet.id) : null;
+    if(packet&&!keep)throw Error('Saved mode failed to restore');
+    show('game', false);
+    if(run?.mode==='daily')loadDaily(run.value,keep);
+    else if(run?.mode==='free')loadFree(run.value,keep);
+    else if(run?.mode==='pilot')loadPilot(i,keep);
+    else loadLevel(i,keep,level);
     if (guideOpen()) closeGuide(); closeSheet('chapterOverlay', null, false);
     pop = null; deviceSpot = null; coach = null; particles.length = wake.length = 0;
     invalidateScenes(); draw(0);
   },
-  state() { return JSON.parse(JSON.stringify({level:LVL, state:st, session:save.sessions.story, cleared, animating:!!anim})); },
+  state() { const key=FREE?'free'+FREE.difficulty:DAILY?dailySessionKey(DAILY):PILOT?'pilot':'story';return JSON.parse(JSON.stringify({level:LVL, state:st, session:save.sessions[key], cleared, animating:!!anim})); },
   paint() { draw(0); },
   camera(mode) { setCanalView(mode); },
   saved() { return localStorage.getItem(STORE_KEY); },
@@ -58,7 +65,7 @@ async function run() {
       await page.locator('#board').screenshot({path:path.join(out,`${name}-${id}-board.png`)});
       report.screens.push({name,id,index,...await page.evaluate(()=>boardQA.dims())});
     }
-    if (mode === 'check' || mode === 'devices') {
+    if (mode === 'check' || deviceChecks) {
       for (const [width,height] of [[320,568],[360,640],[412,915],[844,390]]) {
         await page.setViewportSize({width,height}); await load(page,59);
         const layout = await page.evaluate(()=>({viewportWidth:innerWidth,scroll:document.documentElement.scrollWidth,...boardQA.dims()}));
@@ -70,7 +77,7 @@ async function run() {
       await page.setViewportSize({width:390,height:844});
       for (const index of STORY_ORDER) {
         await load(page,index); assert.ok(await page.locator('#gameScreen').isVisible());
-        if (name === 'after' && mode === 'devices') {
+        if (name === 'after' && deviceChecks) {
           assert.equal(await page.locator('#canalViewToggle').isVisible(),true);
           const before=await page.evaluate(()=>boardQA.saved());
           for(const camera of ['top','oblique']) {
@@ -90,7 +97,7 @@ async function run() {
       await load(page,59); report[name+'DrawMs']=await page.evaluate(()=>boardQA.sample());
       // Real production keyboard movement and storage on both builds; retain snapshots for exact comparison.
       const snapshots=[];
-      for (const index of mode==='devices' ? [0,9,36,47,59,72,83] : [0,9,59,72]) {
+      for (const index of deviceChecks ? [0,9,36,47,59,72,83] : [0,9,59,72]) {
         await load(page,index);
         const grid=parseLevel(LEVELS[index]), route=index===59 ? LEVELS[index].route.split(' ').map(dir=>({dir,nets:[]})) : plan(grid,grid.start,0,new Set(),grid.nets,true).steps;
         let gateShot=false;
@@ -105,7 +112,7 @@ async function run() {
             await page.screenshot({path:path.join(out,`${name}-net.png`)});
           }
           await page.keyboard.press({R:'ArrowRight',L:'ArrowLeft',U:'ArrowUp',D:'ArrowDown'}[action.dir]);
-          if(name==='after' && mode==='devices') {
+          if(name==='after' && deviceChecks) {
             // Same JS turn: camera changes cannot settle a moving device, spend a turn, or change its checkpoint.
             const pair=await page.evaluate(()=>{
               const before={state:boardQA.state(),saved:boardQA.saved()};
@@ -121,6 +128,7 @@ async function run() {
         assert.equal((await page.evaluate(()=>boardQA.state())).cleared,true,`${name}: complete ${index}`);
       }
       report[name+'States']=snapshots;
+      if(mode==='all')await checkModes(page,name);
       if(name==='after') {
         await page.reload(); await page.locator('#launchScreen').waitFor({state:'hidden'});
         assert.equal(await page.evaluate(p=>boardQA.restore(p),baselinePacket),true);
@@ -142,11 +150,66 @@ async function run() {
     }
     await context.close();
   }
-  if(mode==='check' || mode==='devices') { assert.deepEqual(report.afterStates,report.beforeStates); report.checks.push(`Exact state and saved session equality across ${report.afterStates.length} inputs: first exit, nets, sand, whirlpools, gates/boat/jet and crate clears`); }
+  if(mode==='check' || deviceChecks) { assert.deepEqual(report.afterStates,report.beforeStates); report.checks.push(`Exact state and saved session equality across ${report.afterStates.length} inputs: first exit, nets, sand, whirlpools, gates/boat/jet and crate clears`); }
+  if(mode==='all'){assert.deepEqual(report.afterModes,report.beforeModes);report.checks.push(`Exact state/session equality, camera switching, projected net input, undo and restoration on ${modeCases.length} generated/legacy/pilot boards`);}
   assert.deepEqual(report.errors,[]); report.success=true;
+}
+// Exercise actual supported generators and older saved definitions, without changing their rules or fixtures in release.
+const modeCases=[];
+if(mode==='all'){
+  const D=require('../src/daily'),F=require('../src/free'),date='2026-10-14';
+  for(const version of [1,2,3,4])for(const stage of [0,1,2]){
+    const value=D.makeDailyStage(date,stage,version);assert(value);
+    modeCases.push({label:`daily-v${version}-${stage}`,mode:'daily',value,level:value.level,index:0,pickup:version<4});
+  }
+  const value=D.makeDaily(date);modeCases.push({label:'daily-legacy',mode:'daily',value,level:value.level,index:0,pickup:true});
+  for(const version of [1,2,3,4])for(const difficulty of [0,1,2]){
+    const value={...F.makeFree(42,difficulty,version),serial:1};assert(value.level);
+    modeCases.push({label:`free-v${version}-${difficulty}`,mode:'free',value,level:value.level,index:0,pickup:version<4});
+  }
+  for(const [index,level] of Object.entries(LEGACY_STORY_LEVELS))modeCases.push({label:`legacy-story-${index}`,mode:'legacy',index:+index,level,pickup:false});
+  STORY_EXTENSION_LEVELS.forEach((level,index)=>modeCases.push({label:`pilot-${index}`,mode:'pilot',index,level,pickup:false}));
+}
+async function checkModes(page,name){
+  const states=[];
+  for(const run of modeCases){
+    await page.evaluate(run=>boardQA.load(run.index,run),run);
+    const grid=parseLevel(run.level),route=plan(grid,grid.start,0,new Set(),grid.nets,true,grid.boats,grid.gate,run.pickup,grid.crates);assert(route,run.label);
+    if(name==='after'){
+      assert.equal(await page.locator('#canalViewToggle').isVisible(),true,run.label);
+      const saved=await page.evaluate(()=>boardQA.saved());
+      for(const camera of ['top','oblique']){
+        await page.locator(`[data-canal-view=${camera}]`).click();
+        assert.equal((await page.evaluate(()=>boardQA.dims())).projection,camera==='top'?1:.78,run.label);
+        assert.equal(await page.evaluate(()=>boardQA.saved()),saved,run.label);
+      }
+      if(['daily-v4-2','free-v4-2','legacy-story-0','pilot-11'].includes(run.label))await page.screenshot({path:path.join(out,run.label+'.png')});
+    }
+    // Leave a resumable turn before the exit; completion/rewards remain covered by the real-rule suites.
+    for(const action of route.steps.slice(0,Math.min(3,route.steps.length-1))){
+      const previous=await page.evaluate(()=>boardQA.state());
+      for(const net of new Set([...previous.state.nets,...action.nets])){
+        if(previous.state.nets.includes(net)===action.nets.includes(net))continue;
+        const d=await page.evaluate(()=>boardQA.dims()),r=await page.locator('#boardCanvas').boundingBox();
+        await page.mouse.click(r.x+d.ox+(net%d.w+.5)*d.tile,r.y+d.height*(1-d.projection)/2+(d.oy+(Math.floor(net/d.w)+.5)*d.tile)*d.projection);
+      }
+      assert.deepEqual((await page.evaluate(()=>boardQA.state())).state.nets.slice().sort((a,b)=>a-b),action.nets.slice().sort((a,b)=>a-b),run.label);
+      await page.keyboard.press({R:'ArrowRight',L:'ArrowLeft',U:'ArrowUp',D:'ArrowDown'}[action.dir]);
+      if(name==='after'){
+        const pair=await page.evaluate(()=>{const before={state:boardQA.state(),saved:boardQA.saved()};boardQA.camera('top');boardQA.camera('oblique');return {before,after:{state:boardQA.state(),saved:boardQA.saved()}};});
+        assert.deepEqual(pair.after,pair.before,run.label);
+      }
+      await page.evaluate(()=>boardQA.settle());states.push({label:run.label,...await page.evaluate(()=>boardQA.state())});
+    }
+    const packet=(await page.evaluate(()=>boardQA.state())).session;assert(packet,run.label);
+    if(packet.state.moves){await page.locator('#undoBtn').click();assert.equal((await page.evaluate(()=>boardQA.state())).state.moves,packet.state.moves-1,run.label);}
+    await page.evaluate(({run,packet})=>boardQA.load(run.index,run,packet),{run,packet});
+    assert.deepEqual((await page.evaluate(()=>boardQA.state())).state,packet.state,run.label);
+  }
+  report[name+'Modes']=states;report.checks.push(`${name}: ${modeCases.length} generated/legacy/pilot boards rendered with state/undo/restore checks`);
 }
 run().catch(e=>{report.failure=e.stack;process.exitCode=1;}).finally(async()=>{
   fs.writeFileSync(path.join(out,mode+'-checks.json'),JSON.stringify(report,null,2));
-  console.log(JSON.stringify({...report,beforeStates:report.beforeStates?.length,afterStates:report.afterStates?.length},null,2));
+  console.log(JSON.stringify({...report,beforeStates:report.beforeStates?.length,afterStates:report.afterStates?.length,beforeModes:report.beforeModes?.length,afterModes:report.afterModes?.length},null,2));
   await browser?.close();
 });

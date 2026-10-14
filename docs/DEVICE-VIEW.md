@@ -2,6 +2,8 @@
 
 2026-10-14. 정식 게임: https://kongrae.github.io/bukang-sea/
 
+이후 일일·자유·시험·이전 저장 맵까지 범위를 넓혔다. 현재 적용 범위와 검증은 [ALL-CANAL-VIEW.md](ALL-CANAL-VIEW.md)를 따른다.
+
 후속 작업에서 구조정·상자·수문 자체의 높이와 옆면을 보완했다. 최신 장치 그래픽과 전후 비교는 [DEVICE-DEPTH.md](DEVICE-DEPTH.md)를 참고한다. 아래는 전체 수로 시점 비교 도입 당시의 기록이다.
 
 ## 적용 위치

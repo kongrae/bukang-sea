@@ -7733,11 +7733,11 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
 
 /* ---------- rendering ---------- */
 // The camera preference is presentation-only and never enters the progression/session record.
-// Retain the original key so an existing first-canal preference applies throughout the story.
+// Retain the original key so the existing preference follows every mode, including restored older maps.
 const CANAL_VIEW_KEY = 'bukang-first-canal-view-v1';
 let canalView = 'oblique';
 try { if (localStorage.getItem(CANAL_VIEW_KEY) === 'top') canalView = 'top'; } catch (_) {}
-const canalComparison = () => !DAILY && !FREE && !PILOT && !!STORY && STORY === LEVELS[LVL];
+const canalComparison = () => !!g;
 const boardProjection = () => canalComparison() && canalView === 'oblique' ? .78 : 1;
 const boardGridY = screenY => ((screenY - CH * (1 - boardProjection()) / 2) / boardProjection() - OY) / T;
 function updateCanalView() {
