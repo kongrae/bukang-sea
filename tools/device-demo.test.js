@@ -75,28 +75,39 @@ function guide({reduced=false,seen=[],level=D.DEVICE_DEMOS.boat,title=false}={})
     const tips=[],spots=[],setTip=(text,hint)=>tips.push([text,hint]),addDeviceSpot=(cells,options)=>spots.push([cells,options]);
     const $=id=>{if(!elements.has(id))elements.set(id,{hidden:id==='guideOverlay'||id==='gameScreen'&&title,textContent:'',innerHTML:'',focus(){},setAttribute(){},getBoundingClientRect:()=>({width:0,height:0})});return elements.get(id);};
     ${guideSource}
-    return {show:showDeviceGuide,close:closeGuide,next:advanceGuide,select:selectGuideDevice,change:changeGuideStep,toggle:toggleGuidePlayback,replay:replayGuide,step:stepDeviceGuide,
+    return {show:showDeviceGuide,close:closeGuide,next:advanceGuide,select:selectGuideDevice,change:changeGuideStep,toggle:toggleGuidePlayback,details:toggleGuideDetails,step:stepDeviceGuide,
       state:()=>({time:guideTime,playing:guidePlaying,demo:guideDemo,seen:save.seenDevices.slice(),index:guideIndex,keys:guideKeys.slice()}),element:$,saved:()=>persisted,tips,spots};
   `)(E,D,reduced,seen,level,title);
 }
-test('first encounter loops a short clip under one caption; next switches to the reader-paced steps; reduced motion and settings wait', () => {
+test('first encounter loops a compact example; opening details pauses reader-paced steps; reduced motion and settings wait', () => {
   const still=guide({reduced:true});still.show(true);assert.equal(still.state().playing,false);still.step(20);assert.equal(still.state().time,0);
   const manual=guide({title:true});manual.show();assert.equal(manual.state().playing,false,'the settings guide waits');
-  assert.equal(manual.state().demo.clip,undefined);
+  assert.equal(manual.state().demo.clip,true);
   const scene=guide();scene.show(true);assert.equal(scene.state().playing,true,'a new device plays by itself');
   const {demo}=scene.state();assert.equal(demo.clip,true);assert.equal(demo.steps.length,1);assert.ok(demo.duration<8,'a short clip');
   scene.step(.4);assert.equal(scene.state().time,.4);scene.toggle();scene.step(.4);assert.equal(scene.state().time,.4);
   scene.toggle();scene.step(demo.duration-.4);scene.step(.3);
   assert.equal(scene.state().playing,true,'it loops until closed');assert.ok(scene.state().time<1);
-  scene.change(1);assert.equal(scene.state().demo.clip,undefined,'next opens the reader-paced steps');assert.equal(scene.state().playing,false);
+  scene.details();assert.equal(scene.state().demo.clip,undefined,'details open the reader-paced steps');assert.equal(scene.state().playing,false);
   assert.equal(scene.element('guideCaption').textContent,scene.state().demo.steps[0].text);
-  scene.replay();assert.equal(scene.state().time,0);assert.equal(scene.state().playing,true);
+  scene.toggle();assert.equal(scene.state().playing,true);
   assert.deepEqual(scene.state().seen,[]);scene.close();assert.deepEqual(scene.state().seen,['boat']);assert.equal(scene.state().demo,null);
   const saved=JSON.parse(scene.saved());assert.deepEqual(saved.best,{0:3});assert.deepEqual(saved.sessions,{story:{moves:4}});assert.deepEqual(saved.hintUsage,{'story:0':{count:2}});
   scene.show(true);assert.equal(scene.element('guideOverlay').hidden,true);scene.show();assert.equal(scene.element('guideOverlay').hidden,false);
 });
+
+test('compact/details switches stop playback; selecting another device collapses details without marking unopened devices', () => {
+  const scene=guide({title:true});scene.show();
+  assert.equal(scene.element('guideDetails').hidden,true);assert.equal(scene.state().demo.clip,true);
+  scene.toggle();scene.step(.5);scene.details();assert.equal(scene.state().playing,false);assert.equal(scene.element('guideDetails').hidden,false);
+  scene.change(1);scene.details();assert.equal(scene.state().demo.clip,true);assert.equal(scene.state().time,0);assert.equal(scene.state().playing,false);
+  scene.details();scene.select(6);assert.equal(scene.element('guideDetails').hidden,true);assert.equal(scene.state().time,0);
+  assert.match(scene.element('guideSummary').textContent,/스위치 위에서 멈추면/);
+  assert.equal(scene.element('guideDone').textContent,'확인');scene.next();assert.equal(scene.element('guideOverlay').hidden,true);
+  assert.deepEqual(scene.state().seen,['buoy','gate']);
+});
 test('manual steps hold their completed action, can go back, and playback stops at the summary without looping', () => {
-  const scene=guide({level:D.DEVICE_DEMOS.net});scene.show(false,'net');
+  const scene=guide({level:D.DEVICE_DEMOS.net});scene.show(false,'net');scene.details();
   assert.equal(scene.element('guidePrev').disabled,true);
   const {demo}=scene.state();
   for(let i=1;i<demo.steps.length;i++) {
@@ -107,7 +118,7 @@ test('manual steps hold their completed action, can go back, and playback stops 
   }
   assert.equal(scene.element('guideNext').disabled,true);
   scene.change(-1);assert.equal(scene.element('guideCaption').textContent,demo.steps.at(-2).text);
-  scene.replay();scene.step(demo.duration+10);
+  scene.toggle();scene.step(demo.duration+10);
   assert.equal(scene.state().time,demo.duration);assert.equal(scene.state().playing,false);
   assert.equal(scene.element('guideCaption').textContent,D.DEVICE_DEMOS.net.summary);
   scene.step(20);assert.equal(scene.state().time,demo.duration);

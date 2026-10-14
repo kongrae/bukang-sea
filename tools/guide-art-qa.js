@@ -16,6 +16,12 @@ window.guideArtQA={
 };
 `;
 const report={baseline:'042932c',physicalAndroid:false,checks:[],errors:[]};
+async function chooseGuide(page,index,steps=false){
+ if(await page.locator('#guideSelect').count()){
+  await page.locator('#guideSelect').selectOption(String(index));
+  if(steps)await page.locator('#guideDetailsToggle').click();
+ }else await page.locator(`#guideTabs [data-guide="${index}"]`).click();
+}
 (async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  try{
@@ -26,13 +32,13 @@ const report={baseline:'042932c',physicalAndroid:false,checks:[],errors:[]};
    await page.route(url,r=>r.fulfill({contentType:'text/html',body:html}));await page.goto(url);await page.locator('#launchScreen').waitFor({state:'hidden'});
    await page.locator('#titleSettingsBtn').click();await page.locator('#deviceGuideBtn').click();const keys=await page.evaluate(()=>guideArtQA.keys());
    for(let i=0;i<keys.length;i++){
-    await page.locator(`#guideTabs [data-guide="${i}"]`).click();
+    await chooseGuide(page,i,true);
     const frames=await page.evaluate(()=>guideArtQA.phases());
     const calls=frames.flatMap(f=>f.calls);if(name==='after')assert(calls.every(c=>c.raised),'guide must use raised devices: '+keys[i]);
     while(!await page.locator('#guideNext').isDisabled())await page.locator('#guideNext').click();
     assert((await page.locator('#guideCaption').textContent()).length>0);
     if(['gate','boat','crate'].includes(keys[i])){
-     await page.locator(`#guideTabs [data-guide="${i}"]`).click();await page.waitForTimeout(150);await page.evaluate(()=>guideArtQA.paint());
+     await chooseGuide(page,i);await page.waitForTimeout(150);await page.evaluate(()=>guideArtQA.paint());
      await page.locator('#guideDemo').screenshot({path:path.join(out,`guide-${name}-${keys[i]}.png`)});
     }
    }
@@ -48,7 +54,7 @@ const report={baseline:'042932c',physicalAndroid:false,checks:[],errors:[]};
     await page.locator('#settingsBtn').click();await page.locator('[data-canal-view=top]').click();await page.locator('#settingsDone').click();await page.locator('#backBtn').click();
     await page.locator('#titleSettingsBtn').click();await page.locator('#deviceGuideBtn').click();
     for(let i=0;i<keys.length;i++){
-     await page.locator(`#guideTabs [data-guide="${i}"]`).click();const calls=await page.evaluate(()=>guideArtQA.phases().flatMap(f=>f.calls));assert(calls.every(c=>!c.raised));
+     await chooseGuide(page,i,true);const calls=await page.evaluate(()=>guideArtQA.phases().flatMap(f=>f.calls));assert(calls.every(c=>!c.raised));
     }
     const topIcons=await page.evaluate(()=>guideArtQA.legend());assert(topIcons.every(c=>!c.raised));
     await page.setViewportSize({width:320,height:568});await page.evaluate(()=>document.documentElement.style.fontSize='200%');

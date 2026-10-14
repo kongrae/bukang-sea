@@ -1,0 +1,118 @@
+{
+  "baseline": "98de641",
+  "physicalAndroid": false,
+  "checks": [
+    "All eight devices: compact rules, expanded full rules, every manual step, playback/restart/pause, unchanged game/progress",
+    "320px, 390px, landscape and doubled text: readable scrolling, 44px close/confirm, manual navigation and focus return",
+    "Real handle drag and Escape close the guide",
+    "Real first-device stage: short autoplay, single-device heading, live reduced-motion pause and explicit manual steps"
+  ],
+  "errors": [],
+  "sizes": [
+    {
+      "width": 320,
+      "height": 568,
+      "close": {
+        "x": 262,
+        "y": 132.828125,
+        "w": 44,
+        "h": 44,
+        "b": 176.828125
+      },
+      "done": {
+        "x": 14,
+        "y": 497.203125,
+        "w": 292,
+        "h": 50.796875,
+        "b": 548
+      },
+      "scroll": 320,
+      "canvas": {
+        "x": 17,
+        "y": 196.828125,
+        "w": 286,
+        "h": 170,
+        "b": 366.828125
+      }
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "close": {
+        "x": 328,
+        "y": 370.015625,
+        "w": 44,
+        "h": 44,
+        "b": 414.015625
+      },
+      "done": {
+        "x": 18,
+        "y": 773.203125,
+        "w": 354,
+        "h": 50.796875,
+        "b": 824
+      },
+      "scroll": 390,
+      "canvas": {
+        "x": 21,
+        "y": 438.015625,
+        "w": 348,
+        "h": 220,
+        "b": 658.015625
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "close": {
+        "x": 624,
+        "y": 61.203125,
+        "w": 44,
+        "h": 44,
+        "b": 105.203125
+      },
+      "done": {
+        "x": 176,
+        "y": 319.203125,
+        "w": 492,
+        "h": 50.796875,
+        "b": 370
+      },
+      "scroll": 844,
+      "canvas": {
+        "x": 179,
+        "y": 125.203125,
+        "w": 486,
+        "h": 170,
+        "b": 295.203125
+      }
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "close": {
+        "x": 262,
+        "y": 83.453125,
+        "w": 44,
+        "h": 44,
+        "b": 127.453125
+      },
+      "done": {
+        "x": 14,
+        "y": 472.40625,
+        "w": 292,
+        "h": 75.59375,
+        "b": 548
+      },
+      "scroll": 320,
+      "canvas": {
+        "x": 17,
+        "y": 8.453125,
+        "w": 286,
+        "h": 170,
+        "b": 178.453125
+      }
+    }
+  ],
+  "success": true
+}

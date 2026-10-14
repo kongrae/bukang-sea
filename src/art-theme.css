@@ -157,9 +157,10 @@ body { background: #e8f8f5; }
 .switch { border-color: #bad9d6; }
 .switch .track { background: #a4bcbc; }
 .switch input:checked + .track { background: #228d9f; }
-.guide-tabs button { background: #edf7f2; border-color: #b1d6d6; }
-.guide-tabs button[aria-pressed="true"] { color: #fff; background: #247d96; border-color: #1c627b; }
-.guide-movie { background: #d7f2f0; border: 2px solid #9cdbdc; }
+.guide-select, .guide-summary { color: #215867; }
+.guide-movie { background: #d7f2f0; border: 0; }
+.card.guide .guide-controls .btn { background: transparent; border: 0; box-shadow: none; color: #346a78; }
+.card.guide .guide-controls .btn[aria-expanded="true"] { background: #e7f2ee; }
 .guide-caption { color: #23687c; }
 .journey-number { background: #dcefeb; color: #346779; }
 .journey-stop > div { border-color: #a4cdcf; }

@@ -2654,7 +2654,7 @@ function changeMotionPreference(e) {
     for (const [canvas, motion] of skinPreviewMotion) if (canvas.isConnected) drawSkinPreview(canvas, motion.skin);
     skinPreviewMotion.clear();
     guidePlaying = false;
-    if (guideDemo?.clip) { guideDemo = createDeviceDemo(guideKeys[guideIndex]); guideTime = 0; }   // back to the reader-paced steps
+    // Keep the selected example; reduced motion pauses it and draws the existing static route.
   }
   heroWake = 0; heroRipples.length = 0;
   guidePaintTime = -1; if (guideOpen()) updateGuidePlayback();
@@ -3244,20 +3244,19 @@ function drawLegendIcon(c) {
 /* ---------- device rules: once on first encounter, always available from settings ---------- */
 const DEVICE_GUIDES = [
   // light: a simple device introduced on the board (its tiles glow, the tip explains) instead of opening this sheet
-  { key: 'buoy', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o'), light: /o/ },
-  { key: 'boat', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 칠 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
-  { key: 'jet', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
-  { key: 'net', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 한 번 친 그물은 걷을 수 없으니 칠 자리를 먼저 생각해요. 되돌리기로는 무를 수 있고, 설치는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
-  { key: 'sand', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
-  { key: 'whirl', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
-  { key: 'gate', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
-  { key: 'crate', name: '나무 상자', text: '멀리서 헤엄쳐 와 코로 치면 상자도 막힐 때까지 밀려나요. 바로 옆에서는 밀리지 않아요. 밀린 상자 앞에서 멈출 수 있어요.', has: g => !!g.crates?.length },
+  { key: 'buoy', brief: '부표 바로 앞에서 멈춰요. 멈춘 뒤 방향을 바꿔 보세요.', name: '부표', text: '부표는 벽처럼 길을 막아요. 바로 앞에서 멈춘 뒤 다른 방향으로 밀어 보세요.', has: g => g.cells.includes('o'), light: /o/ },
+  { key: 'boat', brief: '상어가 멈추면 구조정이 한 칸 움직여요.', name: '구조정', text: '상어가 멈춘 뒤 한 칸 움직여요. 막히면 방향을 바꾸며, 그물을 칠 때는 움직이지 않아요.', has: g => g.boats.length > 0 },
+  { key: 'jet', brief: '물줄기에 들어가면 화살표 방향으로 계속 헤엄쳐요.', name: '물줄기', text: '들어가면 화살표 방향으로 꺾여 계속 헤엄쳐요. 출발한 칸의 물줄기는 작동하지 않아요.', has: g => g.cells.some(c => JET[c]) },
+  { key: 'net', brief: '빈 물 칸을 톡 눌러 설치해요. 친 그물은 걷을 수 없어요.', name: '그물', text: '빈 물 칸을 톡 누르면 설치해요. 한 번 친 그물은 걷을 수 없으니 칠 자리를 먼저 생각해요. 되돌리기로는 무를 수 있고, 설치는 이동 횟수에 포함되지 않아요.', has: g => g.nets > 0 },
+  { key: 'sand', brief: '모래톱 위에서 멈춰요. 다음에는 다시 출발할 수 있어요.', name: '모래톱', text: '올라서면 그 칸에서 멈춰요. 다음 이동에서는 다시 헤엄칠 수 있어요.', has: g => g.cells.includes('s') },
+  { key: 'whirl', brief: '짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', name: '소용돌이', text: '들어가면 짝 소용돌이로 옮겨져 같은 방향으로 계속 헤엄쳐요.', has: g => g.cells.includes('w') },
+  { key: 'gate', brief: '스위치 위에서 멈추면 수문이 열리거나 닫혀요.', name: '스위치·수문', text: '상어가 스위치 위에서 멈추면 연결된 수문이 모두 열리거나 닫혀요. 지나가기만 하면 눌리지 않아요. 닫힌 수문은 벽처럼 막고, 구조정은 상어 다음에 바뀐 수문을 따라 움직여요.', has: g => g.cells.includes('p') },
+  { key: 'crate', brief: '떨어진 곳에서 헤엄쳐 와 상자를 밀어요. 바로 옆에서는 밀 수 없어요.', name: '나무 상자', text: '멀리서 헤엄쳐 와 코로 치면 상자도 막힐 때까지 밀려나요. 바로 옆에서는 밀리지 않아요. 밀린 상자 앞에서 멈출 수 있어요.', has: g => !!g.crates?.length },
 ];
 let guideKeys = [], guideIndex = 0, guideViewed = new Set(), guideDemo = null, guideTime = 0, guidePlaying = false, guidePaintTime = -1, guideReturnFocus = null;
-// When the sheet opens by itself for a new device, its example loops as a short clip at natural speed under one summary
-// caption (2026-10-08). Stepping with previous/next switches to the reader-paced steps. Opening the guide from settings,
-// or with reduced motion, waits for the reader as before.
-let guideAutoplay = false;
+// Compact examples share one rule; reader-paced steps are available in the optional details.
+// First encounters autoplay unless reduced motion is enabled. Settings always wait for an explicit play.
+let guideAutoplay = false, guideFirstEncounter = false;
 const guideOpen = () => !$('guideOverlay').hidden;
 function showDeviceGuide(firstOnly = false, requestedKey = null) {
   if (firstOnly && g && !$('gameScreen').hidden) introduceLightDevices();
@@ -3265,23 +3264,23 @@ function showDeviceGuide(firstOnly = false, requestedKey = null) {
   if (firstOnly && !devices.length) return;
   guideKeys = devices.length ? devices.map(d => d.key) : ['move'];
   guideIndex = Math.max(0, guideKeys.indexOf(requestedKey)); guideViewed = new Set(); guidePlaying = false;
-  guideAutoplay = firstOnly && !reduceMotion;
+  guideFirstEncounter = firstOnly; guideAutoplay = firstOnly && !reduceMotion;
   guideReturnFocus = requestedKey === 'net' ? 'netTool' : $('gameScreen').hidden ? 'titleSettingsBtn' : 'settingsBtn';
-  $('guideTitle').textContent = firstOnly ? '새 장치를 만났어요' : '장치 안내';
   openSheet('guideOverlay'); renderGuideDevice(); $('guideDone').focus({ preventScroll: true });
 }
 function renderGuideDevice() {
   const key = guideKeys[guideIndex], device = DEVICE_GUIDES.find(d => d.key === key) || { name: '기본 이동', text: '화면을 밀면 막힐 때까지 헤엄쳐요. 숭어를 모두 먹고 이동 기준 안에 탈출하면 별 3개를 받아요.' };
   if (key !== 'move') guideViewed.add(key);
-  const clip = guideAutoplay && !reduceMotion;
-  guideDemo = createDeviceDemo(key, { pace: clip ? 'clip' : 'read' }); guideTime = 0; guidePlaying = clip && !!guideDemo; guidePaintTime = -1;
-  $('guideName').textContent = device.name;
-  $('guideCounter').textContent = `${guideIndex + 1} / ${guideKeys.length}`;
+  guideDemo = createDeviceDemo(key, { pace: 'clip' }); guideTime = 0; guidePlaying = guideAutoplay && !reduceMotion && !!guideDemo; guidePaintTime = -1;
+  $('guideTitle').textContent = device.name; $('guideTitle').hidden = guideKeys.length > 1;
+  $('guideSummary').textContent = device.brief || device.text;
   $('guideItems').innerHTML = `<p>${device.text}</p>`;
   $('guideDemo').setAttribute('aria-label', `${device.name} 사용 예시`);
-  $('guideTabs').hidden = guideKeys.length < 2;
-  $('guideTabs').innerHTML = guideKeys.map((k, i) => `<button type="button" data-guide="${i}" aria-pressed="${i === guideIndex}">${DEVICE_GUIDES.find(d => d.key === k)?.name || '기본 이동'}</button>`).join('');
-  $('guideDone').textContent = guideIndex < guideKeys.length - 1 ? '다음 장치 보기' : '확인';
+  $('guideSelect').hidden = guideKeys.length < 2;
+  $('guideSelect').innerHTML = guideKeys.map((k, i) => `<option value="${i}">${DEVICE_GUIDES.find(d => d.key === k)?.name || '기본 이동'}</option>`).join('');
+  $('guideSelect').value = String(guideIndex);
+  $('guideDetails').hidden = true; $('guideDetailsToggle').setAttribute('aria-expanded', 'false'); $('guideDetailsToggle').textContent = '자세히 보기';
+  $('guideDone').textContent = guideFirstEncounter && guideIndex < guideKeys.length - 1 ? '다음 장치 보기' : '확인';
   $('guideBody').scrollTop = 0;
   updateGuidePlayback(); drawDeviceDemo();
 }
@@ -3290,14 +3289,19 @@ function selectGuideDevice(index) {
   guideIndex = index; renderGuideDevice();
 }
 function advanceGuide() {
-  if (guideIndex < guideKeys.length - 1) selectGuideDevice(guideIndex + 1); else closeGuide();
+  if (guideFirstEncounter && guideIndex < guideKeys.length - 1) selectGuideDevice(guideIndex + 1); else closeGuide();
+}
+function toggleGuideDetails() {
+  const open = $('guideDetails').hidden;
+  $('guideDetails').hidden = !open; $('guideDetailsToggle').setAttribute('aria-expanded', String(open));
+  $('guideDetailsToggle').textContent = open ? '간단히 보기' : '자세히 보기';
+  if (open) changeGuideStep(0);
+  else { guideDemo = createDeviceDemo(guideKeys[guideIndex], { pace: 'clip' }); guideTime = 0; guidePlaying = false; guidePaintTime = -1; updateGuidePlayback(); drawDeviceDemo(); }
 }
 function updateGuidePlayback() {
   if (!guideDemo) return;
   const index = guideStepIndex();
-  $('guideToggle').textContent = guidePlaying ? '일시정지' : '예시 재생';
-  $('guideMode').textContent = guideDemo.clip ? (guidePlaying ? '예시가 반복돼요 · 다음을 누르면 천천히 봐요' : '일시정지 중이에요')
-    : guidePlaying ? '천천히 한 번 재생해요' : guideTime >= guideDemo.duration ? '예시 끝 · 다시 읽어 보세요' : '직접 넘기며 읽어 보세요';
+  $('guideToggle').textContent = guidePlaying ? '일시정지' : guideTime >= guideDemo.duration ? '다시 보기' : guideTime > 0 ? '이어서 재생' : '예시 재생';
   $('guideStepCount').textContent = `설명 ${index + 1} / ${guideDemo.steps.length}`;
   $('guidePrev').disabled = index === 0;
   $('guideNext').disabled = !guideDemo.clip && index === guideDemo.steps.length - 1;
@@ -3323,10 +3327,6 @@ function toggleGuidePlayback() {
   guidePaintTime = -1;
   if (guidePlaying && !guideDemo.clip) guideTime = guideTime >= guideDemo.duration ? 0 : guideDemo.steps[guideStepIndex()].start;
   updateGuidePlayback();
-}
-function replayGuide() {
-  if (!guideDemo) return;
-  guideTime = 0; guidePlaying = true; guidePaintTime = -1; updateGuidePlayback(); drawDeviceDemo();
 }
 function stepDeviceGuide(dt) {
   if (!guideDemo) return;
@@ -3407,8 +3407,6 @@ function drawDeviceDemo() {
     x.beginPath(); x.arc(px, py, size * (tapping ? .16 - Math.sin(progress * Math.PI) * .03 : .16), 0, Math.PI * 2); x.fill(); x.stroke();
   }
   if ($('guideCaption').textContent !== sample.text) $('guideCaption').textContent = sample.text;
-  $('guideStats').textContent = `예시 이동 ${sample.moves}회${grid.nets ? ` · 그물 ${grid.nets - sample.nets.length}` : ''}`;
-  $('guideProgress').value = guideTime / guideDemo.duration;
 }
 // First meeting with a simple device: no sheet. Its tiles join the spotlight and the tip explains it until the first
 // move; it counts as seen once the spotlight starts (at once in reduced motion, which has no spotlight).
@@ -3520,18 +3518,14 @@ $('guideDone').addEventListener('click', advanceGuide);
 $('chapterOverlay').addEventListener('click', closeChapterCard);   // the button or anywhere on the card starts the chapter
 $('guideClose').addEventListener('click', closeGuide);
 $('guideToggle').addEventListener('click', toggleGuidePlayback);
-$('guideReplay').addEventListener('click', replayGuide);
+$('guideDetailsToggle').addEventListener('click', toggleGuideDetails);
 $('guidePrev').addEventListener('click', () => changeGuideStep(-1));
 $('guideNext').addEventListener('click', () => changeGuideStep(1));
 $('netTool').addEventListener('click', () => {
   if (g.nets) showDeviceGuide(false, 'net'); else { setTip(NO_NETS_TIP); pulseRewardMark($('netTool'), 'nudge'); }
 });
 $('netCallout').addEventListener('click', () => { netCallout.done = true; $('netCallout').hidden = true; });
-$('guideTabs').addEventListener('click', e => {
-  const b = e.target.closest('[data-guide]'); if (!b) return;
-  selectGuideDevice(+b.dataset.guide);
-  $('guideTabs').querySelector(`[data-guide="${guideIndex}"]`).focus({ preventScroll: true });
-});
+$('guideSelect').addEventListener('change', e => selectGuideDevice(+e.target.value));
 $('settingsOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettings(); });
 $('optSound').addEventListener('change', e => { save.sound = e.target.checked; persist(); sound.syncEnabled(); if (save.sound) { ac(); sfx.ui(); } });
 $('optVibe').addEventListener('change', e => { save.vibe = e.target.checked; persist(); haptic('medium'); });

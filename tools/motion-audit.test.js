@@ -105,7 +105,7 @@ test('guide redraw reuses its bitmap; allocation only occurs when dimensions cha
     const noop=()=>{},ctx=new Proxy({},{get:()=>noop});
     const canvas={getBoundingClientRect:()=>({width,height:200}),getContext:()=>ctx};
     for(const key of ['width','height'])Object.defineProperty(canvas,key,{get:()=>canvas['_'+key],set:v=>{writes++;canvas['_'+key]=v;}});
-    const els={guideDemo:canvas,guideCaption:{},guideStats:{},guideProgress:{}},$=id=>els[id];
+    const els={guideDemo:canvas,guideCaption:{}},$=id=>els[id];
     const window={devicePixelRatio:2},C={},JET={},ANG={U:0};
     const guideDemo={duration:5,grid:{w:1,h:1,nets:0,cells:['.']}};
     const sampleDeviceDemo=()=>({phase:{kind:'move'},nets:[],boats:[],crates:[],pos:[0,0],dir:'U',scale:1,moves:0,text:'move'});
