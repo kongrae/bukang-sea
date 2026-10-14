@@ -731,7 +731,7 @@ button:disabled:active { transform: none; }
     </div>
     <div class="stats" id="stats"></div>
     <p class="tip" id="tip"></p>
-    <div class="canal-view" id="canalViewToggle" role="group" aria-label="첫 수로 시점 비교" hidden>
+    <div class="canal-view" id="canalViewToggle" role="group" aria-label="수로 시점 비교" hidden>
       <span>시점 비교</span>
       <button type="button" data-canal-view="top" aria-pressed="false">탑뷰</button>
       <button type="button" data-canal-view="oblique" aria-pressed="true">입체 시점</button>
@@ -7612,22 +7612,23 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
 
 /* ---------- rendering ---------- */
 // The camera preference is presentation-only and never enters the progression/session record.
-const FIRST_CANAL_VIEW_KEY = 'bukang-view-comparison-camera-v1';
-let firstCanalView = 'oblique';
-try { if (localStorage.getItem(FIRST_CANAL_VIEW_KEY) === 'top') firstCanalView = 'top'; } catch (_) {}
-const firstCanalComparison = () => !DAILY && !FREE && !PILOT && LVL === 0 && STORY === LEVELS[0];
-const boardProjection = () => firstCanalComparison() && firstCanalView === 'oblique' ? .78 : 1;
+// Retain the original key so an existing first-canal preference applies throughout the story.
+const CANAL_VIEW_KEY = 'bukang-view-comparison-camera-v1';
+let canalView = 'oblique';
+try { if (localStorage.getItem(CANAL_VIEW_KEY) === 'top') canalView = 'top'; } catch (_) {}
+const canalComparison = () => !DAILY && !FREE && !PILOT && !!STORY && STORY === LEVELS[LVL];
+const boardProjection = () => canalComparison() && canalView === 'oblique' ? .78 : 1;
 const boardGridY = screenY => ((screenY - CH * (1 - boardProjection()) / 2) / boardProjection() - OY) / T;
 function updateCanalView() {
-  const visible = firstCanalComparison();
+  const visible = canalComparison();
   $('canalViewToggle').hidden = !visible;
-  $('canalViewToggle').querySelectorAll('[data-canal-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.canalView === firstCanalView)));
-  $('canalViewNote').hidden = !visible || firstCanalView !== 'oblique' || SHARK_ART.hasOblique(currentSkin());
+  $('canalViewToggle').querySelectorAll('[data-canal-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.canalView === canalView)));
+  $('canalViewNote').hidden = !visible || canalView !== 'oblique' || SHARK_ART.hasOblique(currentSkin());
 }
 function setCanalView(mode) {
-  if (!firstCanalComparison() || !['top', 'oblique'].includes(mode)) return;
-  firstCanalView = mode;
-  try { localStorage.setItem(FIRST_CANAL_VIEW_KEY, mode); } catch (_) {}
+  if (!canalComparison() || !['top', 'oblique'].includes(mode)) return;
+  canalView = mode;
+  try { localStorage.setItem(CANAL_VIEW_KEY, mode); } catch (_) {}
   updateCanalView();
   // Keep the current turn, interpolation, queued swipe and undo history untouched.
   buildStatic(); invalidateScenes(); draw(clock);
@@ -7635,14 +7636,12 @@ function setCanalView(mode) {
 function drawObliqueQuay() {
   const s = staticLayer.getContext('2d'), P = boardSurface;
   s.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);
-  const water = s.createLinearGradient(0, -OY, CW, CH - OY);
-  water.addColorStop(0, '#4dc6c3'); water.addColorStop(.5, '#27a9b7'); water.addColorStop(1, '#268eac');
-  s.fillStyle = water; s.fillRect(-OX, -OY, CW, CH);
+  // Raise only the quay. Keep the shared region water, sea mouth and gameplay surfaces underneath.
   const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T);
   const y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
   const height = T * .23;
   const top = s.createLinearGradient(0, -OY, CW, CH - OY);
-  top.addColorStop(0, '#f9f2db'); top.addColorStop(1, '#e7e6cb');
+  top.addColorStop(0, P.land[0]); top.addColorStop(1, P.land[1]);
   // The top is lifted, while the foot of every wall stays on the original collision boundary.
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (!isLand(x, y)) continue;
@@ -7650,7 +7649,8 @@ function drawObliqueQuay() {
     s.fillStyle = top; s.fillRect(px, py - height, T + .5, T + .5);
     const seed = hash(y * 97 + x * 31 + deco * 7);
     if (isLand(x, y - 1) && isLand(x, y + 1) && isLand(x - 1, y) && isLand(x + 1, y) && seed < .18) {
-      drawPlanting(s, px, py - height, T, seed, P);
+      if (P.decor === 'sluice') drawPipe(s, px, py - height, T, seed);
+      else drawPlanting(s, px, py - height, T, seed, P);
     }
   }
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -7853,9 +7853,9 @@ function buildStatic() {
     });
   }
   for (const [ex,ey] of exits) drawSeaMouth(s,ex,ey,P);
+  if (boardProjection() !== 1) drawObliqueQuay();
   // Sand is above shallow-water shading; its stopping surface must never look submerged or clipped by a quay.
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 's') drawSand(s, x * T, y * T, T, x * 31 + y * 17 + deco);
-  if (boardProjection() !== 1) drawObliqueQuay();
 }
 
 /* One bounded frame chain; frozen scenes repaint only when their content changes. */
