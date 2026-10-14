@@ -17,7 +17,7 @@ function buildViewLab(destination = path.join(root, 'www/compare')) {
   const assets = text => text.replaceAll('@@LAB_BASIC_R@@', sprites['basic-R']).replaceAll('@@LAB_LIGHTHOUSE_R@@', sprites['lighthouse-R']);
   let game = read('src/game.js');
   game = once(game, "const STORE_KEY = 'bukang-sea-v1';", "const STORE_KEY = 'bukang-view-comparison-v1';");
-  game = once(game, "const FIRST_CANAL_VIEW_KEY = 'bukang-first-canal-view-v1';", "const FIRST_CANAL_VIEW_KEY = 'bukang-view-comparison-camera-v1';");
+  game = once(game, "const CANAL_VIEW_KEY = 'bukang-first-canal-view-v1';", "const CANAL_VIEW_KEY = 'bukang-view-comparison-camera-v1';");
   game = once(game, 'function onClear(', 'function onGameClear(');
   game = once(game, "gameScreen.addEventListener('pointerdown', e => {", "gameScreen.addEventListener('pointerdown', e => {\n  if (!board.contains(e.target)) return; // allow touch scrolling on the comparison controls");
   game = once(game, "else if (e.key === 'Escape') show('title');", "else if (e.key === 'Escape') labReset();");

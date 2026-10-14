@@ -4,10 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../src/game.js'), 'utf8');
 const artSource = fs.readFileSync(path.join(__dirname, '../src/art.js'), 'utf8');
-const cameraSource = source.slice(source.indexOf('const FIRST_CANAL_VIEW_KEY'), source.indexOf('function drawObliqueQuay'));
+const cameraSource = source.slice(source.indexOf('const CANAL_VIEW_KEY'), source.indexOf('function drawObliqueQuay'));
 function camera({ stored = null, fail = false } = {}) {
   return new Function('stored', 'fail', `
-    const LEVELS = [{}, {}]; let STORY = LEVELS[0], LVL = 0, DAILY = null, FREE = null, PILOT = null;
+    const LEVELS = Array.from({length:84},()=>({})); let STORY = LEVELS[0], LVL = 0, DAILY = null, FREE = null, PILOT = null;
     const T = 48, CH = 480, OY = 72, clock = 3, writes = [];
     const localStorage = {getItem: () => { if(fail) throw Error(); return stored; }, setItem: (...args) => { if(fail) throw Error(); writes.push(args); }};
     const buttons = ['top', 'oblique'].map(mode => ({dataset:{canalView:mode},setAttribute(k,v){this[k]=v;}}));
@@ -20,13 +20,15 @@ function camera({ stored = null, fail = false } = {}) {
       paints:()=>paints};
   `)(stored, fail);
 }
-test('camera is available only on the current first story canal, never daily/free/pilot or restored legacy maps', () => {
+test('camera is available on all current story canals, never daily/free/pilot or restored legacy maps', () => {
   const c = camera();
-  for (const [mode,index,legacy] of [['daily',0,false],['free',0,false],['pilot',0,false],['story',1,false],['story',0,true]]) {
+  for (const [mode,index,legacy] of [['daily',0,false],['free',0,false],['pilot',0,false],['story',0,true],['story',59,true],['story',84,false]]) {
     c.scope(mode,index,legacy); assert.equal(c.projection(),1); assert.equal(c.elements.canalViewToggle.hidden,true);
     c.set('oblique'); assert.equal(c.writes.length,0);
   }
-  c.scope('story'); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);
+  for (let index=0;index<84;index++) {
+    c.scope('story',index); assert.equal(c.projection(),.78); assert.equal(c.elements.canalViewToggle.hidden,false);
+  }
 });
 test('camera preference uses its own storage and the inverse screen mapping matches both projections', () => {
   const c = camera();
@@ -52,4 +54,28 @@ test('directional art is lazy, reused, and unsupported or failed skins keep thei
   assert.equal(pending.length,4);
   api.getOblique({id:'lighthouse'},'R');pending.slice(4).forEach(i=>i.onerror());
   assert.equal(api.getOblique({id:'lighthouse'},'R'),null);assert.equal(pending.length,8);
+});
+
+test('raised quays leave every water/device cell centre visible and retain the regional land palette', () => {
+  const { LEVELS } = require('../src/levels');
+  const quay = source.slice(source.indexOf('function drawObliqueQuay'), source.indexOf('function drawObliqueShark'));
+  const render = new Function('map', `
+    const T=40, dpr=1, OX=0, OY=0, CW=map[0].length*T, CH=map.length*T, deco=0;
+    const boardSurface={land:['#eef5fa','#dbe6ed'],decor:'sluice'}, fills=[], colours=[];
+    const noop=()=>{}, gradient={addColorStop:(at,colour)=>colours.push(colour)};
+    const s=new Proxy({fillRect:(...r)=>fills.push(r),createLinearGradient:()=>gradient},{get:(o,k)=>o[k]||noop});
+    const staticLayer={getContext:()=>s}, isLand=(x,y)=>(map[y]?.[x]??'#')==='#';
+    const hash=()=>.1, drawPlanting=noop, drawPipe=noop;
+    ${quay}
+    drawObliqueQuay();return {fills,colours};
+  `);
+  for (const level of LEVELS) {
+    const { fills, colours }=render(level.map);
+    assert(colours.includes('#eef5fa') && colours.includes('#dbe6ed'));
+    level.map.forEach((row,y)=>[...row].forEach((cell,x)=>{
+      if(cell==='#')return;
+      const cx=(x+.5)*40,cy=(y+.5)*40;
+      assert(!fills.some(([a,b,w,h])=>cx>=a&&cx<a+w&&cy>=b&&cy<b+h),`${level.name}: quay covers ${cell} at ${x},${y}`);
+    }));
+  }
 });
