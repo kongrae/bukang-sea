@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "stars": 1,
+      "sparks": 4,
+      "settledMs": 1257
+    },
+    {
+      "stars": 2,
+      "sparks": 8,
+      "settledMs": 1233
+    },
+    {
+      "stars": 3,
+      "sparks": 14,
+      "settledMs": 1243
+    },
+    "Early next/replay/home, Escape, background/resume, live reduced motion stop both burst and delayed sound without touching saved stars",
+    "320px layout and static reduced-motion result; no residual sparks"
+  ],
+  "errors": [],
+  "physicalAndroid": false,
+  "success": true
+}

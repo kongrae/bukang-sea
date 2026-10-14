@@ -1765,7 +1765,7 @@ async function planHint(record) {
 }
 
 /* ---------- reward presentation: transient events, independent of saved progress ---------- */
-const REWARD_TIMING = { first: 300, gap: 150, stamp: 300, land: 120, unlock: 1180 };
+const REWARD_TIMING = { first: 300, gap: 150, stamp: 400, land: 120, unlock: 1180 };
 const rewardPending = { stars: new Set(), levels: new Set(), chapters: new Set(), journey: new Set(), daily: new Map(), stamps: new Set(), badges: new Set(), skins: new Set() };
 let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false, clearReveal = null;
 function cancelClearPresentation() {
@@ -1887,7 +1887,7 @@ function onClear() {
   const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
   const event = collectRewardEvents(before, stars, freshSkins, freshBadges);
   const starPath = '<path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/>';
-  const starSvg = (on, k) => `<span class="star-slot" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms;--stamp-duration:${REWARD_TIMING.stamp}ms;--land-delay:${REWARD_TIMING.land}ms"><svg class="star star-empty" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg>${on ? `<svg class="star on" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg><span class="star-sparks" aria-hidden="true">✦</span>` : ''}</span>`;
+  const starSvg = (on, k) => `<span class="star-slot${on ? ' earned' : ''}" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms;--stamp-duration:${REWARD_TIMING.stamp}ms;--land-delay:${REWARD_TIMING.land}ms"><svg class="star star-empty" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg>${on ? `<svg class="star on" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg><span class="star-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>` : ''}</span>`;
   $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   $('clearStars').classList.toggle('three-stars', stars === 3);
