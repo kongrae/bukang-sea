@@ -1,0 +1,182 @@
+{
+  "baseline": "5caa2ef",
+  "kind": "Headless Edge mobile emulation, isolated QA saves; not physical device or human play",
+  "errors": [],
+  "screens": [
+    {
+      "name": "before",
+      "id": "first",
+      "index": 0,
+      "tile": 56,
+      "ox": -16,
+      "oy": 72,
+      "width": 360,
+      "height": 535,
+      "w": 7,
+      "h": 7,
+      "projection": 0.78
+    },
+    {
+      "name": "before",
+      "id": "devices",
+      "index": 59,
+      "tile": 38,
+      "ox": -10,
+      "oy": 40,
+      "width": 360,
+      "height": 535,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "before",
+      "viewportWidth": 320,
+      "scroll": 320,
+      "tile": 22,
+      "ox": 35,
+      "oy": 3,
+      "width": 290,
+      "height": 269,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "before",
+      "viewportWidth": 360,
+      "scroll": 360,
+      "tile": 30,
+      "ox": 15,
+      "oy": 3,
+      "width": 330,
+      "height": 365,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "before",
+      "viewportWidth": 412,
+      "scroll": 412,
+      "tile": 40,
+      "ox": -9,
+      "oy": 63,
+      "width": 382,
+      "height": 606,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "before",
+      "viewportWidth": 844,
+      "scroll": 844,
+      "tile": 24,
+      "ox": 148,
+      "oy": 0,
+      "width": 536,
+      "height": 288,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "id": "first",
+      "index": 0,
+      "tile": 56,
+      "ox": -16,
+      "oy": 72,
+      "width": 360,
+      "height": 535,
+      "w": 7,
+      "h": 7,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "id": "devices",
+      "index": 59,
+      "tile": 38,
+      "ox": -10,
+      "oy": 40,
+      "width": 360,
+      "height": 535,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "viewportWidth": 320,
+      "scroll": 320,
+      "tile": 22,
+      "ox": 35,
+      "oy": 3,
+      "width": 290,
+      "height": 269,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "viewportWidth": 360,
+      "scroll": 360,
+      "tile": 30,
+      "ox": 15,
+      "oy": 3,
+      "width": 330,
+      "height": 365,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "viewportWidth": 412,
+      "scroll": 412,
+      "tile": 40,
+      "ox": -9,
+      "oy": 63,
+      "width": 382,
+      "height": 606,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    },
+    {
+      "name": "after",
+      "viewportWidth": 844,
+      "scroll": 844,
+      "tile": 24,
+      "ox": 148,
+      "oy": 0,
+      "width": 536,
+      "height": 288,
+      "w": 10,
+      "h": 12,
+      "projection": 0.78
+    }
+  ],
+  "checks": [
+    "before: all 84 production maps rendered",
+    "after: all 84 production maps rendered",
+    "Pre-change session with net, fish, move count and undo history restored after reload",
+    "Normal-motion keyboard move completes; reduced-motion routes match the baseline",
+    "Failed shark and device images use Canvas fallbacks with the same readable board",
+    "Exact state and saved session equality across 69 inputs: first exit, nets, sand, whirlpools, gates/boat/jet and crate clears"
+  ],
+  "beforeDrawMs": {
+    "median": 0.19999980926513672,
+    "p95": 0.2999997138977051
+  },
+  "beforeStates": 69,
+  "afterDrawMs": {
+    "median": 0.3000001907348633,
+    "p95": 0.5999999046325684
+  },
+  "afterStates": 69,
+  "success": true
+}

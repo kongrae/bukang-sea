@@ -1,0 +1,13 @@
+{
+  "baseline": "5caa2ef",
+  "browser": "Edge Canvas and mobile emulation",
+  "physicalAndroid": false,
+  "checks": [
+    "Both gate axes: closed centre opaque, open centre clear, intermediate shutters visible and no shutter remains at fully open",
+    "Four boat headings retain the forward arrow; all solids stay within their readable footprint and restore Canvas state",
+    "Top view and guide defaults remain pixel-identical to the previous build (10 samples)",
+    "Reduced-motion device pixels remain identical at t=0 and t=7"
+  ],
+  "errors": [],
+  "success": true
+}
