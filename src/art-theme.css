@@ -223,6 +223,12 @@ body { background: #e8f8f5; }
 .game-screen[data-region="sluice-works"] .lvl-title .num { color: #2c6585; }
 
 /* Launch is composed from the existing hero asset. Layout is ready beneath it before the fade. */
+.canal-view { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex-shrink: 0; padding: 3px; border-radius: 16px; background: #dcefeb; }
+.canal-view > span { margin-inline: 9px; color: #54767d; font-size: .75rem; }
+.canal-view button { flex: 1; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 12px; background: transparent; color: #50727b; font-size: .875rem; font-weight: 700; cursor: pointer; }
+.canal-view button[aria-pressed="true"] { color: #145866; background: #fffdf4; box-shadow: 0 2px 5px #20556214; }
+.canal-view button:active { background: #c6e6e0; }
+.canal-view small { flex-basis: 100%; padding: 0 8px 4px; color: #597b82; font-size: .75rem; text-align: center; }
 .app.launching { visibility: hidden; }
 .launch-screen { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: #e8f8f5; color: #226b7b; }
 .launch-visual { position: relative; width: 192px; height: 192px; display: grid; place-items: center; }

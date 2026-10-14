@@ -39,7 +39,7 @@ npm run daily -- 365     # 오늘의 구조작전: N일 × 세 수로 해법·�
 
 ## 구조
 
-2026-10-14 시점 비교: `/compare/`는 첫 수로에서 기존 탑뷰와 입체 시점을 바꾸는 별도 비교판이다. `src/view-lab/`·`tools/build-view-lab.js`·`assets/art/oblique-v1/`을 사용하고 본 게임의 규칙·저장 키·기본 그림은 변경하지 않는다. `build:web`에서 함께 생성한다. 범위와 검증은 `docs/VIEW-COMPARISON.md` 참고.
+2026-10-14 시점 비교: 정식 게임의 1장 수로 1 ‘첫 굽이’에 탑뷰/입체 시점 버튼이 있다. `game.js`의 `firstCanalComparison()`으로 첫 정식 수로만 제한하며 시점 선택은 별도 키 `bukang-first-canal-view-v1`에 저장한다. 기존 진행·해금·보상은 유지한다. 기본/항해사는 `assets/art/oblique-v1/`의 방향별 그림을 필요할 때 디코딩하고 다른 스킨은 기존 그림을 유지한다. `/compare/`도 같은 렌더 함수를 재사용한다. 최신 검증·접근 방법은 `docs/FIRST-CANAL-VIEW.md`, 최초 별도 비교판 기록은 `docs/VIEW-COMPARISON.md` 참고.
 
 2026-10-14 UI/UX: `src/launch.js`가 필수 자산 준비·실패 상한·첫 프레임 공개를 관리한다. 메인의 수로 선택과 게임 방법은 별도 시트이며 수로 선택/스크롤을 유지한다. 시작 테마와 WebView 배경은 `#e8f8f5`, AndroidX 스플래시는 웹 로딩 이미지 준비까지 유지한다. 현재 디자인·검증 기준은 `docs/NATIVE-UI-UX.md`이며 아래 과거 메인 구성 설명보다 우선한다. 자산은 기존 상어 아트를 재사용한다.
 

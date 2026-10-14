@@ -11,28 +11,18 @@ function buildViewLab(destination = path.join(root, 'www/compare')) {
     return text.replace(from, to);
   };
   const sprites = {};
-  for (const skin of ['basic', 'lighthouse']) for (const direction of ['R', 'L', 'D', 'U']) {
-    sprites[skin + '-' + direction] = 'data:image/webp;base64,' + fs.readFileSync(path.join(root, `assets/art/oblique-v1/${skin}-${direction}.webp`)).toString('base64');
+  for (const skin of ['basic', 'lighthouse']) {
+    sprites[skin + '-R'] = 'data:image/webp;base64,' + fs.readFileSync(path.join(root, `assets/art/oblique-v1/${skin}-R.webp`)).toString('base64');
   }
   const assets = text => text.replaceAll('@@LAB_BASIC_R@@', sprites['basic-R']).replaceAll('@@LAB_LIGHTHOUSE_R@@', sprites['lighthouse-R']);
   let game = read('src/game.js');
   game = once(game, "const STORE_KEY = 'bukang-sea-v1';", "const STORE_KEY = 'bukang-view-comparison-v1';");
-  game = once(game, 'function drawShark(', 'function drawTopShark(');
-  game = once(game, 'function buildStatic() {', 'function buildTopStatic() {');
+  game = once(game, "const FIRST_CANAL_VIEW_KEY = 'bukang-first-canal-view-v1';", "const FIRST_CANAL_VIEW_KEY = 'bukang-view-comparison-camera-v1';");
   game = once(game, 'function onClear(', 'function onGameClear(');
-  game = once(game, 'ctx.setTransform(zs, 0, 0, zs, zx * dpr, zy * dpr);', `const q = labProjection(), offset = labOffset();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#e8f8f5'; ctx.fillRect(0, 0, cvs.width, cvs.height);
-  ctx.save(); ctx.beginPath(); ctx.rect(0, offset * dpr, cvs.width, CH * q * dpr); ctx.clip();
-  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + zy * q) * dpr);`);
-  game = once(game, 'ctx.setTransform(dpr * zs, 0, 0, dpr * zs, (OX * zs + zx) * dpr, (OY * zs + zy) * dpr);',
-    'ctx.setTransform(dpr * zs, 0, 0, dpr * zs * q, (OX * zs + zx) * dpr, (offset + (OY * zs + zy) * q) * dpr);');
-  game = once(game, 'Math.floor((e.clientY - r.top - OY) / T)', 'Math.floor(labGridY(e.clientY - r.top))');
   game = once(game, "gameScreen.addEventListener('pointerdown', e => {", "gameScreen.addEventListener('pointerdown', e => {\n  if (!board.contains(e.target)) return; // allow touch scrolling on the comparison controls");
-  game = once(game, '\n}\n\n// fingertip: soft white disc', '\n  ctx.restore();\n}\n\n// fingertip: soft white disc');
   game = once(game, "else if (e.key === 'Escape') show('title');", "else if (e.key === 'Escape') labReset();");
   game = once(game, 'const ready = data => { start(data); resolve(); };', 'const ready = data => { start(data); startComparison(); resolve(); };');
-  const runtime = read('src/view-lab/runtime.js').replace('@@LAB_SOURCES@@', JSON.stringify(sprites));
+  const runtime = read('src/view-lab/runtime.js');
   game = once(game, 'const boot = () =>', runtime + `
 function onClear() {
   cleared = true; queued = null;

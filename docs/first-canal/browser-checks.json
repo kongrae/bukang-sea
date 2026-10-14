@@ -1,0 +1,16 @@
+{
+  "browser": "Edge",
+  "physicalAndroid": false,
+  "checks": [
+    "main game → first canal shows both camera buttons; switching preserves position, undo history and exact saved data",
+    "home return and reload restore first-canal progress and camera choice; undo keeps its real history",
+    "switch while swimming, rapid camera/movement input and back during movement leave no duplicate turn or stuck input",
+    "normal first-canal clear grants 3 stars; Next enters the second canal with its original top view and no comparison controls",
+    "main → canal selection → First bend opens the comparison on the real stage",
+    "320/390/430 widths, 200% root text and reduced motion keep camera controls usable",
+    "equipped lighthouse and unsupported coral remain equipped; camera comparison does not grant or change skins",
+    "unmodified release resumes the first canal offline and switches both cameras",
+    "image decode failures keep the original drawn shark and playable controls"
+  ],
+  "errors": []
+}

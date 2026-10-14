@@ -1147,6 +1147,7 @@ function enter(level, keep, label, region = level.region, regionPreview = !!leve
   pop = reduceMotion ? null : { t: 0 }; queued = null;
   view.x = st.pos[0]; view.y = st.pos[1]; view.ang = view.target = ANG[st.dir];
   setBoardRegion(region, regionPreview);
+  updateCanalView();
   $('lvNum').textContent = label;
   $('lvName').textContent = level.name;
   setTip(level.tip);
@@ -2149,6 +2150,88 @@ async function startFree(difficulty, fresh = false, replayRun = false) {
 }
 
 /* ---------- rendering ---------- */
+// The camera preference is presentation-only and never enters the progression/session record.
+const FIRST_CANAL_VIEW_KEY = 'bukang-first-canal-view-v1';
+let firstCanalView = 'oblique';
+try { if (localStorage.getItem(FIRST_CANAL_VIEW_KEY) === 'top') firstCanalView = 'top'; } catch (_) {}
+const firstCanalComparison = () => !DAILY && !FREE && !PILOT && LVL === 0 && STORY === LEVELS[0];
+const boardProjection = () => firstCanalComparison() && firstCanalView === 'oblique' ? .78 : 1;
+const boardGridY = screenY => ((screenY - CH * (1 - boardProjection()) / 2) / boardProjection() - OY) / T;
+function updateCanalView() {
+  const visible = firstCanalComparison();
+  $('canalViewToggle').hidden = !visible;
+  $('canalViewToggle').querySelectorAll('[data-canal-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.canalView === firstCanalView)));
+  $('canalViewNote').hidden = !visible || firstCanalView !== 'oblique' || SHARK_ART.hasOblique(currentSkin());
+}
+function setCanalView(mode) {
+  if (!firstCanalComparison() || !['top', 'oblique'].includes(mode)) return;
+  firstCanalView = mode;
+  try { localStorage.setItem(FIRST_CANAL_VIEW_KEY, mode); } catch (_) {}
+  updateCanalView();
+  // Keep the current turn, interpolation, queued swipe and undo history untouched.
+  buildStatic(); invalidateScenes(); draw(clock);
+}
+function drawObliqueQuay() {
+  const s = staticLayer.getContext('2d'), P = boardSurface;
+  s.setTransform(dpr, 0, 0, dpr, OX * dpr, OY * dpr);
+  const water = s.createLinearGradient(0, -OY, CW, CH - OY);
+  water.addColorStop(0, '#4dc6c3'); water.addColorStop(.5, '#27a9b7'); water.addColorStop(1, '#268eac');
+  s.fillStyle = water; s.fillRect(-OX, -OY, CW, CH);
+  const x0 = Math.floor(-OX / T) - 1, x1 = Math.ceil((CW - OX) / T);
+  const y0 = Math.floor(-OY / T) - 1, y1 = Math.ceil((CH - OY) / T);
+  const height = T * .23;
+  const top = s.createLinearGradient(0, -OY, CW, CH - OY);
+  top.addColorStop(0, '#f9f2db'); top.addColorStop(1, '#e7e6cb');
+  // The top is lifted, while the foot of every wall stays on the original collision boundary.
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (!isLand(x, y)) continue;
+    const px = x * T, py = y * T;
+    s.fillStyle = top; s.fillRect(px, py - height, T + .5, T + .5);
+    const seed = hash(y * 97 + x * 31 + deco * 7);
+    if (isLand(x, y - 1) && isLand(x, y + 1) && isLand(x - 1, y) && isLand(x + 1, y) && seed < .18) {
+      drawPlanting(s, px, py - height, T, seed, P);
+    }
+  }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (!isLand(x, y)) continue;
+    const px = x * T, py = y * T;
+    if (!isLand(x, y + 1)) {
+      const face = s.createLinearGradient(0, py + T - height, 0, py + T);
+      face.addColorStop(0, '#a3bbb1'); face.addColorStop(.55, '#83a69f'); face.addColorStop(1, '#628e90');
+      s.fillStyle = face; s.fillRect(px, py + T - height, T + .5, height);
+      s.fillStyle = '#fff9e7'; s.fillRect(px, py + T - height - T * .035, T + .5, T * .055);
+      s.fillStyle = 'rgba(14,92,100,.16)'; s.fillRect(px, py + T, T, T * .065);
+      s.strokeStyle = '#466f7540'; s.lineWidth = .8;
+      s.beginPath(); s.moveTo(px + T * .5, py + T - height + 3); s.lineTo(px + T * .5, py + T - 2); s.stroke();
+    }
+    for (const dx of [-1, 1]) if (!isLand(x + dx, y)) {
+      s.fillStyle = dx > 0 ? '#b4c4b1' : '#fff8e3';
+      s.fillRect(px + (dx > 0 ? T - T * .05 : 0), py - height, T * .05, T - (isLand(x, y + 1) ? 0 : height));
+    }
+    if (!isLand(x, y - 1)) { s.fillStyle = '#fffbed'; s.fillRect(px, py - height, T, T * .04); }
+  }
+}
+
+function drawObliqueShark(context, cx, cy, size, stretch, alpha) {
+  const skin = currentSkin();
+  const direction = ['R', 'D', 'L', 'U'][(Math.round(view.target / (Math.PI / 2)) % 4 + 4) % 4];
+  const sprite = SHARK_ART.getOblique(skin, direction);
+  if (!sprite?.naturalWidth) return false;
+  const horizontal = direction === 'R' || direction === 'L';
+  // Undo only the camera's vertical compression for this already-projected bitmap. Do not rotate its lighting or face.
+  context.save(); context.translate(cx, cy); context.globalAlpha *= alpha;
+  context.fillStyle = '#12596845'; context.beginPath(); context.ellipse(0, size * .06, size * .37, size * .22, 0, 0, Math.PI * 2); context.fill();
+  context.strokeStyle = '#e0fffb7a'; context.lineWidth = size * .018;
+  context.beginPath(); context.ellipse(0, size * .06, size * .47, size * .26, 0, 0, Math.PI * 2); context.stroke();
+  context.scale(1, 1 / boardProjection());
+  const maxWidth = size * (horizontal ? 1.03 : .81), maxHeight = size * (horizontal ? .76 : .80);
+  const scale = Math.min(maxWidth / sprite.naturalWidth, maxHeight / sprite.naturalHeight);
+  const w = sprite.naturalWidth * scale, h = sprite.naturalHeight * scale;
+  const lean = reduceMotion ? 1 : 1 + (stretch - 1) * .25;
+  context.scale(horizontal ? lean : 1, horizontal ? 1 : lean);
+  context.drawImage(sprite, -w / 2, -h / 2 - size * .10, w, h);
+  context.restore(); return true;
+}
 const board = $('board'), frameEl = $('boardFrame'), cvs = $('boardCanvas'), ctx = cvs.getContext('2d');
 // Camera view: the canvas fills the whole board area. The canal is drawn as large as fits (outer promenade columns may be
 // cut by CROP when width is the limit) and the rest of the screen continues the world: promenade all around (the engine
@@ -2311,6 +2394,7 @@ function buildStatic() {
   for (const [ex,ey] of exits) drawSeaMouth(s,ex,ey,P);
   // Sand is above shallow-water shading; its stopping surface must never look submerged or clipped by a quay.
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (cellAt(g, x, y) === 's') drawSand(s, x * T, y * T, T, x * 31 + y * 17 + deco);
+  if (boardProjection() !== 1) drawObliqueQuay();
 }
 
 /* One bounded frame chain; frozen scenes repaint only when their content changes. */
@@ -2472,9 +2556,16 @@ function draw(t) {
   // After an escape the whole board eases slightly toward the exit (identity otherwise).
   const zs = exitZoom ? 1 + EXIT_ZOOM.scale * (1 - Math.pow(1 - clamp01(exitZoom.t / EXIT_ZOOM.dur), 3)) : 1;
   const zx = exitZoom ? (OX + (exitZoom.x + 0.5) * T) * (1 - zs) : 0, zy = exitZoom ? (OY + (exitZoom.y + 0.5) * T) * (1 - zs) : 0;
-  ctx.setTransform(zs, 0, 0, zs, zx * dpr, zy * dpr);
+  const q = boardProjection(), offset = CH * (1 - q) / 2;
+  ctx.save();
+  if (q !== 1) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = C.harbor; ctx.fillRect(0, 0, CW * dpr, CH * dpr);
+    ctx.beginPath(); ctx.rect(0, offset * dpr, CW * dpr, CH * q * dpr); ctx.clip();
+  }
+  ctx.setTransform(zs, 0, 0, zs * q, zx * dpr, (offset + zy * q) * dpr);
   ctx.drawImage(staticLayer, 0, 0);
-  ctx.setTransform(dpr * zs, 0, 0, dpr * zs, (OX * zs + zx) * dpr, (OY * zs + zy) * dpr);   // from here on: grid coordinates
+  ctx.setTransform(dpr * zs, 0, 0, dpr * zs * q, (OX * zs + zx) * dpr, (offset + (OY * zs + zy) * q) * dpr);   // from here on: grid coordinates
   const eatenNow = new Set(st.fish); if (anim) anim.eaten.forEach(i => eatenNow.add(i));
   // light on the water
   ctx.save(); ctx.clip(waterPath);
@@ -2620,7 +2711,9 @@ function draw(t) {
   if (pop) size = 0.55 + 0.45 * easeOutBack(clamp01(pop.t / 0.32));
   if (anim && anim.warpScale < 1) size *= Math.max(0.05, anim.warpScale);
   const bob = anim || reduceMotion ? 0 : Math.sin(t * 2) * 0.02;
-  drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim && anim.t < anim.dur, stretch, alpha);
+  if (q === 1 || !drawObliqueShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, T * size, stretch, alpha)) {
+    drawShark(ctx, sx * T + T / 2, (sy + bob) * T + T / 2, view.ang, T * size, t, !!anim && anim.t < anim.dur, stretch, alpha);
+  }
   if (coach && !anim && !cleared && !hint) drawCoach(sx, sy, t);
   if (hint && !anim && !hint.remove.length && !hint.nets.length) {
     const [dx, dy] = DIRS[hint.dir], pulse = 0.72 + Math.sin(t * 6) * 0.1;
@@ -2649,6 +2742,7 @@ function draw(t) {
       ctx.restore();
     }
   });
+  ctx.restore();
 }
 
 // fingertip: soft white disc with a ring; `press` 0..1 shrinks it like a finger touching glass
@@ -3240,6 +3334,10 @@ sheetDesktop.addEventListener('change', resetSheetGesture);
 
 // swipe anywhere on the game screen (fires as soon as the finger has travelled SWIPE px), tap on the board for nets
 const gameScreen = $('gameScreen');
+$('canalViewToggle').addEventListener('click', e => {
+  const button = e.target.closest('[data-canal-view]');
+  if (button) setCanalView(button.dataset.canalView);
+});
 let gest = null;
 const swipeDir = (dx, dy) => Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
 gameScreen.addEventListener('pointerdown', e => {
@@ -3260,7 +3358,7 @@ gameScreen.addEventListener('pointerup', e => {
   if (Math.hypot(dx, dy) >= SWIPE) { tryMove(swipeDir(dx, dy)); return; }
   if (!g0.onBoard) return;
   const r = cvs.getBoundingClientRect();
-  const gx = Math.floor((e.clientX - r.left - OX) / T), gy = Math.floor((e.clientY - r.top - OY) / T);
+  const gx = Math.floor((e.clientX - r.left - OX) / T), gy = Math.floor(boardGridY(e.clientY - r.top));
   if (gx >= 0 && gy >= 0 && gx < g.w && gy < g.h) tapTile(gx, gy);
 });
 gameScreen.addEventListener('pointercancel', () => { gest = null; });

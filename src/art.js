@@ -30,6 +30,14 @@ const SHARK_ART = (() => {
     coral: { portrait: '@@ART_SKIN_CORAL_PORTRAIT@@', swim: '@@ART_SKIN_CORAL_SWIM@@' },
     starsea: { portrait: '@@ART_SKIN_STARSEA_PORTRAIT@@', swim: '@@ART_SKIN_STARSEA_SWIM@@' },
   };
+  // Optional directional art for the first-canal camera comparison; decode only when that camera is used.
+  const oblique = {
+    basic: { R: '@@ART_OBLIQUE_BASIC_R@@', L: '@@ART_OBLIQUE_BASIC_L@@', D: '@@ART_OBLIQUE_BASIC_D@@', U: '@@ART_OBLIQUE_BASIC_U@@' },
+    lighthouse: { R: '@@ART_OBLIQUE_LIGHTHOUSE_R@@', L: '@@ART_OBLIQUE_LIGHTHOUSE_L@@', D: '@@ART_OBLIQUE_LIGHTHOUSE_D@@', U: '@@ART_OBLIQUE_LIGHTHOUSE_U@@' },
+  };
+  for (const [id, views] of Object.entries(oblique)) {
+    skinUrls[id] = { ...skinUrls[id], ...Object.fromEntries(Object.entries(views).map(([dir, src]) => ['oblique' + dir, src])) };
+  }
   function request(name, src) {
     if (requested.has(name)) return;
     requested.add(name);
@@ -58,6 +66,12 @@ const SHARK_ART = (() => {
       for (const [name, src] of Object.entries(urls)) request(name, src);
     },
     hasSkin(name, skin) { return !!images[name + ':' + skin?.id]?.naturalWidth; },
+    hasOblique(skin) { return !!oblique[skin.id]; },
+    getOblique(skin, direction) {
+      if (!api.hasOblique(skin)) return null;
+      for (const dir of ['R', 'L', 'D', 'U']) api.get('oblique' + dir, skin);
+      return images['oblique' + direction + ':' + skin.id] || null;
+    },
     url(name, skin) { return skinUrls[skin?.id]?.[name] || urls[name]; },
     get(name, skin) {
       const src = skinUrls[skin?.id]?.[name];

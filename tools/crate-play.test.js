@@ -36,6 +36,7 @@ function game({ level, reduced = false, stored = null, id = 'fixture' } = {}) {
     ${source.match(/^const ANG = .*$/m)[0]}
     const noop = () => {}, sounds = [], sfx = new Proxy({}, {get: (_, name) => (...args) => sounds.push([name, ...args])});
     const ctx = new Proxy({}, {get: (target, key) => key in target ? target[key] : noop});
+    const boardProjection = () => 1; // These movement fixtures use the unchanged top-down camera.
     const C = {}, T = 40, dpr = 1, OX = 0, OY = 0, CW = 360, CH = 640, staticLayer = {}, waterPath = {}, caustic = {}, causticPat = {};
     const $ = () => ({hidden: false, classList: {contains: () => false}});
     const haptic = noop, updateHud = noop, coachDone = noop, setupCoach = noop, refreshHint = noop;
