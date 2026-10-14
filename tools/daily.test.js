@@ -189,6 +189,19 @@ test('a date started on v2 stays on v2; a v3 date keeps the devices learned when
   fresh.date('2026-10-27');fresh.open();await fresh.start(0);assert.deepEqual(fresh.save().dailyDevices.devices,['jet','boat','net','sand','whirl']);
 });
 
+test('a started v4 date keeps its learned-device snapshot and challenge after the v5 update', async () => {
+  const date='2026-10-20',learned=['jet'],old=D.makeDailyStage(date,2,4,learned),setup=operation(JSON.stringify({
+    best:{},dailyOps:{[date]:{version:4,stars:[3,3,0]}},dailyDevices:{date,devices:learned}
+  }));
+  setup.date(date);setup.load(old);
+  const g=E.parseLevel(old.level);setup.move(E.plan(g,g.start,0,new Set(),g.nets,true).seq[0]);
+  const game=operation(setup.saved());game.date(date);game.open();await game.start(2);
+  assert.equal(game.active().version,4);assert.deepEqual(game.active().level,old.level);assert.deepEqual(game.state(),setup.state());
+  assert.deepEqual(game.save().dailyDevices,{date,devices:learned});game.clear(3);
+  game.date('2026-10-21');game.open();await game.start(0);assert.equal(game.active().version,5);
+  assert.deepEqual(game.progress(date).stars,[3,3,3]);
+});
+
 test('unfinished v1 operation keeps its layout, hints, stars and generator for the entire date', async () => {
   const old=D.makeDailyStage('2026-09-30',0,1),setup=operation();setup.load(old);
   const g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);setup.move(plan.seq[0]);

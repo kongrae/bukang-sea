@@ -38,6 +38,28 @@ const VARIETY_FREE_TIERS = [
   {min:6,max:11,slack:1,escape:3,families:['current','patrol','sand','loop']},
   {min:8,max:14,slack:0,escape:4,families:['net','warp','current','patrol','sand']},
 ];
+// v5 challenge-only layouts. Existing templates/profiles stay frozen for saved v1-v4 puzzles.
+const CHALLENGE_MASKS = {
+  'large-courts': canalMask(11,13,[[1,1,9,11]],[1,12],[9,0],[[4,1,4,4],[6,5,6,9],[3,8,3,11],[7,3,9,3],[1,6,3,6]]),
+  'large-bridges': canalMask(11,13,[[1,1,9,3],[1,5,9,7],[1,9,9,11],[2,4,3,4],[7,4,8,4],[3,8,4,8],[8,8,9,8]],[2,12],[8,0],[[5,1,5,2],[5,6,5,7],[6,10,6,11]]),
+  'large-orbit': canalMask(11,13,[[1,1,9,11]],[2,12],[10,3],[[4,3,6,5],[3,8,5,9],[8,7,9,7],[1,5,2,5]]),
+  'large-weave': canalMask(10,14,[[1,1,8,12]],[1,13],[8,0],[[3,1,3,4],[6,3,6,7],[3,7,3,11],[6,10,6,12],[4,6,5,6]]),
+  'large-pockets': canalMask(11,13,[[1,1,9,11]],[0,10],[10,2],[[3,1,3,4],[6,2,6,5],[1,7,5,7],[7,8,7,11],[8,5,9,5]]),
+  'large-rooms': canalMask(10,14,[[1,1,3,12],[5,1,8,12],[4,3,4,4],[4,9,4,10]],[2,13],[7,0],[[1,6,2,6],[6,6,8,6],[7,10,8,10]]),
+  'large-portals': canalMask(11,13,[[1,1,4,11],[6,1,9,11]],[2,12],[8,0],[[1,4,2,4],[3,8,4,8],[8,4,9,4],[6,8,7,8]]),
+  'large-islands': canalMask(11,13,[[1,1,9,5],[1,7,9,11]],[1,12],[9,0],[[3,1,3,3],[6,3,6,5],[3,8,3,11],[7,7,7,9]]),
+};
+const CHALLENGE_PROFILES = Object.fromEntries(Object.entries(VARIETY_FAMILIES).map(([family, profile]) => [family, {
+  ...profile,
+  masks: family === 'warp' ? ['large-portals','large-islands']
+    : family === 'loop' ? ['large-orbit','large-bridges','large-courts']
+    : family === 'pockets' ? ['large-pockets','large-weave','large-rooms']
+    : ['large-courts','large-bridges','large-weave','large-rooms','large-orbit','large-pockets'],
+  spec: { ...profile.spec, buoys: 3, fish: 4, ...(family === 'current' ? {jets:3} : family === 'sand' ? {sand:3} : {}) },
+}]));
+function challengeTier(tier) {
+  return { ...tier, min:14, max:22, slack:0, escape:6, detour:4, fishSpread:.45, boardMasks:CHALLENGE_MASKS, profiles:CHALLENGE_PROFILES };
+}
 const VARIETY_DAILY_THEMES = [
   {label:'돌아오는 물길',families:['branches','loop','net']},
   {label:'멈춤의 기술',families:['pockets','sand','net']},
@@ -82,30 +104,36 @@ function varietyRouteUse(g, full) {
   if(full.steps.some(s=>s.nets.length))used.add('net');return {used,edits};
 }
 function* variedCanalSearch(seed, family, tier, deps, reserves = [], maxAttempts = 100) {
-  const profile=VARIETY_FAMILIES[family],rand=deps.rng(seed),masks={...deps.MASKS,...VARIETY_MASKS};
+  const profile=tier.profiles?.[family]||VARIETY_FAMILIES[family],rand=deps.rng(seed),masks={...deps.MASKS,...VARIETY_MASKS,...tier.boardMasks};
   if(!profile)return null;
   const words=deps.placedNets&&profile.placed||profile;
   for(let attempt=0;attempt<maxAttempts;attempt++) {
     yield;
     // Cycle templates from a seeded offset so unsuccessful shapes cannot dominate selection.
     const maskId=profile.masks[(seed+attempt)%profile.masks.length],spec={...profile.spec};
-    if(tier.min>=8 && !spec.whirls)spec.fish=3;
+    if(tier.min>=8 && !spec.whirls)spec.fish=Math.max(3,spec.fish);
     if(profile.device==='boat' && attempt%2) {spec.vboats=1;spec.boats=0;}
     const map=deps.place(masks[maskId],spec,rand),nets=profile.nets||0;
     if(map.some(row=>/><|<>/.test(row)))continue;
-    const g=VE.parseLevel({map,nets}),full=yield* deps.operationPlan(g,nets,true);
+    const g=VE.parseLevel({map,nets});
+    if(tier.fishSpread) {
+      const xs=g.fish.map(p=>p[0]),ys=g.fish.map(p=>p[1]);
+      if(Math.max(...xs)-Math.min(...xs)<(g.w-2)*tier.fishSpread || Math.max(...ys)-Math.min(...ys)<(g.h-2)*tier.fishSpread)continue;
+    }
+    const full=yield* deps.operationPlan(g,nets,true);
     if(!full||full.moves<tier.min||full.moves>tier.max)continue;
     const escape=yield* deps.operationPlan(g,nets,false);
-    if(!escape||escape.moves<tier.escape||full.moves<=escape.moves)continue;
+    if(!escape||escape.moves<tier.escape||full.moves-escape.moves<(tier.detour||1))continue;
     const active=varietyRouteUse(g,full);
     if(profile.device&&!active.used.has(profile.device))continue;
     // deps.placedNets (2026-10-08 rule): a set net stays, so one placement is the decision; v1–v3 required two layouts.
     if(nets&&((yield* deps.operationPlan(g,0,true))!==null||active.edits<(deps.placedNets?1:2)))continue;
     return {map,nets,par:full.moves+tier.slack,family,idea:words.label,tip:words.tip,maskId,attempts:attempt+1};
   }
-  const pool=reserves.filter(r=>r.family===family && r.minimum>=tier.min && r.minimum<=tier.max && r.escape>=tier.escape && !(deps.placedNets&&r.nets));
+  const pool=reserves.filter(r=>r.family===family && r.minimum>=tier.min && r.minimum<=tier.max && r.escape>=tier.escape && !(deps.placedNets&&r.nets)
+    && (!tier.boardMasks || tier.boardMasks[r.maskId]) && r.minimum-r.escape>=(tier.detour||1));
   if(!pool.length)return null;
   const reserve=pool[seed%pool.length];
   return {...reserve,map:reserve.map.slice(),par:reserve.minimum+tier.slack,fallback:true,tip:words.tip,idea:words.label,attempts:maxAttempts};
 }
-if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,varietyFamilyKnown,varietyLayoutKey,varietyRouteUse,variedCanalSearch};
+if(typeof module!=='undefined')module.exports={VARIETY_MASKS,VARIETY_FAMILIES,VARIETY_FREE_TIERS,VARIETY_DAILY_THEMES,CHALLENGE_MASKS,challengeTier,varietyFamilyKnown,varietyLayoutKey,varietyRouteUse,variedCanalSearch};

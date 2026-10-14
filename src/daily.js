@@ -98,10 +98,10 @@ function makeDaily(date) {
   return null;
 }
 /* Three-canal operations use a separate version so legacy puzzles can still be resumed unchanged. */
-const DAILY_OPERATION_VERSION = 4;
-const DAILY_OPERATION_VERSIONS = [1, 2, 3, 4];   // every version a started date may still be on
+const DAILY_OPERATION_VERSION = 5;
+const DAILY_OPERATION_VERSIONS = [1, 2, 3, 4, 5];   // every version a started date may still be on
 const DV = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety.js')
-  : { VARIETY_DAILY_THEMES, variedCanalSearch, varietyFamilyKnown };
+  : { VARIETY_DAILY_THEMES, variedCanalSearch, varietyFamilyKnown, challengeTier };
 const DAILY_RESERVES = typeof module !== 'undefined' && typeof require === 'function' ? require('./variety-reserves.js') : VARIETY_RESERVES;
 const DAILY_STAGES = [
   { name: '첫 물길', label: '쉬움', min: 5, max: 7, slack: 2, escape: 3,
@@ -111,6 +111,10 @@ const DAILY_STAGES = [
   { name: '마지막 탈출', label: '도전', min: 11, max: 14, slack: 0, escape: 5,
     masks: ['harbor', 'lagoon', 'shoal', 'delta'], tip: '마지막 수로예요. 세 곳을 통과해 오늘의 작전을 마쳐요.' },
 ];
+function dailyStageTier(stage, version = DAILY_OPERATION_VERSION) {
+  const tier = DAILY_STAGES[stage];
+  return tier && version >= 5 && stage === 2 ? DV.challengeTier(tier) : tier;
+}
 // Verified reserve routes keep every date playable even when all random candidates miss the target.
 const DAILY_FALLBACKS = [
   { par: 7, nets: 0, map: ['#E#####','#....f#','#.....#','#.....#','#.....#','#f....#','#.o...#','#.o..o#','#.....#','####S##'] },
@@ -172,11 +176,12 @@ function dailyTheme(date) {
 // v4 (2026-10-08 net rule): a set net stays until undo/restart. Net stages are generated and rated with that rule and
 // never use the reserves rated with net pickup; when the planned family yields nothing, a known substitute is generated.
 // Without nets the two rules agree, so v4 matches v3 except for net stages and former reserve days.
+// v5: only the challenge stage grows. A started date keeps its original generator and learning snapshot.
 const DAILY_SUBSTITUTES = ['sand', 'patrol', 'current', 'branches', 'pockets', 'loop'];
 function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION, learned = null) {
   if (version === 1) return yield* makeDailyStageV1Search(date, stage);
-  const tier = DAILY_STAGES[stage], theme = dailyTheme(date);
-  if (![2, 3, 4].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
+  const tier = dailyStageTier(stage, version), theme = dailyTheme(date);
+  if (![2, 3, 4, 5].includes(version) || !Number.isInteger(stage) || !tier || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !theme) return null;
   const seed = dailySeed(`shark-sos-operation-v2-${date}-${stage}`), planned = theme.families[stage], placed = version >= 4;
   let families = [planned];
   if (version >= 3) {
@@ -188,7 +193,8 @@ function* makeDailyStageSearch(date, stage, version = DAILY_OPERATION_VERSION, l
   const deps = placed ? { rng, MASKS, place, operationPlan: placedOperationPlan, placedNets: true } : { rng, MASKS, place, operationPlan };
   let chosen = null;
   for (const family of families) {
-    const level = yield* DV.variedCanalSearch(seed, family, tier, deps, DAILY_RESERVES, version >= 3 && family === 'net' ? 960 : 240);
+    const level = yield* DV.variedCanalSearch(seed, family, tier, deps, DAILY_RESERVES,
+      version >= 5 && stage === 2 ? 200 : version >= 3 && family === 'net' ? 960 : 240);
     if (level && !level.fallback) { chosen = level; break; }
     chosen = chosen || level;   // a reserve route only when no family generates a canal
   }
@@ -201,4 +207,4 @@ function makeDailyStage(date, stage, version = DAILY_OPERATION_VERSION, learned 
   return step.value;
 }
 if (typeof module !== 'undefined') module.exports = { MASKS, rng, place, DAILY_TIERS, DAILY_VERSION, dailySeed, dailyDate, makeDaily,
-  DAILY_OPERATION_VERSION, DAILY_OPERATION_VERSIONS, DAILY_SUBSTITUTES, DAILY_STAGES, DAILY_FALLBACKS, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, placedOperationPlan, dailyTheme };
+  DAILY_OPERATION_VERSION, DAILY_OPERATION_VERSIONS, DAILY_SUBSTITUTES, DAILY_STAGES, DAILY_FALLBACKS, dailyStageTier, dailyStageId, makeDailyStageSearch, makeDailyStage, operationPlan, placedOperationPlan, dailyTheme };

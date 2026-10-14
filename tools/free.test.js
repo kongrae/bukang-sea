@@ -64,7 +64,7 @@ function scene(stored = null, seeds = [42, 97, 123, 256]) {
 test('300 seeds per difficulty are deterministic, solvable and meet the actual move targets', () => {
   let count=0;
   for(let difficulty=0;difficulty<3;difficulty++) {
-    const tier=F.FREE_TIERS[difficulty];
+    const tier=F.freeTier(difficulty);
     for(let seed=0;seed<300;seed++) {
       const run=F.makeFree(seed,difficulty),g=E.parseLevel(run.level);
       assert.deepEqual(F.makeFree(seed,difficulty),run);
@@ -127,6 +127,17 @@ test('a v1 run resumes its exact board and turns; requesting a new run upgrades 
   assert.equal(reload.run().version,1);assert.deepEqual(reload.run().level.map,old.level.map);assert.deepEqual(reload.state(),game.state());
   reload.open();await reload.start(0,true);assert.equal(reload.run().version,F.FREE_VERSION);assert.equal(reload.run().serial,2);
   assert.equal(reload.save().hintUsage[F.freeId(old)],undefined);
+});
+
+test('v4 challenge restores its board, turn and hints; only an explicit new challenge upgrades to v5', async () => {
+  const old=F.makeFree(42,2,4,['jet']),g=E.parseLevel(old.level),plan=E.plan(g,g.start,0,new Set(),g.nets,true);
+  const game=scene();game.generator(function*(){return old;});game.open();await game.start(2);game.move(plan.steps[0]);game.hint();
+  const previous=game.save(),reload=scene(game.saved(),[97,123,256]);reload.open();await reload.start(2);
+  assert.equal(reload.run().version,4);assert.deepEqual(reload.run().level,old.level);assert.deepEqual(reload.state(),game.state());
+  assert.deepEqual(reload.save().hintUsage,previous.hintUsage);
+  reload.open();await reload.start(2,true);assert.equal(reload.run().version,5);assert.equal(reload.run().serial,2);
+  assert.ok(E.parseLevel(reload.run().level).w>=10);assert.equal(reload.state().moves,0);
+  for(const key of ['best','last','owned','skin','daily','journal'])assert.deepEqual(reload.save()[key],previous[key]);
 });
 
 test('v3 offers only story-taught devices, equals v2 once every device is learned, and a kept run keeps its family', async () => {

@@ -1,7 +1,7 @@
 // Verify all three operation stages. --legacy checks the previous single-puzzle generator.
-// --learned=jet,boat checks operation v3 for a player who has learned only those story devices (--learned= for none).
+// --learned=jet,boat checks the current operation for story-taught devices only (--learned= for none).
 //   node tools/daily.js [days=90] [start=today] [--legacy] [--learned=...]
-const { makeDaily, makeDailyStage, dailyDate, DAILY_STAGES, DAILY_OPERATION_VERSION } = require('../src/daily.js');
+const { makeDaily, makeDailyStage, dailyDate, DAILY_OPERATION_VERSION } = require('../src/daily.js');
 const E = require('../src/engine.js');
 const { replayPlan } = require('./replay-plan.js');
 
@@ -25,9 +25,9 @@ for (let i = 0; i < days; i++) {
     if (legacy && p && p.moves < daily.level.par) targetsToReview++;
     if (p) { try { replayPlan(g, p, { pickup: legacy }); } catch (e) { ok = false; console.log(`FAIL ${date} replay: ${e.message}`); } }
     if (!legacy) {
-      const tier = DAILY_STAGES[stage], escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
+      const tier = daily.tier, escape = E.plan(g, g.start, 0, new Set(), g.nets, false);
       ok = ok && p.moves >= tier.min && p.moves <= tier.max && daily.level.par === p.moves + tier.slack
-        && escape && escape.moves >= tier.escape && escape.moves < p.moves;
+        && escape && escape.moves >= tier.escape && p.moves - escape.moves >= (tier.detour || 1);
       if (escape) { try { replayPlan(g, escape, {needAll:false}); } catch (e) { ok = false; } }
       if (g.nets && E.plan(g, g.start, 0, new Set(), 0, true)) ok = false;
       if (learned && (g.nets && !learned.includes('net') || Object.entries(DEVICES).some(([d, tile]) => !learned.includes(d) && tile.test(daily.level.map.join(''))))) ok = false;
@@ -40,7 +40,7 @@ for (let i = 0; i < days; i++) {
   }
 }
 console.log('\npar ranges:', Object.entries(byTier).map(([k, v]) => `${k} ${Math.min(...v)}-${Math.max(...v)}`).join(' · '));
-console.log(`slowest generation ${slowest}ms, reusable-net search ${slowestSolve}ms (Node; physical phones not measured)`);
+console.log(`slowest generation ${slowest}ms, solution search ${slowestSolve}ms (Node; physical phones not measured)`);
 if (targetsToReview) console.log(`${targetsToReview} dates have a star target above the minimum; daily-v2 puzzles and targets are preserved.`);
 if (!legacy) console.log(`verified reserve routes used: ${reserves}${learned ? ` (learned devices: ${learned.join(', ') || 'none'})` : ''}`);
 console.log(failed ? `${failed} puzzle(s) failed` : `all ${days} dates / ${days * (legacy ? 1 : 3)} puzzles ok`);

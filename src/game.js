@@ -1951,9 +1951,11 @@ function dailyProgress(date) {
 }
 // Operation v3 uses the devices learned when the date's first canal was prepared, so a device learned in the story
 // later that day never changes canals already offered.
-function dailyLearned(date) {
+function dailyLearned(date, version = DAILY_OPERATION_VERSION) {
   const saved = save.dailyDevices;
   if (saved?.date === date && Array.isArray(saved.devices) && saved.devices.every(d => typeof d === 'string')) return saved.devices;
+  // Older started operations without a learning snapshot used the full device set.
+  if (version !== DAILY_OPERATION_VERSION) return null;
   save.dailyDevices = { date, devices: learnedDevices() }; persist();
   return save.dailyDevices.devices;
 }
@@ -2027,7 +2029,7 @@ function renderOperation() {
     return `<button class="daily-stage${stars ? ' done' : ''}" type="button" data-stage="${stage}" aria-label="${stage + 1}번째 ${tier.name} ${tier.label}, ${state}" ${locked ? 'disabled' : ''}>
       <span class="stage-number" aria-hidden="true">${stars ? '✓' : stage + 1}</span><span class="stage-copy"><b>${tier.name} <small>${tier.label}</small></b><span>${state}</span></span></button>`;
   }).join('');
-  $('operationLearnNote').hidden = version !== DAILY_OPERATION_VERSION || !learningDevices();
+  $('operationLearnNote').hidden = version < 3 || !learningDevices();
   $('dailyLegacyBtn').hidden = !save.sessions.dailyLegacy;
   $('dailyLegacyBtn').disabled = false;
   $('operationStatus').textContent = '';
@@ -2059,7 +2061,7 @@ async function startDaily(stage) {
     if (dailyCacheDate !== `${date}:v${version}`) { dailyCacheDate = `${date}:v${version}`; dailyCache = new Map(); }
     let daily = dailyCache.get(stage);
     if (!daily) {
-      const search = makeDailyStageSearch(date, stage, version, version === DAILY_OPERATION_VERSION ? dailyLearned(date) : null);
+      const search = makeDailyStageSearch(date, stage, version, version >= 3 ? dailyLearned(date, version) : null);
       let step;
       do {
         if (request !== dailyRequest) return;
@@ -2415,9 +2417,8 @@ function drawObliqueShark(context, cx, cy, size, stretch, alpha, heading = view.
   const horizontal = direction === 'R' || direction === 'L';
   // Undo only the camera's vertical compression for this already-projected bitmap. Do not rotate its lighting or face.
   context.save(); context.translate(cx, cy); context.globalAlpha *= alpha;
-  context.fillStyle = '#12596845'; context.beginPath(); context.ellipse(0, size * .06, size * .37, size * .22, 0, 0, Math.PI * 2); context.fill();
-  context.strokeStyle = '#e0fffb7a'; context.lineWidth = size * .018;
-  context.beginPath(); context.ellipse(0, size * .06, size * .47, size * .26, 0, 0, Math.PI * 2); context.stroke();
+  // A faint contact shadow only. Movement already emits the shared wake; idle sharks need no selection-like ring.
+  context.fillStyle = '#12596822'; context.beginPath(); context.ellipse(0, size * .06, size * .33, size * .17, 0, 0, Math.PI * 2); context.fill();
   context.scale(1, 1 / projection);
   const maxWidth = size * (horizontal ? 1.03 : .81), maxHeight = size * (horizontal ? .76 : .80);
   const scale = Math.min(maxWidth / sprite.naturalWidth, maxHeight / sprite.naturalHeight);
@@ -2437,10 +2438,13 @@ function resize() {
   invalidateScenes();
   guidePaintTime = -1;
   if (!g || $('gameScreen').hidden) return;
+  // Large challenge maps remain readable when enlarged text consumes the viewport. The play screen can scroll.
+  const q = boardProjection(), large = g.w >= 10 && g.h >= 13;
+  $('gameScreen').classList.toggle('large-board', large);
+  board.style.setProperty('--board-min-height', large ? Math.ceil((g.h + .3) * q * 24) + 'px' : '0px');
   const r = board.getBoundingClientRect();
   CW = Math.floor(r.width); CH = Math.floor(r.height);
   // Fit the projected board, including a small margin for raised silhouettes, instead of shrinking it twice.
-  const q = boardProjection();
   T = Math.max(18, Math.floor(Math.min(CW / (g.w - 2 * CROP), CH / (q === 1 ? g.h : (g.h + .3) * q), 132)));
   OX = Math.round((CW - g.w * T) / 2); OY = Math.round((CH - g.h * T) / 2);
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
@@ -3639,7 +3643,7 @@ function start(data) {
   renderLegend(); drawLegendIcon($('netToolIcon')); renderLevelGrid();
   const resumeDaily = data && data.daily === dailyDate() && (Number.isInteger(data.dailyStage)
     ? DAILY_OPERATION_VERSIONS.includes(data.dailyVersion) && makeDailyStage(data.daily, data.dailyStage, data.dailyVersion,
-      data.dailyVersion === DAILY_OPERATION_VERSION ? dailyLearned(data.daily) : null) : makeDaily(data.daily));
+      data.dailyVersion >= 3 ? dailyLearned(data.daily, data.dailyVersion) : null) : makeDaily(data.daily));
   const level = resumeDaily ? resumeDaily.level : data && storyLevel(data.lvl);
   const keep = level && data.st && restoreSession({ version: 1, id: 0, layout: levelSignature(level), state: data.st }, level, 0);
   if (data && data.screen === 'game' && keep && resumeDaily) { show('game', false); requestAnimationFrame(() => loadDaily(resumeDaily, keep)); }
