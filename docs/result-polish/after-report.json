@@ -1,0 +1,193 @@
+{
+  "baseline": "cce1847",
+  "checks": [
+    {
+      "layout": "stars-1",
+      "h": 844,
+      "w": 390,
+      "scroll": 390,
+      "next": {
+        "top": 723.3125,
+        "bottom": 775.3125,
+        "height": 52,
+        "width": 354
+      },
+      "again": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      },
+      "home": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      }
+    },
+    {
+      "layout": "stars-2",
+      "h": 844,
+      "w": 390,
+      "scroll": 390,
+      "next": {
+        "top": 723.3125,
+        "bottom": 775.3125,
+        "height": 52,
+        "width": 354
+      },
+      "again": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      },
+      "home": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      }
+    },
+    {
+      "layout": "stars-3",
+      "h": 844,
+      "w": 390,
+      "scroll": 390,
+      "next": {
+        "top": 723.3125,
+        "bottom": 775.3125,
+        "height": 52,
+        "width": 354
+      },
+      "again": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      },
+      "home": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      }
+    },
+    "1/2/3 earned stars only; three persistent empty slots; one cue/haptic per earned star; saved before presentation",
+    {
+      "realStage": 7,
+      "counts": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+        2
+      ]
+    },
+    "During star sequence: triple next/replay/home, Escape, background/resume and live reduced motion cancel late cues and keep rewards",
+    "Daily/free continuation; free replay reward not duplicated; operation stamp shown once; chapter completion and new skin retained",
+    {
+      "layout": "320x568",
+      "h": 568,
+      "w": 320,
+      "scroll": 320,
+      "next": {
+        "top": 447.3125,
+        "bottom": 499.3125,
+        "height": 52,
+        "width": 292
+      },
+      "again": {
+        "top": 502.3125,
+        "bottom": 548,
+        "height": 45.6875,
+        "width": 141
+      },
+      "home": {
+        "top": 502.3125,
+        "bottom": 548,
+        "height": 45.6875,
+        "width": 141
+      }
+    },
+    {
+      "layout": "390x844",
+      "h": 844,
+      "w": 390,
+      "scroll": 390,
+      "next": {
+        "top": 723.3125,
+        "bottom": 775.3125,
+        "height": 52,
+        "width": 354
+      },
+      "again": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      },
+      "home": {
+        "top": 778.3125,
+        "bottom": 824,
+        "height": 45.6875,
+        "width": 172
+      }
+    },
+    {
+      "layout": "844x390",
+      "h": 390,
+      "w": 844,
+      "scroll": 844,
+      "next": {
+        "top": 269.3125,
+        "bottom": 321.3125,
+        "height": 52,
+        "width": 492
+      },
+      "again": {
+        "top": 324.3125,
+        "bottom": 370,
+        "height": 45.6875,
+        "width": 241
+      },
+      "home": {
+        "top": 324.3125,
+        "bottom": 370,
+        "height": 45.6875,
+        "width": 241
+      }
+    },
+    {
+      "layout": "320x568 doubled text",
+      "h": 568,
+      "w": 320,
+      "scroll": 320,
+      "next": {
+        "top": 358.625,
+        "bottom": 434.21875,
+        "height": 75.59375,
+        "width": 292
+      },
+      "again": {
+        "top": 437.21875,
+        "bottom": 548,
+        "height": 110.78125,
+        "width": 141
+      },
+      "home": {
+        "top": 437.21875,
+        "bottom": 548,
+        "height": 110.78125,
+        "width": 141
+      }
+    },
+    "Mute/haptic off, reduced motion, failed mascot and unavailable AudioContext preserve readable result and working next action"
+  ],
+  "errors": [],
+  "physicalAndroid": false,
+  "success": true
+}

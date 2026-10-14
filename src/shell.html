@@ -376,6 +376,13 @@ h1 .sea { color: var(--title-alert); }
 .chip.move .count { font-size: 15px; white-space: nowrap; }
 .chip.move .k { font-size: 13px; }
 .chip svg.i { width: 22px; height: 22px; }
+.mullet-icon { display: block; width: 44px; height: 28px; flex: 0 0 44px; }
+.chip.goal .hud-stack { align-items: flex-start; }
+.chip.goal .goal-total { font-size: .8em; font-weight: 500; color: #436d78; }
+.chip.goal.collected b { animation: fish-count .24s ease-out; }
+.chip.goal.collected .mullet-icon { animation: fish-catch .24s ease-out; }
+@keyframes fish-count { 40% { transform: translateY(-1px) scale(1.05); } }
+@keyframes fish-catch { 40% { transform: scale(1.08); } }
 .chip b.bump { animation: count-bump .35s var(--ease-spring); }
 @keyframes count-bump { 40% { transform: scale(1.35); } }
 .fish-fly { position: fixed; z-index: 5; pointer-events: none; will-change: transform, opacity; }
@@ -473,20 +480,23 @@ h1 .sea { color: var(--title-alert); }
 .card h3.operation-title { font-size: clamp(28px, 8.4vw, 34px); }
 .card .sub { margin: 0; font-size: 14px; color: #3d4d4f; }
 .stars { display: flex; justify-content: center; gap: 12px; position: relative; padding: 8px 0; }
-.star-slot { position: relative; display: block; width: 62px; height: 62px; }
-.star-slot:nth-child(2) { transform: translateY(-8px); }
-.star { width: 62px; height: 62px; }
+.star-slot { position: relative; display: block; width: 68px; height: 68px; }
+.star-slot:nth-child(2) { transform: translateY(-6px); }
+.star { position: absolute; inset: 0; width: 100%; height: 100%; }
 .star path { fill: #b9ad95; }
 .star.on path { fill: var(--star); stroke: #c7881a; stroke-width: 1.5; }
-.clear-celebrating .star.on { animation: star-pop .5s var(--ease-spring) var(--reward-delay) both; }
-.star-sparks { position: absolute; inset: 0; pointer-events: none; color: #b87816; font-size: 14px; opacity: 0; text-shadow: 50px 8px 0 #d99a20, 10px 54px 0 #d99a20; }
-.clear-celebrating .star-sparks { animation: star-spark .65s ease-out var(--reward-delay) both; }
-.clear-celebrating .reward-check { animation: reward-check .7s ease-out var(--reward-delay); }
-.clear-celebrating #clearJournalStamp, .clear-celebrating #clearChapterStamp { animation: reward-stamp .65s var(--ease-spring) .9s both; }
-.clear-celebrating .three-stars::after { content: ""; position: absolute; inset: -4px 10%; border-radius: 50%; border: 2px solid #d99a20; pointer-events: none; opacity: 0; animation: star-finish .5s ease-out .92s; }
-@keyframes star-pop { from { transform: scale(0) rotate(-30deg); opacity: 0; } }
-@keyframes star-spark { 25% { opacity: 1; transform: scale(1.12); } to { opacity: 0; transform: scale(1.45); } }
-@keyframes star-finish { from { opacity: .65; transform: scale(.85); } to { opacity: 0; transform: scale(1.08); } }
+.clear-celebrating .star.on { animation: star-stamp var(--stamp-duration) linear var(--reward-delay) both; }
+.star-sparks { position: absolute; top: 0; right: 0; pointer-events: none; color: #c69325; font-size: 15px; opacity: 0; }
+.clear-celebrating .star-sparks { animation: star-spark .28s ease-out calc(var(--reward-delay) + var(--land-delay)) both; }
+.clear-celebrating .three-stars .star-slot:last-child .star-sparks { text-shadow: -52px 38px 0 #d9ac40; }
+.clear-celebrating #clearJournalStamp, .clear-celebrating #clearChapterStamp { animation: fade .25s ease-out .9s both; }
+/* The 40% contact frame is also REWARD_TIMING.land (120 ms): audio and haptic land with the star. */
+@keyframes star-stamp {
+  0% { opacity: 0; transform: translateY(-8px) scale(1.14); animation-timing-function: cubic-bezier(.18,.7,.3,1); }
+  40% { opacity: 1; transform: translateY(1px) scale(.97); animation-timing-function: ease-out; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes star-spark { 35% { opacity: .85; } to { opacity: 0; transform: translateY(-3px); } }
 .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 15px; text-align: left; }
 .checks li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #b9ad95; padding: 6px 2px; font-variant-numeric: tabular-nums; }
 .checks li:last-child { border-bottom: 0; }
@@ -884,22 +894,31 @@ button:disabled:active { transform: none; }
 </div>
 
 <div class="overlay" id="clearOverlay" hidden>
-  <div class="card" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
-    <img class="clear-mascot" id="clearMascot" src="@@ART_HERO@@" alt="" width="110" height="110">
-    <h3 id="clearTitle">바다로 나갔어요!</h3>
+  <div class="card clear-card" role="dialog" aria-modal="true" aria-labelledby="clearTitle" aria-describedby="clearStarCount">
     <div class="clear-body" id="clearBody">
-      <div class="stars" id="clearStars"></div>
+      <img class="clear-mascot" id="clearMascot" src="@@ART_HERO@@" alt="" width="80" height="80">
+      <h3 id="clearTitle">바다로 나갔어요!</h3>
+      <div class="clear-score">
+        <div class="stars" id="clearStars" role="img"></div>
+        <p id="clearStarCount" class="clear-star-count"></p>
+      </div>
+      <ul class="checks clear-stats" id="clearChecks"></ul>
+      <p id="clearStarHint" class="clear-star-hint" hidden></p>
+      <p id="clearModeRecord" class="clear-mode-record" hidden></p>
       <div class="operation-stamp chapter-stamp" id="clearChapterStamp" hidden></div>
       <p class="clear-story" id="clearStory" hidden></p>
-      <div class="region-preview" id="clearRegion" hidden></div>
       <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
       <p class="clear-journal-stamp" id="clearJournalStamp" hidden></p>
-      <ul class="checks" id="clearChecks"></ul>
+      <p class="clear-badge-reward" id="clearBadgeReward" hidden></p>
       <div class="clear-unlocks" id="clearUnlocks" hidden></div>
+      <div class="region-preview" id="clearRegion" hidden></div>
     </div>
-    <div class="row">
-      <button class="btn" id="againBtn" type="button">다시 하기</button>
+    <div class="clear-actions">
       <button class="btn primary" id="nextBtn" type="button">다음 수로</button>
+      <div class="clear-secondary">
+        <button class="btn" id="againBtn" type="button">다시 하기</button>
+        <button class="btn" id="clearHomeBtn" type="button">메인으로</button>
+      </div>
     </div>
   </div>
 </div>

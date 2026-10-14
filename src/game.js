@@ -612,16 +612,34 @@ function drawShark(ctx, cx, cy, ang, T, t, moving, stretch = 1, alpha = 1, skin 
 function drawFish(ctx, cx, cy, T, t, seed, scale = 1) {
   const a = Math.sin(t * 3 + seed * 6) * 0.5 + seed * 6;
   ctx.save(); ctx.translate(cx + Math.cos(t + seed * 9) * T * 0.06, cy + Math.sin(t * 1.3 + seed) * T * 0.05); ctx.rotate(a); ctx.scale(scale, scale);
-  const l = T * 0.23, w = T * 0.085;
-  ctx.fillStyle = 'rgba(4,20,26,.2)'; ctx.beginPath(); ctx.ellipse(2, 3, l, w, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#c9d6d8';
-  ctx.beginPath(); ctx.moveTo(-l * 0.8, 0); ctx.lineTo(-l * 1.4, -w * 1.1); ctx.lineTo(-l * 1.4, w * 1.1); ctx.fill();
-  const scales = ctx.createLinearGradient(0, -w, 0, w); scales.addColorStop(0, '#fffbe5'); scales.addColorStop(.55, '#e0e8ce'); scales.addColorStop(1, '#96b7a8');
-  ctx.fillStyle = scales; ctx.beginPath(); ctx.ellipse(0, 0, l, w, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#fcffe9'; ctx.lineWidth = Math.max(1, T * .018); ctx.stroke();
-  ctx.fillStyle = '#a4b5a0'; ctx.beginPath(); ctx.ellipse(-l * 0.1, -w * 0.3, l * 0.7, w * 0.24, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(l * 0.6, -w * 0.15, T * 0.018, 0, 7); ctx.fill();
+  drawMullet(ctx, 0, 0, T);
   ctx.restore();
+}
+// One silver mullet silhouette for the water, pickup flight and HUD; no image decode/failure path.
+function drawMullet(ctx, cx, cy, T) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(T, T);
+  ctx.fillStyle = '#174a5d26'; ctx.beginPath(); ctx.ellipse(-.025, .044, .26, .082, 0, 0, Math.PI * 2); ctx.fill();
+  const fin = ctx.createLinearGradient(0, -.12, 0, .12); fin.addColorStop(0, '#6c9eaa'); fin.addColorStop(1, '#c1d9d7');
+  ctx.fillStyle = fin; ctx.strokeStyle = '#577e8c'; ctx.lineWidth = .009; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(-.18, 0); ctx.lineTo(-.34, -.105); ctx.lineTo(-.305, 0); ctx.lineTo(-.34, .105); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-.11, -.062); ctx.lineTo(-.055, -.132); ctx.lineTo(.035, -.071); ctx.closePath(); ctx.fill();
+  const silver = ctx.createLinearGradient(0, -.09, 0, .095);
+  silver.addColorStop(0, '#739ca8'); silver.addColorStop(.35, '#e0ecec'); silver.addColorStop(.57, '#fffef1'); silver.addColorStop(1, '#91b1b6');
+  ctx.fillStyle = silver; ctx.beginPath(); ctx.ellipse(-.015, 0, .245, .087, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#fffdf1'; ctx.lineWidth = .013; ctx.beginPath(); ctx.moveTo(-.17, -.025); ctx.quadraticCurveTo(-.04, -.058, .11, -.032); ctx.stroke();
+  ctx.strokeStyle = '#7598a2'; ctx.lineWidth = .009; ctx.beginPath(); ctx.moveTo(.1, -.053); ctx.quadraticCurveTo(.065, 0, .1, .055); ctx.stroke();
+  ctx.fillStyle = '#9bbbc1'; ctx.beginPath(); ctx.moveTo(.052, .018); ctx.lineTo(-.02, .069); ctx.lineTo(.014, .008); ctx.fill();
+  ctx.fillStyle = '#f9fffc'; ctx.beginPath(); ctx.arc(.158, -.014, .03, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#183e50'; ctx.beginPath(); ctx.arc(.164, -.014, .018, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(.169, -.02, .006, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function drawHudMullet() {
+  const canvas = $('stats').querySelector('.mullet-icon'); if (!canvas) return;
+  const d = Math.min(window.devicePixelRatio || 1, 3), w = 44, h = 28;
+  canvas.width = w * d; canvas.height = h * d;
+  const ctx = canvas.getContext('2d'); if (!ctx) return;
+  ctx.scale(d, d); drawMullet(ctx, 26, 15, 68);
 }
 function drawObliqueBuoy(ctx, cx, cy, T, t) {
   const bob = reduceMotion ? 0 : Math.sin(t * 2 + cx) * .015, lift = .12;
@@ -1385,13 +1403,14 @@ function updateHud() {
   gameNeedsPaint = true;
   const L = curLevel(), parts = [];
   const done = g.fish.length && st.fish.length === g.fish.length;
-  const icon = g.fish.length ? '<path d="M18 12c-3-6-9-6-12 0 3 6 9 6 12 0z"/><path d="M6 12l-4-4v8z"/><path d="M15 11h.01"/>' : '<path d="M5 12h14M13 6l6 6-6 6"/>';
-  parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료' : '숭어 모으기' : '목표'}</span><b>${g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '바다로 탈출'}</b></span></span>`);
+  const icon = g.fish.length ? '<canvas class="mullet-icon" width="88" height="56" aria-hidden="true"></canvas>' : '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  parts.push(`<span class="chip goal${done ? ' done' : ''}" aria-label="${g.fish.length ? `숭어 수집 ${st.fish.length} / ${g.fish.length}${done ? ', 수집 완료' : ''}` : '목표: 바다로 탈출'}">${icon}<span class="hud-stack"><span class="k">${g.fish.length ? done ? '숭어 완료 ✓' : '숭어 수집' : '목표'}</span><b>${g.fish.length ? `${st.fish.length}<span class="goal-total"> / ${g.fish.length}</span>` : '바다로 탈출'}</b></span></span>`);
   parts.push(`<span class="chip move${st.moves > L.par ? ' over' : ''}"><span class="hud-stack"><span class="count">이동 <b>${st.moves}</b></span><span class="k">기준 ${L.par}회</span></span></span>`);
   updateNetStatus();
   $('stats').innerHTML = parts.join('');
+  drawHudMullet();
   if (hudLast.moves >= 0 && st.moves !== hudLast.moves) $('stats').querySelector('.move b').classList.add('bump');
-  if (g.fish.length && hudLast.fish >= 0 && st.fish.length !== hudLast.fish) $('stats').querySelector('.goal b').classList.add('bump');
+  if (!reduceMotion && g.fish.length && hudLast.fish >= 0 && st.fish.length > hudLast.fish) $('stats').querySelector('.goal').classList.add('collected');
   hudLast = { moves: st.moves, fish: st.fish.length };
   $('undoBtn').disabled = !st.history.length;
   catchGoal();
@@ -1418,10 +1437,11 @@ const NO_NETS_TIP = '이 수로에는 그물이 없어요. 화면을 밀어서 �
 // counter). Visual only: the count is already updated. Undo, replay and leaving drop flights in progress.
 const FISH_FLIGHT_MS = 560, GOAL_CATCH_MS = 320;
 function flyFish(fx, fy) {
-  const goal = $('stats').querySelector('.goal svg');
+  const goal = $('stats').querySelector('.mullet-icon');
   if (reduceMotion || !goal || typeof cvs.animate !== 'function') return;
   const from = cvs.getBoundingClientRect(), to = goal.getBoundingClientRect(), size = Math.round(Math.max(28, Math.min(44, T * 0.8)));
-  const x0 = from.left + OX + (fx + 0.5) * T - size / 2, y0 = from.top + OY + (fy + 0.5) * T - size / 2, lift = size * 0.5;
+  const q = boardProjection(), x0 = from.left + OX + (fx + 0.5) * T - size / 2;
+  const y0 = from.top + CH * (1 - q) / 2 + (OY + (fy + 0.5) * T) * q - size / 2, lift = size * 0.5;
   const dx = to.left + to.width / 2 - size / 2 - x0, dy = to.top + to.height / 2 - size / 2 - y0;
   // Head toward the goal; a fish flying left is mirrored instead of turning belly-up.
   const flip = dx < 0 ? -1 : 1, rise = Math.atan2(-(dy + lift), Math.abs(dx)) * 180 / Math.PI, turn = flip < 0 ? rise : -rise;
@@ -1445,9 +1465,12 @@ function flyFish(fx, fy) {
 function catchGoal() {
   const age = performance.now() - goalCatchAt;
   if (!(age >= 0 && age < GOAL_CATCH_MS)) return;
-  const icon = $('stats').querySelector('.goal svg');
-  if (icon && typeof icon.animate === 'function') icon.animate([{ transform: 'none' }, { transform: 'scale(1.35) rotate(-8deg)', offset: 0.4 }, { transform: 'none' }],
+  const icon = $('stats').querySelector('.mullet-icon');
+  if (!reduceMotion && icon && typeof icon.animate === 'function') {
+    icon.getAnimations?.().forEach(a => a.cancel());
+    icon.animate([{ transform: 'none' }, { transform: 'scale(1.08)', offset: 0.35 }, { transform: 'none' }],
     { duration: GOAL_CATCH_MS, delay: -age, easing: 'ease-out' });
+  }
 }
 function pushHistory() {
   st.history.push(copyTurn(st));
@@ -1742,7 +1765,7 @@ async function planHint(record) {
 }
 
 /* ---------- reward presentation: transient events, independent of saved progress ---------- */
-const REWARD_TIMING = { first: 240, gap: 220 };
+const REWARD_TIMING = { first: 300, gap: 150, stamp: 300, land: 120, unlock: 1180 };
 const rewardPending = { stars: new Set(), levels: new Set(), chapters: new Set(), journey: new Set(), daily: new Map(), stamps: new Set(), badges: new Set(), skins: new Set() };
 let clearPresentation = 0, clearTimers = new Set(), skinPreviewMotion = new Map(), pendingStoryCount = false, clearReveal = null;
 function cancelClearPresentation() {
@@ -1860,13 +1883,17 @@ function onClear() {
   else if (DAILY) recordDailyStage(DAILY, stars);
   else if (PILOT) recordPilotClear(PILOT.index, stars);   // separate course record: never story stars or skins
   else { save.best[LVL] = Math.max(save.best[LVL] || 0, stars); persist(); }
-  const freshSkins = refreshSkins(), nextGoal = nextSkinGoal();
+  const freshSkins = refreshSkins();
   const freshBadges = earnedJournalRewards().filter(r => !r.skin && !previousRewards.has(r.id));
   const event = collectRewardEvents(before, stars, freshSkins, freshBadges);
-  const starSvg = (on, k) => `<span class="star-slot" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms"><svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>${on ? '<span class="star-sparks" aria-hidden="true">✦</span>' : ''}</span>`;
+  const starPath = '<path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/>';
+  const starSvg = (on, k) => `<span class="star-slot" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms;--stamp-duration:${REWARD_TIMING.stamp}ms;--land-delay:${REWARD_TIMING.land}ms"><svg class="star star-empty" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg>${on ? `<svg class="star on" viewBox="0 0 24 24" aria-hidden="true">${starPath}</svg><span class="star-sparks" aria-hidden="true">✦</span>` : ''}</span>`;
   $('clearStars').innerHTML = earned.map(starSvg).join('');
   $('clearStars').setAttribute('aria-label', `별 ${stars}개`);
   $('clearStars').classList.toggle('three-stars', stars === 3);
+  $('clearStarCount').textContent = `별 ${stars}개 획득`;
+  $('clearStarHint').hidden = stars === 3;
+  $('clearStarHint').textContent = stars === 1 ? `숭어를 모두 모으면 별 2개 · ${L.par}회 이내면 별 3개` : `숭어를 모두 모아 ${L.par}회 이내 탈출하면 별 3개`;
   showClearSkinRewards(freshSkins);
   $('clearJournalStamp').hidden = !event.stamp;
   $('clearJournalStamp').textContent = event.stamp === 2 ? '✓ 오늘의 작전 완료 도장을 찍었어요!' : '● 오늘의 참여 도장을 찍었어요!';
@@ -1898,20 +1925,15 @@ function onClear() {
   $('clearTitle').textContent = FREE ? '자유 수로 구출 성공!' : DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
     : PILOT ? (PILOT.level.finale ? '시험 코스 완료!' : PILOT.level.boundary ? '북항 통과!' : titles[stars - 1])
     : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
-  const row = (label, val, ok, k = -1) => `<li${k >= 0 && earned[k] ? ` class="reward-check" style="--reward-delay:${REWARD_TIMING.first + k * REWARD_TIMING.gap}ms"` : ''}><span>${label}</span><span class="${ok ? 'ok' : 'no'}">${val}</span></li>`;
-  $('clearChecks').innerHTML =
-    row('바다로 탈출', '성공', true, 0) +
-    row('숭어 모두 먹기', g.fish.length ? `${st.fish.length} / ${g.fish.length}` : '숭어 없음', allFish, 1) +
-    row('숭어 + 이동 기준', `${st.moves}번 / ${L.par}번${allFish ? '' : ' · 숭어 필요'}`, stars === 3, 2) +
-    (operation ? row('오늘의 작전', `${progress.count} / 3 수로 완료`, true) : '') +
-    (FREE ? row(`${FREE_TIERS[FREE.difficulty].label} 수로`, `누적 ${save.free.completed[FREE.difficulty]}개 완료`, true) : '') +
-    (PILOT ? row('시험 코스', `${pilotProgress().count} / ${PILOT_LEVELS.length} 수로 완료`, true) : '') +
-    (DAILY ? row('연속 도전', `${dailyStreak()}일째`, true) : '') +
-    (DAILY ? row('누적 기록', `참여 ${journalTotals().visits}일 · 작전 완료 ${journalTotals().operations}일`, true) : '') +
-    (freshBadges.length ? `<li class="reward-badge"><span>새 기념 배지</span><span class="ok">${freshBadges.map(r => r.name).join(', ')}</span></li>` : '') +
-    (freshSkins.length ? `<li><span>새 상어가 열렸어요</span><span class="new">${freshSkins.map(k => k.name).join(', ')}</span></li>`
-      : nextGoal && !DAILY && !FREE && !PILOT ? `<li class="next-skin"><span>다음 상어</span><span>${nextGoal.long}</span></li>` : '');
-  $('operationStamp').hidden = !operation || progress.count !== 3;
+  const row = (label, val, detail, ok) => `<li><span>${label}</span><strong>${val}</strong><small class="${ok ? 'ok' : ''}">${detail}</small></li>`;
+  $('clearChecks').innerHTML = row('숭어 수집', `${st.fish.length} / ${g.fish.length}`, g.fish.length ? allFish ? '모두 수집 ✓' : '마리 수집' : '숭어 없는 수로', allFish)
+    + row('이동 기록', `${st.moves}회`, `기준 ${L.par}회${inPar ? ' ✓' : ''}`, inPar);
+  $('clearModeRecord').textContent = operation ? `오늘 ${progress.count} / 3 수로 · 연속 ${dailyStreak()}일` : FREE ? `${FREE_TIERS[FREE.difficulty].label} · 누적 ${save.free.completed[FREE.difficulty]}개 완료` : PILOT ? `시험 코스 ${pilotProgress().count} / ${PILOT_LEVELS.length}` : '';
+  $('clearModeRecord').hidden = !$('clearModeRecord').textContent;
+  $('clearBadgeReward').textContent = freshBadges.length ? `새 기념 배지 · ${freshBadges.map(r => r.name).join(', ')}` : '';
+  $('clearBadgeReward').hidden = !freshBadges.length;
+  // The newly earned journal stamp already announces operation completion.
+  $('operationStamp').hidden = !operation || progress.count !== 3 || !!event.stamp;
   $('operationStamp').classList.toggle('reward-stamp', event.stamp === 2 && !reduceMotion);
   $('nextBtn').textContent = FREE ? '새 수로' : PILOT ? (PILOT.level.finale ? '코스 목록' : PILOT.level.boundary ? '수문 시설로' : '다음 수로') : DAILY ? (DAILY.date !== dailyDate() ? '오늘의 작전' : operation && progress.count < 3 ? '다음 수로' : '작전 보기')
     : rescueComplete ? '구출 엔딩 보기' : last ? '수로 목록' : chapterEnd ? '다음 장으로' : '다음 수로';
@@ -1921,12 +1943,12 @@ function onClear() {
     $('clearBody').scrollTop = 0;
     $('clearOverlay').classList.toggle('clear-celebrating', celebrate && !reduceMotion);
     if (celebrate && reduceMotion) { sfx.win(audioToken); haptic('success'); }
-    else if (celebrate) earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k, audioToken); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap, token); });
+    else if (celebrate) earned.forEach((on, k) => { if (on) clearLater(() => { sfx.star(k, audioToken); haptic('light'); }, REWARD_TIMING.first + k * REWARD_TIMING.gap + REWARD_TIMING.land, token); });
     $('clearUnlocks').querySelectorAll('[data-new-skin]').forEach(canvas => {
       const skin = SKINS.find(s => s.id === canvas.dataset.newSkin);
       if (celebrate) animateSkinPreview(canvas, skin); else drawSkinPreview(canvas, skin);
     });
-    if (celebrate && freshSkins.length) clearLater(() => { sfx.unlockReward(audioToken); if (!reduceMotion) haptic('success'); }, 960, token);
+    if (celebrate && freshSkins.length) clearLater(() => { sfx.unlockReward(audioToken); if (!reduceMotion) haptic('light'); }, REWARD_TIMING.unlock, token);
   };
   clearLater(() => { if (!renderSuspended()) clearReveal?.(); }, reduceMotion ? 50 : 650, token, false);
   renderLevelGrid();
@@ -3504,8 +3526,9 @@ $('backBtn').addEventListener('click', () => show('title'));
 $('undoBtn').addEventListener('click', undo);
 $('restartBtn').addEventListener('click', restart);
 $('hintBtn').addEventListener('click', showHint);
-$('againBtn').addEventListener('click', replay);
-$('nextBtn').addEventListener('click', continueStory);
+$('againBtn').addEventListener('click', () => { if (!$('clearOverlay').hidden) replay(); });
+$('nextBtn').addEventListener('click', () => { if (!$('clearOverlay').hidden) continueStory(); });
+$('clearHomeBtn').addEventListener('click', () => { if (!$('clearOverlay').hidden) show('title'); });
 // settings sheet (sound, vibration) — opened from the gear on the title and in a level
 const settingsOpen = () => !$('settingsOverlay').hidden;
 function openSettings() { $('optSound').checked = save.sound; $('optVibe').checked = save.vibe; openSheet('settingsOverlay'); $('settingsDone').focus({ preventScroll: true }); }

@@ -106,6 +106,19 @@ test('recorded variants rotate without immediate repeats; a fish is one recorded
   const synth = fixture(); synth.audio.unlock(); const tones = synth.sources.length; synth.sfx.eat(false, 0);
   assert.equal(synth.sources.slice(tones).filter(n => n.kind === 'tone').length, 1, 'synthesized: one falling chomp');
 });
+
+test('150 ms star stamps keep short recorded tails and finish before a new-skin cue', async () => {
+  const f=fixture(recordings());f.audio.unlock();await f.audio.loaded();const token=f.sfx.token();
+  for(let i=0;i<3;i++){
+    const before=f.sources.length;f.sfx.star(i,token);
+    const layers=f.sources.slice(before);assert.equal(layers.length,2);
+    assert.ok(layers.every(n=>n.stopTime-n.startTime<=.46),'each chime has a bounded release');
+    f.advance(.15);assert.ok(f.audio.inspect().voices<=3);
+  }
+  f.advance(.31);assert.equal(f.audio.inspect().sources,0,'all stars finish before the 1180 ms unlock cue');
+  f.sfx.unlockReward(token);assert.ok(f.audio.inspect().sources>0);
+  f.sfx.cancelReward();f.advance(.03);assert.equal(f.audio.inspect().sources,0);
+});
 test('mute and backgrounding stop recorded layers and their scheduled reward notes', async () => {
   const f = fixture(recordings()); f.audio.unlock(); await f.audio.loaded();
   const token = f.sfx.token(); f.sfx.unlockReward(token); assert.ok(recordedOf(f).some(n => n.startTime > .25), 'bell is scheduled later');

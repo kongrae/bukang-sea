@@ -299,8 +299,8 @@ function createGameAudio({ enabled = () => true, active = () => true,
       if (!Number.isInteger(index) || index < 0 || index > 2) return;
       const v = begin('star', 'reward', 3, .1, token); if (!v) return;
       if (ready(...MALLETS, ...BELLS)) {
-        note(v, ['A4', 'C#5', 'E5'][index], { lvl: lv.star, dur: .9, fade: .35 });
-        note(v, ['A5', 'C#6', 'E6'][index], { bell: true, lvl: lv.starBell, dur: 1.1, delay: .01, fade: .4 });
+        note(v, ['A4', 'C#5', 'E5'][index], { lvl: lv.star - 2, dur: .28, fade: .14 });
+        note(v, ['A5', 'C#6', 'E6'][index], { bell: true, lvl: lv.starBell - 3, dur: index === 2 ? .42 : .3, delay: .006, fade: .18 });
         return;
       }
       const hz = [440, 554.37, 659.25][index]; drop(v, hz, .25, .2, 0, hz); drop(v, hz * 1.5, .15, .045, .035, hz * 1.5);

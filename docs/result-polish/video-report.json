@@ -1,0 +1,35 @@
+{
+  "duration": 6.933699999999255,
+  "frames": 266,
+  "audioIncluded": true,
+  "audioSource": "live production post-compressor Web Audio, same MediaRecorder as browser viewport",
+  "sampleAssets": 20,
+  "starEvents": [
+    {
+      "name": "star",
+      "args": [
+        0,
+        9
+      ],
+      "time": 8192.5
+    },
+    {
+      "name": "star",
+      "args": [
+        1,
+        9
+      ],
+      "time": 8344.60000000149
+    },
+    {
+      "name": "star",
+      "args": [
+        2,
+        9
+      ],
+      "time": 8492.300000000745
+    }
+  ],
+  "physicalDevice": false,
+  "play": "stage 7 (LEVELS index 3), real engine replay"
+}

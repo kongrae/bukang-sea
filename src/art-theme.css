@@ -102,7 +102,9 @@ body { background: #e8f8f5; }
 .chip { background: #f8fcf8; border: 0; box-shadow: none; padding-block: 6px; }
 .chip.goal { background: #d2eeea; box-shadow: none; }
 .chip.over b { color: #b44218; }
-.chip.done b, .tip.hint { color: #85510a; }
+.chip.done b { color: #216b59; }
+.chip.done { background: #dcf1e5; }
+.tip.hint { color: #85510a; }
 .tip { color: #385d6a; }
 .board { margin-inline: -5px; }
 .game-screen.large-board { overflow-y: auto; touch-action: pan-y; }
@@ -166,12 +168,40 @@ body { background: #e8f8f5; }
 .journey-stop > div { border-color: #a4cdcf; }
 .ending-scene { border: 3px solid #87d6dc; }
 .ending-stamp, .operation-stamp { background: #e1f5e8; }
-.clear-mascot { display: block; width: 110px; height: 110px; object-fit: contain; align-self: center; margin: -5px auto -15px; }
-.clear-celebrating .clear-mascot { animation: mascot-cheer .6s var(--ease-spring) both; }
-@keyframes mascot-cheer { from { transform: translateY(10px) scale(.85) rotate(-8deg); opacity: .4; } }
-.star { filter: drop-shadow(0 3px 0 #ba8d35); }
-.star path { fill: #dbe3d8; stroke: #9eafa9; stroke-width: 1; }
-.star.on path { fill: url(#rewardGold); stroke: #bd821b; stroke-width: 1.2; }
+.clear-card { padding-top: 14px; gap: 10px; overflow: hidden; }
+.clear-body { gap: 12px; padding: 0 2px 6px; }
+.clear-mascot { display: block; width: 80px; height: 80px; object-fit: contain; margin: 0 auto -6px; }
+.clear-card h3, .clear-card h3.operation-title { font-size: clamp(26px, 7.5vw, 32px); line-height: 1.25; margin: 0; }
+.clear-score { padding: 9px 0 0; }
+.clear-star-count { margin: 2px 0 0; font-size: 14px; color: #766126; font-weight: 700; }
+.star { filter: none; }
+.star path { fill: #e9eeea; stroke: #b1c8c4; stroke-width: .65; stroke-linejoin: round; }
+.star.on { filter: drop-shadow(0 2px 0 #bc893b); }
+.star.on path { fill: url(#rewardGold); stroke: #cc942f; stroke-width: .65; }
+.clear-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 12px 0; border-block: 1px solid #dceae4; }
+.clear-stats li { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 4px; border: 0; font-size: 13px; color: #526f77; }
+.clear-stats li + li { border-left: 1px solid #dceae4; }
+.clear-stats strong { font-size: 22px; line-height: 1.3; color: #205b6d; }
+.clear-stats small { font-size: 12px; }
+.clear-star-hint, .clear-mode-record, .clear-badge-reward { margin: 0; font-size: 13px; line-height: 1.6; color: #526f77; }
+.clear-card .clear-story { background: none; padding: 0 4px; font-size: 14px; }
+.clear-card :is(.operation-stamp, .clear-journal-stamp) { padding: 7px 10px; font-size: 14px; }
+.clear-actions { display: grid; gap: 3px; }
+.clear-actions > .btn { width: 100%; min-height: 52px; }
+.clear-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.clear-card .clear-secondary .btn { background: none; border: 0; min-height: 44px; font-size: 14px; color: #486e78; }
+.clear-card .region-preview { display: none; }
+/* The next chapter card supplies its full picture; retain a quiet named preview in the result. */
+.clear-card .region-preview:not([hidden]) { display: flex; }
+.clear-card .region-preview img { display: none; }
+.clear-card .region-preview { background: none; border: 0; padding: 0; min-height: 0; }
+.clear-card .skin-reveal { grid-template-columns: 72px 1fr auto; align-items: center; padding: 10px; gap: 4px 8px; text-align: left; }
+.clear-card .skin-reveal b { grid-column: 2 / 4; font-size: 12px; font-weight: 500; }
+.clear-card .skin-reveal canvas { grid-column: 1; grid-row: 1 / 3; width: 72px; height: 60px; }
+.clear-card .skin-reveal strong { grid-column: 2; font-size: 16px; }
+.clear-card .skin-reveal .skin-wear { grid-column: 3; grid-row: 2; font-size: 13px; min-height: 44px; padding: 6px 10px; }
+.clear-celebrating .skin-reveal { animation: fade .25s ease-out .92s both; }
+.clear-celebrating .skin-reveal::after { content: none; }
 .checks li { border-color: #b4d5ce; }
 .checks .no { color: #825331; }
 .clear-unlocks { background: #e4f3e7; border-radius: 15px; }
@@ -190,7 +220,10 @@ body { background: #e8f8f5; }
   .home-navigation { padding-top: 10px; }
   .card { gap: 10px; padding-inline: 14px; }
   .sheet-header { margin-inline: -14px; padding-inline: 14px; }
-  .clear-mascot { width: 78px; height: 78px; margin-bottom: -10px; }
+  .clear-mascot { width: 56px; height: 56px; margin-bottom: -4px; }
+  .clear-body { gap: 9px; }
+  .clear-score { padding-top: 6px; }
+  .clear-card .star-slot { width: 58px; height: 58px; }
   .topbar { padding: 0; }
   .chip { padding-block: 3px; }
 }

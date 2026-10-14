@@ -466,7 +466,7 @@ test('course results: the North Harbor boundary previews the sluice works, the f
   assert.equal(boundary.el('clearRegion').hidden, false);
   assert.match(boundary.el('clearRegion').innerHTML, /다음 지역[^]*수문 시설/);
   assert.equal(boundary.el('nextBtn').textContent, '수문 시설로');
-  assert.match(boundary.el('clearChecks').innerHTML, /시험 코스[^]*4 \/ 12 수로 완료/);
+  assert.match(boundary.el('clearModeRecord').textContent, /시험 코스 4 \/ 12/);
   const saved = boundary.save();
   assert.equal(saved.pilot.best.p04, 3); assert.deepEqual(saved.best, { 0: 2 }, 'story stars untouched');
   assert.equal(saved.sessions.pilot, undefined); assert.deepEqual(saved.sessions.story, { id: 0 }, 'story session untouched');

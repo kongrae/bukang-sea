@@ -86,8 +86,11 @@ test('stars commit before animation and receive sound in sequence; unmet stars n
     const game=scene();game.finish(2,count);
     assert.equal(game.save().best[2],count);assert.equal(game.element('clearOverlay').hidden,true);
     game.advance(650);assert.equal(game.element('clearOverlay').hidden,false);assert.deepEqual(game.sounds(),[]);
-    game.advance(239);assert.deepEqual(game.sounds(),[]);game.advance(1);assert.deepEqual(game.sounds(),[[0,890]]);
+    game.advance(419);assert.deepEqual(game.sounds(),[]);game.advance(1);assert.deepEqual(game.sounds(),[[0,1070]]);
     game.advance(1000);assert.deepEqual(game.sounds().map(x=>x[0]),[0,1,2].slice(0,count));
+    assert.deepEqual(game.sounds().map(x=>x[1]),[1070,1220,1370].slice(0,count),'150 ms steps at the 120 ms contact frame');
+    assert.equal((game.element('clearStars').innerHTML.match(/star-empty/g)||[]).length,3,'empty slots remain behind the stamps');
+    assert.equal((game.element('clearStars').innerHTML.match(/class="star on"/g)||[]).length,count);
     assert.equal(game.element('nextBtn').disabled,undefined,'presentation never disables navigation');
   }
 });
@@ -146,7 +149,7 @@ test('reduced motion retains all rewards and buttons with a single completion cu
 test('a new skin sounds after the star sequence and early departure cancels it',()=>{
   const best=Object.fromEntries(Array.from({length:11},(_,i)=>[i,i<3?3:1]));
   for(const leave of [false,true]){
-    const game=scene({stored:{best,owned:['basic'],skin:'basic'}});game.finish(11);game.advance(650+950);
+    const game=scene({stored:{best,owned:['basic'],skin:'basic'}});game.finish(11);game.advance(650+1170);
     assert.equal(game.sounds().filter(s=>s[0]==='unlock').length,0);
     if(leave)game.cancel();game.advance(20);
     assert.equal(game.sounds().filter(s=>s[0]==='unlock').length,leave?0:1);

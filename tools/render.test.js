@@ -471,15 +471,15 @@ test('each caught mullet starts one HUD flight from its own tile; undo does not 
 });
 
 // flyFish/catchGoal with a stand-in DOM: positions, heading, the landing bounce, its continuation and cleanup.
-function flightScene(reduced = false) {
+function flightScene(reduced = false, projection = 1) {
   const pick = name => source.match(new RegExp(`function ${name}\\([^]*?\\n}`))[0];
   const effects = source.slice(source.indexOf('// effects live in tile units;'), source.indexOf('function loadLevel('));
-  return new Function('reduceMotion', `
+  return new Function('reduceMotion', 'projection', `
     let bump = null, settle = null, pop = null, exitZoom = null, deviceSpot = null, now = 1000;
     const particles = [], wake = [], netPop = new Map(), jetFlash = new Map(), contactPulse = new Map(), netRetract = new Map(), crateWobble = new Map();
-    const T = 40, OX = 10, OY = 20, appended = [], bounces = [], performance = {now: () => now}, window = {devicePixelRatio: 2}, drawFish = () => {};
+    const T = 40, OX = 10, OY = 20, CH = 400, boardProjection = () => projection, appended = [], bounces = [], performance = {now: () => now}, window = {devicePixelRatio: 2}, drawFish = () => {};
     const goal = {getBoundingClientRect: () => ({left: 30, top: 5, width: 22, height: 22}), animate: (frames, options) => bounces.push(options)};
-    const $ = id => id === 'stats' ? {querySelector: s => s === '.goal svg' ? goal : null} : {classList: {remove() {}}};
+    const $ = id => id === 'stats' ? {querySelector: s => s === '.mullet-icon' ? goal : null} : {classList: {remove() {}}};
     const cvs = {getBoundingClientRect: () => ({left: 0, top: 100}), animate() {}};
     const document = {body: {append: el => appended.push(el)}, createElement: () => {
       const el = {style: {}, removed: false, getContext: () => ({scale() {}}), remove() { el.removed = true; },
@@ -491,7 +491,7 @@ function flightScene(reduced = false) {
     ${pick('flyFish')}
     ${pick('catchGoal')}
     return {flyFish, catchGoal, clearPlayEffects, appended, bounces, flying: () => flyingFish.size, advance: ms => { now += ms; }};
-  `)(reduced);
+  `)(reduced, projection);
 }
 const pose = transform => {
   const [x, y, turn, sx] = transform.match(/translate\(([-\d.]+)px,([-\d.]+)px\) rotate\(([-\d.]+)deg\) scale\(([-\d.]+),/).slice(1).map(Number);
@@ -528,6 +528,11 @@ test('clearing play effects drops flights in progress without a late bounce; red
   assert.equal(scene.bounces.length, 0);
   const reduced = flightScene(true); reduced.flyFish(2, 2);
   assert.equal(reduced.appended.length, 0);
+});
+
+test('an oblique mullet pickup starts at its projected cell, not the unprojected water position', () => {
+  const scene=flightScene(false,.88);scene.flyFish(3,4);
+  assert.equal(parseFloat(scene.appended[0].style.top),100+400*(1-.88)/2+(20+4.5*40)*.88-16);
 });
 
 test('the new-device spotlight starts once the board is uncovered and ends on the first real move or after 1.8s', () => {

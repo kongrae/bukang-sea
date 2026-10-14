@@ -224,7 +224,8 @@ test('one clear retains attendance; three clears complete the operation; replay 
   for(const stage of [1,2]) {game.open();await game.start(stage);game.clear(3);}
   assert.equal(game.progress().count,3); assert.equal(game.progress().total,7);
   assert.equal(game.element('clearTitle').textContent,'오늘의 구조작전 완료!');
-  assert.equal(game.element('operationStamp').hidden,false);
+  assert.equal(game.element('operationStamp').hidden,true,'the new journal stamp already announces completion');
+  assert.equal(game.element('clearJournalStamp').hidden,false);
   game.open(); await game.start(1); game.clear(1);
   assert.deepEqual(game.progress().stars,[1,3,3]);
   assert.deepEqual(game.save().best,{0:3}); assert.deepEqual(game.save().owned,['basic','lighthouse']);
@@ -311,9 +312,9 @@ test('journal totals and earned rewards survive pruning, nonconsecutive days, re
 
 test('first clear badges and cumulative cosmetics require unique dates and correct completed-operation thresholds', async () => {
   const game=operation();game.open();await game.start(0);game.clear(1);
-  assert.match(game.element('clearChecks').innerHTML,/첫 물길/);
+  assert.match(game.element('clearBadgeReward').textContent,/첫 물길/);
   game.open();await game.start(0);game.clear(3);
-  assert.doesNotMatch(game.element('clearChecks').innerHTML,/새 기념 배지/);
+  assert.equal(game.element('clearBadgeReward').hidden,true);
   assert.deepEqual(game.totals(),{visits:1,operations:0});
   for(const day of ['2026-09-20','2026-09-22'])game.record({date:day,stage:0,version:1},1);
   assert.deepEqual(game.grant().map(s=>s.id),['coral']);
