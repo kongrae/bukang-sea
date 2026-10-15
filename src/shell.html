@@ -694,7 +694,10 @@ button:disabled:active { transform: none; }
         <span class="lobby-stars" id="starTotal" aria-label="모은 별">★ 0</span>
         <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
       </div>
-      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero-scene" aria-hidden="true">
+        <div class="hero-scenery"><img id="heroScenery" alt="" decoding="async" draggable="false"></div>
+        <canvas id="heroCanvas"></canvas>
+      </div>
       <div class="cta-bar home-start">
         <button class="btn primary big" id="playBtn" type="button" aria-describedby="journeyLabel">구출 시작!</button>
         <p class="journey-label" id="journeyLabel"></p>

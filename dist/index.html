@@ -701,7 +701,10 @@ button:disabled:active { transform: none; }
         <span class="lobby-stars" id="starTotal" aria-label="모은 별">★ 0</span>
         <button class="icon-btn" id="titleSettingsBtn" type="button" aria-label="설정"><span class="menu-art" data-menu-art="settings" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z"/><path d="M19.4 13.5l1.6 1.2-2 3.4-1.9-.7a7.6 7.6 0 01-1.8 1l-.3 2h-4l-.3-2a7.6 7.6 0 01-1.8-1l-1.9.7-2-3.4 1.6-1.2a7.7 7.7 0 010-3L3 9.3l2-3.4 1.9.7a7.6 7.6 0 011.8-1l.3-2h4l.3 2a7.6 7.6 0 011.8 1l1.9-.7 2 3.4-1.6 1.2a7.7 7.7 0 010 3z"/></svg></span></button>
       </div>
-      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero-scene" aria-hidden="true">
+        <div class="hero-scenery"><img id="heroScenery" alt="" decoding="async" draggable="false"></div>
+        <canvas id="heroCanvas"></canvas>
+      </div>
       <div class="cta-bar home-start">
         <button class="btn primary big" id="playBtn" type="button" aria-describedby="journeyLabel">구출 시작!</button>
         <p class="journey-label" id="journeyLabel"></p>
@@ -1038,6 +1041,10 @@ body { background: #e8f8f5; }
 .hero h1 { font-size: 1.625rem; color: #226b7b; white-space: normal; -webkit-text-stroke: 0; text-shadow: none; letter-spacing: -.025em; }
 .hero h1 .sea { color: inherit; }
 .hero-subtitle { margin: 7px 0 0; padding: 0; background: none; font-size: .875rem; font-weight: 500; color: #52757b; }
+.hero-scene { position: relative; display: grid; place-items: center; flex: 1 0 auto; min-height: clamp(160px, 27dvh, 228px); isolation: isolate; }
+.hero-scenery { position: absolute; inset: -12px -18px; z-index: -1; pointer-events: none; overflow: hidden; background: radial-gradient(ellipse at 50% 68%, #70d9dc99, #bcebe53d 58%, transparent 76%); mask-image: radial-gradient(ellipse at 50% 50%, #000 36%, #000b 57%, transparent 74%); }
+.hero-scenery img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 54%; opacity: 0; filter: saturate(.82); transition: opacity .24s ease-out; }
+.hero-scenery img.art-ready { opacity: .76; }
 .hero canvas { display: block; flex-shrink: 0; width: 100%; height: clamp(160px, 27dvh, 228px); margin: auto 0; border: 0; box-shadow: none; border-radius: 0; background: transparent; }
 .home-start { position: relative; padding: 0; gap: 10px; margin-top: 0; }
 .home-start .journey-label { margin: 0; font-size: .8125rem; }
@@ -1209,6 +1216,7 @@ body { background: #e8f8f5; }
 @media (max-height:700px) {
   .title-screen { gap: 12px; }
   .hero { gap: 10px; }
+  .hero-scene { min-height: 148px; }
   .hero canvas { height: 148px; }
   .home-mode { min-height: 80px; padding-block: 10px; }
   .home-collection .myshark, .home-journal, .home-map { min-height: 84px; padding-block: 8px; }
@@ -1220,9 +1228,10 @@ body { background: #e8f8f5; }
   .topbar { padding: 0; }
   .chip { padding-block: 3px; }
 }
-@media (max-height:580px) { .hero canvas { height: 120px; } .title-screen { gap: 10px; } }
+@media (max-height:580px) { .hero-scene { min-height: 120px; } .hero canvas { height: 120px; } .title-screen { gap: 10px; } }
 @media (max-width:350px) {
   .title-screen { padding-inline: 14px; }
+  .hero-scenery { inset-inline: -14px; }
   .home-modes, .home-navigation { gap: 8px; }
   .home-mode { grid-template-columns: 22px minmax(0, 1fr) 6px; gap: 3px 4px; padding-inline: 7px; }
   .mode-top .menu-art { width: 22px; height: 26px; }
@@ -1275,14 +1284,14 @@ body { background: #e8f8f5; }
 .launch-caption span { font-size: .8125rem; color: #55777f; }
 #launchRetry { position: absolute; top: calc(50% + 205px); min-height: 48px; }
 .launch-leaving { pointer-events: none; animation: launch-out .24s ease-out both; }
-.home-reveal .lobby-hud, .home-reveal #heroCanvas { animation: home-arrive .32s var(--ease-out) both; }
+.home-reveal .lobby-hud, .home-reveal .hero-scene { animation: home-arrive .32s var(--ease-out) both; }
 .home-reveal .home-start { animation: home-arrive .36s var(--ease-out) .025s both; }
 .home-reveal .home-modes, .home-reveal .home-navigation, .home-reveal .home-help { animation: home-arrive .36s var(--ease-out) .05s both; }
 @keyframes launch-water { 50% { transform: scale(1.05); opacity: .5; } }
 @keyframes launch-out { to { opacity: 0; } }
 @keyframes home-arrive { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion:reduce) {
-  .launch-ripple, .launch-leaving, .home-reveal :is(.lobby-hud,#heroCanvas,.home-start,.home-modes,.home-navigation,.home-help) { animation: none; }
+  .launch-ripple, .launch-leaving, .home-reveal :is(.lobby-hud,.hero-scene,.home-start,.home-modes,.home-navigation,.home-help) { animation: none; }
 }
 @media (min-width:640px) and (min-height:640px) { .card { border: 0; } }
 
@@ -18484,6 +18493,15 @@ const hero = $('heroCanvas'), hctx = hero.getContext('2d');
 let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true, heroFill = null;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
+function updateHeroScene(region) {
+  const img = $('heroScenery');
+  if (img.dataset.region === region) return;
+  img.dataset.region = region; img.hidden = false;
+  img.classList.remove('art-ready');
+  img.onload = () => img.classList.add('art-ready');
+  // Reuse the embedded chapter picture. Optional scenery never holds up startup or gameplay.
+  setRegionArt(img, region);
+}
 function resetHero() {
   heroW = 0; heroTime = 0; heroWake = 0; heroRipples.length = 0; heroVisible = true;
 }
@@ -18652,6 +18670,7 @@ function openHelp() { renderLegend(); openSheet('helpOverlay'); $('helpTitle').f
 function closeHelp() { closeSheet('helpOverlay', 'helpBtn'); }
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? storyResumeId() : nextLevel();
+  updateHeroScene(CHAPTERS[chapterOf(target).ci].region);
   if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
   const grid = $('levelGrid'), total = totalStars();
   const button = (L, i, k) => {

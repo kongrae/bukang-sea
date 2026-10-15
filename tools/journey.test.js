@@ -39,7 +39,7 @@ function scene(stored = {}, reduced = false) {
     ${source.match(/^const unlocked = .*$/m)[0]}
     const totalStars=()=>Object.values(save.best).reduce((sum,n)=>sum+n,0);
     const earnedJournalRewards=()=>[],refreshSkins=()=>[],nextSkinGoal=()=>null,showClearMascot=()=>{},sfx={win:noop,star:noop,cancelReward:noop,token:()=>0,unlockReward:noop},haptic=noop,setTimeout=cb=>cb();
-    const storySession=()=>null,curLevel=()=>LEVELS[LVL],setRegionArt=noop,showRegionPreview=(el,region)=>{el.region=region;};
+    const storySession=()=>null,curLevel=()=>LEVELS[LVL],setRegionArt=noop,updateHeroScene=noop,showRegionPreview=(el,region)=>{el.region=region;};
     const dailyProgress=()=>({count:1,stars:[0,0,0]}),dailyStreak=()=>1,journalTotals=()=>({visits:1,operations:0}),recordDailyStage=noop,dailySessionKey=()=> 'daily';
     const dailyDate=()=> '2026-10-01',openDaily=()=>{dailyOpened++;$('app').inert=true;},continueDaily=()=>dailyContinued++;
     const loadLevel=i=>{loaded=i;},show=which=>{if(which==='title'){cleared=false;$('clearOverlay').hidden=true;renderLevelGrid(true);}};

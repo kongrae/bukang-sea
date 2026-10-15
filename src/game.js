@@ -3027,6 +3027,15 @@ const hero = $('heroCanvas'), hctx = hero.getContext('2d');
 let heroW = 0, heroH = 0, heroTime = 0, heroWake = 0, heroVisible = true, heroFill = null;
 const heroRipples = [];
 const heroPaused = () => $('app').inert || settingsOpen() || skinsOpen();
+function updateHeroScene(region) {
+  const img = $('heroScenery');
+  if (img.dataset.region === region) return;
+  img.dataset.region = region; img.hidden = false;
+  img.classList.remove('art-ready');
+  img.onload = () => img.classList.add('art-ready');
+  // Reuse the embedded chapter picture. Optional scenery never holds up startup or gameplay.
+  setRegionArt(img, region);
+}
 function resetHero() {
   heroW = 0; heroTime = 0; heroWake = 0; heroRipples.length = 0; heroVisible = true;
 }
@@ -3195,6 +3204,7 @@ function openHelp() { renderLegend(); openSheet('helpOverlay'); $('helpTitle').f
 function closeHelp() { closeSheet('helpOverlay', 'helpBtn'); }
 function renderLevelGrid(followProgress = false) {
   const resume = storySession(), target = resume ? storyResumeId() : nextLevel();
+  updateHeroScene(CHAPTERS[chapterOf(target).ci].region);
   if (followProgress || selectedChapter === null) selectedChapter = chapterOf(target).ci;
   const grid = $('levelGrid'), total = totalStars();
   const button = (L, i, k) => {
