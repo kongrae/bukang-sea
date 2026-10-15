@@ -111,13 +111,31 @@ test('150 ms star stamps keep short recorded tails and finish before a new-skin 
   const f=fixture(recordings());f.audio.unlock();await f.audio.loaded();const token=f.sfx.token();
   for(let i=0;i<3;i++){
     const before=f.sources.length;f.sfx.star(i,token);
-    const layers=f.sources.slice(before);assert.equal(layers.length,2);
+    const layers=f.sources.slice(before);assert.equal(layers.length,3);
+    const [impact,body,chime]=layers;
+    assert.equal(impact.buffer.key,'softImpact2');
+    assert.equal(impact.startTime,f.context.currentTime,'impact starts at the visual contact callback');
+    assert.equal(body.startTime,impact.startTime);
+    assert.ok(impact.stopTime-impact.startTime<.1,'dry impact ends before the next star');
+    assert.ok(chime.startTime-impact.startTime<.01,'chime follows contact without a separate timer');
     assert.ok(layers.every(n=>n.stopTime-n.startTime<=.46),'each chime has a bounded release');
     f.advance(.15);assert.ok(f.audio.inspect().voices<=3);
   }
   f.advance(.31);assert.equal(f.audio.inspect().sources,0,'all stars finish before the 1180 ms unlock cue');
   f.sfx.unlockReward(token);assert.ok(f.audio.inspect().sources>0);
   f.sfx.cancelReward();f.advance(.03);assert.equal(f.audio.inspect().sources,0);
+});
+
+test('star layers cancel together, and a missing impact recording keeps a complete synthesized cue', async () => {
+  for(const missing of [[],['softImpact2']]){
+    const f=fixture(recordings(missing));f.audio.unlock();await f.audio.loaded();const token=f.sfx.token();
+    f.sfx.star(2,token);assert.equal(f.sources.length,3);assert.equal(f.audio.inspect().voices,1);
+    if(missing.length)assert.ok(f.sources.every(n=>n.kind==='tone'),'fallback contains impact, body and chime');
+    f.advance(.004);f.sfx.cancelReward();f.advance(.03);
+    assert.equal(f.audio.inspect().sources,0,'also cancels the chime scheduled after contact');
+    assert.ok(f.sources.every(n=>n.disconnected));
+    f.advance(.2);f.sfx.star(0,token);assert.equal(f.sources.length,3,'stale reward cannot restart');
+  }
 });
 test('mute and backgrounding stop recorded layers and their scheduled reward notes', async () => {
   const f = fixture(recordings()); f.audio.unlock(); await f.audio.loaded();
