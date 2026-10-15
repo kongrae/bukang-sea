@@ -1,0 +1,141 @@
+{
+  "baseline": "874435d",
+  "checks": [
+    {
+      "side": "before",
+      "width": 390,
+      "height": 844,
+      "content": 826,
+      "available": 826,
+      "scrollWidth": 374,
+      "clientWidth": 374,
+      "play": {
+        "top": 418.21875,
+        "bottom": 478.21875,
+        "height": 60,
+        "width": 330
+      }
+    },
+    {
+      "side": "after",
+      "width": 390,
+      "height": 844,
+      "content": 826,
+      "available": 826,
+      "scrollWidth": 374,
+      "clientWidth": 374,
+      "play": {
+        "top": 302.546875,
+        "bottom": 368.546875,
+        "height": 66,
+        "width": 338
+      }
+    },
+    {
+      "normalLayout": {
+        "width": 320,
+        "height": 568,
+        "content": 550,
+        "available": 550,
+        "scrollWidth": 304,
+        "clientWidth": 304,
+        "play": {
+          "top": 206,
+          "bottom": 272,
+          "height": 66,
+          "width": 276
+        }
+      }
+    },
+    {
+      "normalLayout": {
+        "width": 360,
+        "height": 640,
+        "content": 622,
+        "available": 622,
+        "scrollWidth": 344,
+        "clientWidth": 344,
+        "play": {
+          "top": 234,
+          "bottom": 300,
+          "height": 66,
+          "width": 308
+        }
+      }
+    },
+    {
+      "normalLayout": {
+        "width": 390,
+        "height": 844,
+        "content": 826,
+        "available": 826,
+        "scrollWidth": 374,
+        "clientWidth": 374,
+        "play": {
+          "top": 302.546875,
+          "bottom": 368.546875,
+          "height": 66,
+          "width": 338
+        }
+      }
+    },
+    {
+      "normalLayout": {
+        "width": 412,
+        "height": 915,
+        "content": 897,
+        "available": 897,
+        "scrollWidth": 396,
+        "clientWidth": 396,
+        "play": {
+          "top": 304,
+          "bottom": 370,
+          "height": 66,
+          "width": 360
+        }
+      }
+    },
+    {
+      "normalLayout": {
+        "width": 844,
+        "height": 390,
+        "content": 502,
+        "available": 372,
+        "scrollWidth": 560,
+        "clientWidth": 560,
+        "play": {
+          "top": 206,
+          "bottom": 272,
+          "height": 66,
+          "width": 524
+        }
+      }
+    },
+    "All seven existing menu entries open their own sheet and Escape restores input",
+    "Map scroll is restored and the settings handle closes via actual browser pointer drag",
+    "Rapid start, one real move, main return, reload/resume, back during entrance and simulated background preserve progress without replaying launch",
+    {
+      "text200": {
+        "width": 320,
+        "height": 568,
+        "content": 847,
+        "available": 550,
+        "scrollWidth": 304,
+        "clientWidth": 304,
+        "play": {
+          "top": 264.15625,
+          "bottom": 442.15625,
+          "height": 178,
+          "width": 276
+        }
+      }
+    },
+    "320px enlarged text scrolls to every action; reduced motion still enters the saved game",
+    "Fresh main to first canal, actual keyboard solution, three stars saved, next canal entered",
+    "Completed-story save fixture preserves collect-more-stars and ending replay actions",
+    "Failed WebP and font assets keep the fallback shark and working start action"
+  ],
+  "errors": [],
+  "physicalAndroid": false,
+  "success": true
+}

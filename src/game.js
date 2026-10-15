@@ -2030,7 +2030,7 @@ function renderDaily() {
   }
   $('dailyDate').textContent = `${+date.slice(5, 7)}/${+date.slice(8)} ${WEEKDAY_KO[new Date(date + 'T12:00:00').getDay()]}`;
   $('dailyMeta').textContent = streak ? `${streak}일째 도전 중!` : '매일 새로운 수로 3개';
-  $('dailyState').innerHTML = `<b>${progress.count} / 3</b><span>${progress.count === 3 ? '완료' : savedDailyStage(date) >= 0 || progress.count ? '이어서' : '도전'}</span>`;
+  $('dailyState').innerHTML = `<b>${progress.count} / 3</b><span>${progress.count === 3 ? '완료' : savedDailyStage(date) >= 0 || progress.count ? '이어서' : ''}</span>`;
   $('dailyBtn').classList.toggle('done', progress.count === 3);
   $('dailyBtn').setAttribute('aria-label', `오늘의 도전, 오늘의 구조작전, ${dateLabel(date)}, ${progress.count} / 3 수로 완료`);
   const totals = journalTotals();
@@ -2291,7 +2291,7 @@ function recordFreeClear(run, stars) {
 }
 function renderFreeCard() {
   const count = save.free.completed.reduce((a, b) => a + b, 0);
-  $('freeSummary').textContent = count ? `${count}개 구출!` : '계속 도전!';
+  $('freeSummary').textContent = count ? `${count}개 구출` : '난이도 선택';
 }
 function renderFree() {
   $('freeTiers').innerHTML = FREE_TIERS.map((_, difficulty) => {
@@ -3095,8 +3095,6 @@ function drawHero(t) {
   if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, themed ? 'portrait' : 'hero', W * .5, H * .49 + bob, Math.min(W * .82, H * .98) * (themed ? .86 : 1), themed ? skin : undefined)) {
     drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * .04);
   }
-  drawBuoy(hctx, W * .13, H * .65, Math.min(58, H * .3), t);
-  drawFish(hctx, W * .86, H * .43, T * .5, t, .1);
   hctx.restore();
 }
 
