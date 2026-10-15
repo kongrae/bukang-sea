@@ -1,6 +1,6 @@
 {
-  "duration": 7.057699999999255,
-  "frames": 175,
+  "duration": 7.057200000002981,
+  "frames": 174,
   "audioIncluded": true,
   "audioSource": "live production post-compressor Web Audio, same MediaRecorder as browser viewport",
   "sampleAssets": 20,
@@ -11,7 +11,7 @@
         0,
         9
       ],
-      "time": 6540.300000000745
+      "time": 6447.79999999702
     },
     {
       "name": "star",
@@ -19,7 +19,7 @@
         1,
         9
       ],
-      "time": 6688.699999999255
+      "time": 6604
     },
     {
       "name": "star",
@@ -27,7 +27,7 @@
         2,
         9
       ],
-      "time": 6836.900000002235
+      "time": 6758.699999999255
     }
   ],
   "physicalDevice": false,

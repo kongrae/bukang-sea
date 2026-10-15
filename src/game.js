@@ -1903,9 +1903,7 @@ function onClear() {
   const milestone = chapterEnd && journey.chapters[chap.ci].complete && (!last || rescueComplete);
   // Region previews now follow the main chapter sequence as well as legacy developer fixtures.
   const regionEnd = PILOT && (PILOT.level.boundary || PILOT.level.finale) ? PILOT.level : null;
-  $('clearStory').hidden = !milestone && !regionEnd;
-  $('clearStory').textContent = milestone ? JOURNEY_STORY[chap.ci].outro : regionEnd ? (regionEnd.finale ? '수문을 모두 지나 바깥 바다로 나갔어요! 시험 코스를 끝까지 구출했어요.'
-    : '북항을 지나왔어요! 다음은 스위치로 수문을 여닫는 수문 시설이에요.') : '';
+  // Keep the chapter narrative in its existing map/intro; the result only names the next region.
   // Every chapter end previews the next chapter's region by name; its opening card (openChapterCard) tells the rest.
   const nextChapter = story && chapterEnd && !last ? CHAPTERS[chap.ci + 1] : null;
   const nextRegion = nextChapter ? nextChapter.region : regionEnd?.boundary ? PILOT_LEVELS[PILOT.index + 1].region : null;
@@ -1925,9 +1923,9 @@ function onClear() {
   $('clearTitle').textContent = FREE ? '자유 수로 구출 성공!' : DAILY ? (operation ? (progress.count === 3 ? '오늘의 구조작전 완료!' : `${DAILY.stage + 1}번째 수로 통과!`) : '이전 수로 완료!')
     : PILOT ? (PILOT.level.finale ? '시험 코스 완료!' : PILOT.level.boundary ? '북항 통과!' : titles[stars - 1])
     : rescueComplete ? '드디어 넓은 바다로!' : milestone ? `${chap.name} 통과!` : titles[stars - 1];
-  const row = (label, val, detail, ok) => `<li><span>${label}</span><strong>${val}</strong><small class="${ok ? 'ok' : ''}">${detail}</small></li>`;
-  $('clearChecks').innerHTML = row('숭어 수집', `${st.fish.length} / ${g.fish.length}`, g.fish.length ? allFish ? '모두 수집 ✓' : '마리 수집' : '숭어 없는 수로', allFish)
-    + row('이동 기록', `${st.moves}회`, `기준 ${L.par}회${inPar ? ' ✓' : ''}`, inPar);
+  const row = (label, val, detail) => `<li><span>${label}</span><strong>${val}</strong><small class="home-sr-only">${detail}</small></li>`;
+  $('clearChecks').innerHTML = row('숭어', `${st.fish.length} / ${g.fish.length}`, g.fish.length ? allFish ? '모두 수집' : '마리 수집' : '숭어 없는 수로')
+    + row('이동', `${st.moves}회`, `기준 ${L.par}회${inPar ? ' 이내' : ' 초과'}`);
   $('clearModeRecord').textContent = operation ? `오늘 ${progress.count} / 3 수로 · 연속 ${dailyStreak()}일` : FREE ? `${FREE_TIERS[FREE.difficulty].label} · 누적 ${save.free.completed[FREE.difficulty]}개 완료` : PILOT ? `시험 코스 ${pilotProgress().count} / ${PILOT_LEVELS.length}` : '';
   $('clearModeRecord').hidden = !$('clearModeRecord').textContent;
   $('clearBadgeReward').textContent = freshBadges.length ? `새 기념 배지 · ${freshBadges.map(r => r.name).join(', ')}` : '';

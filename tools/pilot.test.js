@@ -475,7 +475,6 @@ test('course results: the North Harbor boundary previews the sluice works, the f
   finale.clear(11);
   assert.equal(finale.el('clearTitle').textContent, '시험 코스 완료!');
   assert.equal(finale.el('clearRegion').hidden, true);
-  assert.match(finale.el('clearStory').textContent, /시험 코스를 끝까지/);
   assert.equal(finale.el('nextBtn').textContent, '코스 목록');
   finale.next();
   assert.equal(finale.el('pilotOverlay').hidden, false, 'the course sheet opens after the last canal');

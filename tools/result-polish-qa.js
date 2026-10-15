@@ -18,9 +18,9 @@ window.resultQA={
  pause(v){appActive=!v;if(v)suspendPresentation();else resumePresentation();},
  state(){return {anim:!!anim,cleared,fish:st?.fish.length,total:g?.fish.length,moves:st?.moves,level:LVL,free:FREE&&{serial:FREE.serial},daily:DAILY&&{stage:DAILY.stage},reduced:reduceMotion,timers:clearTimers.size,events:qaEvents.slice(),audio:sound.inspect(),save:JSON.parse(JSON.stringify(save))};}
 };`;
-function build(side){
+function build(side,baseline=ref){
  const files=['game.js','shell.html','art-theme.css','sound.js'];
- const overrides=Object.fromEntries(files.map(file=>[file,side==='before'?cp.execFileSync('git',['show',ref+':src/'+file],{encoding:'utf8'}):fs.readFileSync('src/'+file,'utf8')]));
+ const overrides=Object.fromEntries(files.map(file=>[file,side==='before'?cp.execFileSync('git',['show',baseline+':src/'+file],{encoding:'utf8'}):fs.readFileSync('src/'+file,'utf8')]));
  overrides['game.js']=overrides['game.js'].replace("const STORE_KEY = 'bukang-sea-v1';","const STORE_KEY = 'bukang-result-polish-qa';").replace('const boot = () =>',probe+'\nconst boot = () =>');
  const fonts=[400,500,700].map(w=>`@font-face{font-family:'Bukang Body';font-weight:${w};src:url('/assets/fonts/noto-sans-kr-${w}.woff2')}`).join('')+"@font-face{font-family:'Bukang Display';src:url('/assets/fonts/jua-400.woff2')}";
  fs.writeFileSync(path.join(out,side+'.html'),`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>${fonts}</style>${gameBody(overrides).replace(/<link[^>]*fonts\.[^>]*>/g,'')}</html>`);
@@ -61,11 +61,12 @@ async function main(){
   assert.equal(await p.locator('.fish-fly').count(),0);assert.equal(await p.locator('#stats .goal').getAttribute('aria-label'),'숭어 수집 2 / 2, 수집 완료');
   await snap('real-stage-7');report.checks.push({realStage:7,counts});
   for(const action of ['nextBtn','againBtn','clearHomeBtn','Escape','background','reduce']){
-   await enter(2);await finish(3);await ready();const saved=(await state()).save.best[2],events=(await state()).events.length;
-   if(action==='background'){await p.evaluate(()=>resultQA.pause(true));await p.waitForTimeout(400);await p.evaluate(()=>resultQA.pause(false));}
-   else if(action==='reduce'){await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>resultQA.state().reduced);}
-   else if(action==='Escape')await p.keyboard.press('Escape');
-   else await p.locator('#'+action).evaluate(el=>{el.click();el.click();el.click();});
+   await enter(2);await finish(3);await ready();const saved=(await state()).save.best[2];let events;
+   // Observe the event boundary at the action, not a separate RPC that can race the first 420ms cue.
+   if(action==='background'){events=await p.evaluate(()=>{resultQA.pause(true);return resultQA.state().events.length;});await p.waitForTimeout(400);await p.evaluate(()=>resultQA.pause(false));}
+   else if(action==='reduce'){await p.emulateMedia({reducedMotion:'reduce'});await p.waitForFunction(()=>resultQA.state().reduced);events=(await state()).events.length;}
+   else if(action==='Escape'){await p.keyboard.press('Escape');events=(await state()).events.length;}
+   else events=await p.locator('#'+action).evaluate(el=>{const n=resultQA.state().events.length;el.click();el.click();el.click();return n;});
    await p.waitForTimeout(1500);const s=await state();assert.equal(s.events.slice(events).filter(e=>['star','win','unlockReward'].includes(e.name)).length,0,action);
    assert.equal(s.timers,0);assert.equal(s.save.best[2],saved);if(action==='nextBtn')assert.equal(s.level,6,'rapid next taps advance only once in STORY_ORDER');
    await p.emulateMedia({reducedMotion:'no-preference'});await p.waitForFunction(()=>!resultQA.state().reduced);

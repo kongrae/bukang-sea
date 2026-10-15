@@ -118,7 +118,7 @@ test('real solutions clear the free mode, count each run once, retain best stars
   assert.deepEqual(game.save().free.completed,[0,0,1]);assert.equal(game.save().free.runs[2].stars,3);
   assert.equal(game.save().sessions.free2,undefined);assert.deepEqual(game.save().best,{});assert.deepEqual(game.save().daily,{});
   assert.deepEqual(game.save().journal.days,{});assert.equal(game.element('clearTitle').textContent,'자유 수로 구출 성공!');
-  assert.equal(game.element('nextBtn').textContent,'새 수로');assert.equal(game.element('clearStory').hidden,true);
+  assert.equal(game.element('nextBtn').textContent,'새 수로');
   game.replay();game.finish(1);assert.equal(game.save().free.completed[2],1);assert.equal(game.save().free.runs[2].stars,3);
   const restored=scene(game.saved(),Array(12).fill(97));restored.open();await restored.start(2,false,true);restored.finish(2);
   assert.equal(restored.save().free.completed[2],1);

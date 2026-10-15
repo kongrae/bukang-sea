@@ -75,8 +75,7 @@ test('journey uses valid story escapes, keeps chapter boundaries and ignores dai
 test('one-star chapter completion shows the milestone and continues to the next canal in play order', () => {
   const game=scene({best:bestThrough(11),owned:['basic','gold'],skin:'gold',sessions:{story:{id:ORDER[11]},daily:{keep:true}}});
   game.clear(ORDER[11]);
-  assert.equal(game.element('clearTitle').textContent,'북항 수로 통과!');assert.equal(game.element('clearStory').hidden,false);
-  assert.match(game.element('clearStory').textContent,/공원 안쪽 운하/);
+  assert.equal(game.element('clearTitle').textContent,'북항 수로 통과!');
   assert.equal(game.element('clearRegion').hidden,false);assert.equal(game.element('clearRegion').region,'waterside-park','every chapter end previews the next region');
   assert.equal(game.element('clearChapterStamp').hidden,false);assert.equal(game.element('clearChapterStamp').textContent,'1장 완료 · ★ 12 / 36');
   assert.equal(game.element('nextBtn').textContent,'다음 장으로');game.next();assert.equal(game.stats().loaded,ORDER[12]);
@@ -107,7 +106,7 @@ test('complete saves offer ending replay without extra flags or maximum stars; r
 test('missing earlier escape cannot unlock ending through last-level clear or daily completion', () => {
   const best=bestThrough(ALL);delete best[ORDER[6]];const game=scene({best});game.clear(ORDER[ALL-1]);
   assert.equal(game.progress().complete,false);assert.equal(game.element('nextBtn').textContent,'수로 목록');assert.equal(game.ending(),false);
-  const daily=scene({best:bestThrough(ALL)});daily.clear(0,3,true);assert.equal(daily.element('clearStory').hidden,true);
+  const daily=scene({best:bestThrough(ALL)});daily.clear(0,3,true);
   assert.equal(daily.element('clearChapterStamp').hidden,true);assert.equal(daily.element('clearRegion').hidden,true);
   daily.next();assert.equal(daily.stats().dailyContinued,1);assert.equal(daily.element('endingOverlay').hidden,true);
 });
@@ -127,7 +126,7 @@ test('chapter 4 leads into the north harbor preview, then chapter 5 leads to the
   const outer=scene({best:bestThrough(47),skin:'gold',owned:['basic','gold']});outer.clear(ORDER[47]);outer.next();
   assert.equal(outer.stats().loaded,ORDER[48]);assert.equal(outer.progress().complete,false);
   assert.equal(outer.element('clearRegion').region,'north-harbor');assert.equal(outer.element('nextBtn').textContent,'다음 장으로');
-  assert.match(outer.element('clearStory').textContent,/소용돌이/);assert.deepEqual(outer.save().owned,['basic','gold']);
+  assert.deepEqual(outer.save().owned,['basic','gold']);
   const harbor=scene({best:bestThrough(59)});harbor.clear(ORDER[59]);harbor.next();
   assert.equal(harbor.stats().loaded,ORDER[60]);assert.equal(harbor.element('clearRegion').region,'sluice-works');
   assert.equal(harbor.element('clearTitle').textContent,'북항 바깥길 통과!');
@@ -179,7 +178,7 @@ test('chapter 7 arrives after the sluice works: a recorded 72-canal rescue keeps
   // the sluice-works finale is now a chapter end that previews the Yeongdo quay instead of opening the ending
   const sluice=scene({best:bestThrough(71)});sluice.clear(ORDER[71]);
   assert.equal(sluice.progress().complete,false);assert.equal(sluice.element('clearTitle').textContent,'수문 시설 통과!');
-  assert.match(sluice.element('clearStory').textContent,/영도 물양장/);assert.equal(sluice.element('clearRegion').region,'yeongdo-quay');
+  assert.equal(sluice.element('clearRegion').region,'yeongdo-quay');
   assert.equal(sluice.element('nextBtn').textContent,'다음 장으로');sluice.next();assert.equal(sluice.stats().loaded,ORDER[72]);
   assert.equal(sluice.ending(),false,'a player who reaches canal 72 in this build has not seen the ending yet');
   // migrateStoryLength() flags saves that had rescued all 72 before chapter 7; chapter 7 waits behind "이어서 구출"

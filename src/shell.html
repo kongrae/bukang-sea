@@ -267,8 +267,7 @@ h1 .sea { color: var(--title-alert); }
 .journey-stop progress { display: block; width: 100%; height: 6px; margin: 8px 0 10px; accent-color: #286446; }
 .journey-stop .btn { color: var(--ink); background: #e2ecdf; border: 1px solid #38785c; min-height: 44px; padding: 8px 12px; font-size: 13px; }
 .ending-scene { width: 100%; height: clamp(150px, 25vh, 210px); border-radius: 16px; flex-shrink: 0; }
-.ending-copy, .clear-story { margin: 0; font-size: 15px; line-height: 1.7; color: #304d50; }
-.clear-story { padding: 10px 12px; background: #e2ecdf; border-radius: 12px; font-size: 14px; }
+.ending-copy { margin: 0; font-size: 15px; line-height: 1.7; color: #304d50; }
 .ending-stamp { font: 22px var(--font-display); color: #286446; border: 2px solid currentColor; border-radius: 12px; padding: 8px; }
 .chapter-stamp { font-size: 19px; }
 /* 만점 (every canal of a chapter at three stars): gold on the result stamp, chapter buttons and the journey */
@@ -919,17 +918,18 @@ button:disabled:active { transform: none; }
 <div class="overlay" id="clearOverlay" hidden>
   <div class="card clear-card" role="dialog" aria-modal="true" aria-labelledby="clearTitle" aria-describedby="clearStarCount">
     <div class="clear-body" id="clearBody">
-      <img class="clear-mascot" id="clearMascot" src="@@ART_HERO@@" alt="" width="80" height="80">
-      <h3 id="clearTitle">바다로 나갔어요!</h3>
+      <div class="clear-heading">
+        <img class="clear-mascot" id="clearMascot" src="@@ART_HERO@@" alt="" width="36" height="36">
+        <h3 id="clearTitle">바다로 나갔어요!</h3>
+      </div>
       <div class="clear-score">
         <div class="stars" id="clearStars" role="img"></div>
-        <p id="clearStarCount" class="clear-star-count"></p>
+        <p id="clearStarCount" class="clear-star-count home-sr-only"></p>
       </div>
       <ul class="checks clear-stats" id="clearChecks"></ul>
       <p id="clearStarHint" class="clear-star-hint" hidden></p>
       <p id="clearModeRecord" class="clear-mode-record" hidden></p>
       <div class="operation-stamp chapter-stamp" id="clearChapterStamp" hidden></div>
-      <p class="clear-story" id="clearStory" hidden></p>
       <div class="operation-stamp" id="operationStamp" hidden>세 수로 구출 성공!</div>
       <p class="clear-journal-stamp" id="clearJournalStamp" hidden></p>
       <p class="clear-badge-reward" id="clearBadgeReward" hidden></p>

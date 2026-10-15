@@ -1,0 +1,159 @@
+{
+  "baseline": "2d99c71",
+  "physicalAndroid": false,
+  "checks": [
+    {
+      "side": "before",
+      "kind": "result",
+      "height": 520.140625,
+      "bodyHeight": 373,
+      "bodyScroll": 373
+    },
+    {
+      "side": "before",
+      "kind": "reward",
+      "height": 787.171875,
+      "bodyHeight": 640,
+      "bodyScroll": 640
+    },
+    {
+      "side": "after",
+      "kind": "result",
+      "height": 360.375,
+      "bodyHeight": 208,
+      "bodyScroll": 208
+    },
+    {
+      "side": "after",
+      "kind": "reward",
+      "height": 520.46875,
+      "bodyHeight": 368,
+      "bodyScroll": 368
+    },
+    {
+      "enlargedText": true,
+      "width": 320,
+      "height": 568,
+      "scrollWidth": 292,
+      "clientWidth": 292,
+      "buttons": [
+        {
+          "id": "sakura",
+          "left": 186.3125,
+          "right": 304,
+          "height": 54.296875,
+          "top": 228.1875,
+          "bottom": 282.484375
+        },
+        {
+          "id": "nextBtn",
+          "left": 14,
+          "right": 306,
+          "height": 75.59375,
+          "top": 358.625,
+          "bottom": 434.21875
+        },
+        {
+          "id": "againBtn",
+          "left": 14,
+          "right": 155,
+          "height": 110.78125,
+          "top": 437.21875,
+          "bottom": 548
+        },
+        {
+          "id": "clearHomeBtn",
+          "left": 165,
+          "right": 306,
+          "height": 110.78125,
+          "top": 437.21875,
+          "bottom": 548
+        }
+      ]
+    },
+    {
+      "enlargedText": true,
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 354,
+      "clientWidth": 354,
+      "buttons": [
+        {
+          "id": "sakura",
+          "left": 252.3125,
+          "right": 370,
+          "height": 54.296875,
+          "top": 556.53125,
+          "bottom": 610.828125
+        },
+        {
+          "id": "nextBtn",
+          "left": 18,
+          "right": 372,
+          "height": 75.59375,
+          "top": 678.015625,
+          "bottom": 753.609375
+        },
+        {
+          "id": "againBtn",
+          "left": 18,
+          "right": 190,
+          "height": 67.390625,
+          "top": 756.609375,
+          "bottom": 824
+        },
+        {
+          "id": "clearHomeBtn",
+          "left": 200,
+          "right": 372,
+          "height": 67.390625,
+          "top": 756.609375,
+          "bottom": 824
+        }
+      ]
+    },
+    {
+      "enlargedText": true,
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 492,
+      "clientWidth": 492,
+      "buttons": [
+        {
+          "id": "sakura",
+          "left": 548.3125,
+          "right": 666,
+          "height": 54.296875,
+          "top": 106.078125,
+          "bottom": 160.375
+        },
+        {
+          "id": "nextBtn",
+          "left": 176,
+          "right": 668,
+          "height": 75.59375,
+          "top": 224.015625,
+          "bottom": 299.609375
+        },
+        {
+          "id": "againBtn",
+          "left": 176,
+          "right": 417,
+          "height": 67.390625,
+          "top": 302.609375,
+          "bottom": 370
+        },
+        {
+          "id": "clearHomeBtn",
+          "left": 427,
+          "right": 668,
+          "height": 67.390625,
+          "top": 302.609375,
+          "bottom": 370
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "success": true
+}
