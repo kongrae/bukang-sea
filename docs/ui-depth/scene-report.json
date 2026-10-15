@@ -1,0 +1,54 @@
+{
+  "checks": [
+    {
+      "skin": "basic",
+      "chapter": 1,
+      "region": "harbor-canals"
+    },
+    {
+      "skin": "sakura",
+      "chapter": 2,
+      "region": "waterside-park"
+    },
+    {
+      "skin": "wave",
+      "chapter": 3,
+      "region": "beyond-breakwater"
+    },
+    {
+      "skin": "maple",
+      "chapter": 4,
+      "region": "outer-harbor"
+    },
+    {
+      "skin": "snow",
+      "chapter": 5,
+      "region": "north-harbor"
+    },
+    {
+      "skin": "gold",
+      "chapter": 6,
+      "region": "sluice-works"
+    },
+    {
+      "skin": "lighthouse",
+      "chapter": 7,
+      "region": "yeongdo-quay"
+    },
+    {
+      "skin": "coral",
+      "chapter": 1,
+      "region": "harbor-canals"
+    },
+    {
+      "skin": "starsea",
+      "chapter": 2,
+      "region": "waterside-park"
+    },
+    "Unfinished scenery does not block main/start; late decoding leaves the start button in place",
+    "Failed scenery hides the image; gradient, shark and primary action remain available"
+  ],
+  "errors": [],
+  "physicalAndroid": false,
+  "success": true
+}
