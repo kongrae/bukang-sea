@@ -1,8 +1,9 @@
 // Real browser input against isolated storage; no gameplay or unlock hooks.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),assert=require('node:assert/strict');
 const {gameBody}=require('./build-source'),{chromium}=require(process.argv[2]||'playwright');
-const baseline='874435d',out=path.resolve('outputs/qa/home-simple'),docs=path.resolve('docs/home-simple');
-const origin='http://127.0.0.1:5182/',key=side=>'bukang-home-simple-qa-'+side;
+const baseline=process.env.HOME_QA_BASELINE||'874435d',name=process.env.HOME_QA_NAME||'home-simple';
+const out=path.resolve('outputs/qa',name),docs=path.resolve('docs',name);
+const origin='http://127.0.0.1:5182/',pageUrl=side=>origin+'outputs/qa/'+name+'/'+side+'.html',key=side=>'bukang-'+name+'-qa-'+side;
 fs.mkdirSync(out,{recursive:true});
 function build(side){
  const overrides=Object.fromEntries(['game.js','shell.html','art-theme.css'].map(file=>[file,side==='before'?cp.execFileSync('git',['show',baseline+':src/'+file],{encoding:'utf8'}):fs.readFileSync('src/'+file,'utf8')]));
@@ -11,18 +12,32 @@ function build(side){
  fs.writeFileSync(path.join(out,side+'.html'),`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>${fonts}</style>${gameBody(overrides).replace(/<link[^>]*fonts\.[^>]*>/g,'')}</html>`);
 }
 async function ready(p){await p.locator('#launchScreen').waitFor({state:'hidden'});await p.waitForTimeout(500);}
-async function layout(p){return p.evaluate(()=>{const home=document.getElementById('titleScreen'),r=document.getElementById('playBtn').getBoundingClientRect();return {width:innerWidth,height:innerHeight,content:home.scrollHeight,available:home.clientHeight,scrollWidth:home.scrollWidth,clientWidth:home.clientWidth,play:{top:r.top,bottom:r.bottom,height:r.height,width:r.width}};});}
+async function layout(p){return p.evaluate(()=>{
+ const home=document.getElementById('titleScreen'),r=document.getElementById('playBtn').getBoundingClientRect();
+ const nav=document.querySelector('.home-navigation').getBoundingClientRect(),help=document.getElementById('helpBtn').getBoundingClientRect();
+ return {width:innerWidth,height:innerHeight,content:home.scrollHeight,available:home.clientHeight,scrollWidth:home.scrollWidth,clientWidth:home.clientWidth,play:{top:r.top,bottom:r.bottom,height:r.height,width:r.width},menuToHelpGap:help.top-nav.bottom};
+});}
 async function verify(p,report){
  const stored=()=>p.evaluate(k=>JSON.parse(localStorage.getItem(k)),key('after'));
  const ids=['playBtn','dailyBtn','freeBtn','skinBtn','stagePicker','journalBtn','helpBtn','titleSettingsBtn'];
  for(const [width,height] of [[320,568],[360,640],[390,844],[412,915],[844,390]]){
   await p.setViewportSize({width,height});const r=await layout(p);
   assert.ok(r.scrollWidth<=r.clientWidth+1,JSON.stringify(r));
-  if(height>width)assert.ok(r.play.top<height*.45&&r.play.bottom<height,'start above the fold');
+  if(height>width)assert.ok(r.play.bottom<height*.75,'start above the fold');
+  if(name==='home-balance'&&height>width)assert.ok(r.menuToHelpGap<=40,'no large empty area below the navigation');
   for(const id of ids)assert.ok((await p.locator('#'+id).boundingBox()).height>=44,id+' touch target');
   report.checks.push({normalLayout:r});await p.screenshot({path:path.join(out,`home-${width}.png`)});
  }
  await p.setViewportSize({width:390,height:844});
+ if(name==='home-balance'){
+  const button=p.locator('#dailyBtn'),box=await button.boundingBox();
+  const resting=await button.evaluate(el=>getComputedStyle(el).backgroundColor);
+  await p.mouse.move(box.x+box.width/2,box.y+box.height/2);await p.mouse.down();await p.waitForTimeout(100);
+  const pressed=await button.evaluate(el=>({background:getComputedStyle(el).backgroundColor,transform:getComputedStyle(el).transform}));
+  assert.notEqual(pressed.background,resting);assert.notEqual(pressed.transform,'none');await p.screenshot({path:path.join(out,'button-pressed.png')});
+  await p.mouse.up();await p.locator('#dailyOverlay').waitFor({state:'visible'});await p.keyboard.press('Escape');await p.locator('#dailyOverlay').waitFor({state:'hidden'});
+  report.checks.push({actualPointerPress:pressed});
+ }
  const sheets=[['titleSettingsBtn','settingsOverlay'],['dailyBtn','dailyOverlay'],['freeBtn','freeOverlay'],['skinBtn','skinsOverlay'],['stagePicker','mapOverlay'],['journalBtn','journalOverlay'],['helpBtn','helpOverlay']];
  for(const [button,sheet] of sheets){
   await p.locator('#'+button).click();await p.locator('#'+sheet).waitFor({state:'visible'});await p.waitForTimeout(300);
@@ -66,13 +81,13 @@ async function main(){
   const sides=process.argv.includes('--before')?['before']:['before','after'];
   for(const side of sides){
    build(side);const p=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-   p.on('pageerror',e=>report.errors.push(e.message));await p.goto(origin+'outputs/qa/home-simple/'+side+'.html');await ready(p);
+   p.on('pageerror',e=>report.errors.push(e.message));await p.goto(pageUrl(side));await ready(p);
    await p.screenshot({path:path.join(out,side+'-home.png')});report.checks.push({side,...await layout(p)});
    if(side==='after')await verify(p,report);await p.close();
   }
   if(sides.includes('after')){
    const p=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});p.on('pageerror',e=>report.errors.push(e.message));
-   await p.goto(origin+'outputs/qa/home-simple/after.html');await ready(p);await p.locator('#playBtn').click();await p.waitForTimeout(350);
+   await p.goto(pageUrl('after'));await ready(p);await p.locator('#playBtn').click();await p.waitForTimeout(350);
    const E=require('../src/engine'),{LEVELS}=require('../src/levels'),g=E.parseLevel(LEVELS[0]),route=E.plan(g,g.start,0,new Set(),g.nets,true);
    for(const step of route.steps){await p.keyboard.press({U:'ArrowUp',D:'ArrowDown',L:'ArrowLeft',R:'ArrowRight'}[step.dir]);await p.waitForTimeout(850);}
    await p.locator('#clearOverlay').waitFor({state:'visible'});await p.waitForTimeout(1100);assert.equal(await p.locator('#clearStars .on').count(),3);
@@ -86,7 +101,7 @@ async function main(){
    await p.close();report.checks.push('Completed-story save fixture preserves collect-more-stars and ending replay actions');
    const failed=await browser.newPage({viewport:{width:320,height:568},reducedMotion:'reduce'});
    await failed.route('**/after.html',route=>route.fulfill({contentType:'text/html',body:fs.readFileSync(path.join(out,'after.html'),'utf8').replace(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g,'data:image/webp;base64,AAAA')}));
-   await failed.route('**/*.woff2',route=>route.abort());await failed.goto(origin+'outputs/qa/home-simple/after.html');await ready(failed);
+   await failed.route('**/*.woff2',route=>route.abort());await failed.goto(pageUrl('after'));await ready(failed);
    await failed.screenshot({path:path.join(out,'home-fallback.png')});await failed.locator('#playBtn').click();await failed.locator('#gameScreen').waitFor({state:'visible'});await failed.close();report.checks.push('Failed WebP and font assets keep the fallback shark and working start action');
    fs.mkdirSync(docs,{recursive:true});const sharp=require(path.join(path.dirname(process.argv[2]),'sharp'));
    const parts=[];for(const [i,side]of ['before','after'].entries())parts.push({input:await sharp(path.join(out,side+'-home.png')).resize({width:390}).png().toBuffer(),left:i*406,top:38});
