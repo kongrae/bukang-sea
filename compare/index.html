@@ -15338,7 +15338,7 @@ function createGameAudio({ enabled = () => true, active = () => true,
   // synthesized cue it replaces (first 300 ms; broadband water 1 dB under) so the tuned balance between events holds.
   // Each effect uses its recordings only when all of them decoded; otherwise the synthesized cue plays unchanged.
   const lv = { bump: -34, bite: -28, cloth: -38, netNote: -40, jet: -39, warp: -35.5, sand: -38, press: -37,
-    pressNote: -40, creak: -41, gateWater: -46, boat: -47, crateKnock: -36, crateWater: -43, crateCreak: -45, splash: -34, exitNote: -39, star: -31, starBell: -36, win: -31,
+    pressNote: -40, creak: -41, gateWater: -46, boat: -47, crateKnock: -36, crateWater: -43, crateCreak: -45, splash: -34, exitNote: -39, star: -29, starBell: -33, starImpact: -31, win: -31,
     unlock: -31, unlockBell: -36, chapter: -31, chapterBell: -36, chapterWater: -44, undo: -29, ui: -26, uiDrop: -35, uiNote: -35, sheet: -37 };
   const IMPACTS = ['softImpact0', 'softImpact2', 'softImpact3'];
   const effects = {
@@ -15434,12 +15434,18 @@ function createGameAudio({ enabled = () => true, active = () => true,
     star: (index, token = null) => {
       if (!Number.isInteger(index) || index < 0 || index > 2) return;
       const v = begin('star', 'reward', 3, .1, token); if (!v) return;
-      if (ready(...MALLETS, ...BELLS)) {
-        note(v, ['A4', 'C#5', 'E5'][index], { lvl: lv.star - 2, dur: .28, fade: .14 });
-        note(v, ['A5', 'C#6', 'E6'][index], { bell: true, lvl: lv.starBell - 3, dur: index === 2 ? .42 : .3, delay: .006, fade: .18 });
+      // Called at visual contact: a dry stamp, a rounded body, then a bright rising chime.
+      // All layers belong to one cancellable reward voice; the impact ends before the next 150ms stamp.
+      if (ready('softImpact2', ...MALLETS, ...BELLS)) {
+        sample(v, 'softImpact2', { lvl: lv.starImpact, dur: .075, fade: .055, rate: 1.15 + index * .08 });
+        note(v, ['A4', 'C#5', 'E5'][index], { lvl: lv.star, dur: .18, fade: .12 });
+        note(v, ['A5', 'C#6', 'E6'][index], { bell: true, lvl: lv.starBell + (index === 2 ? 1 : 0), dur: index === 2 ? .38 : .24, delay: .008, fade: index === 2 ? .3 : .18 });
         return;
       }
-      const hz = [440, 554.37, 659.25][index]; drop(v, hz, .25, .2, 0, hz); drop(v, hz * 1.5, .15, .045, .035, hz * 1.5);
+      const hz = [440, 554.37, 659.25][index];
+      drop(v, 240 + index * 35, .075, .17, 0, 130 + index * 15, true);
+      drop(v, hz, .18, .23, 0, hz, true);
+      drop(v, hz * 2, index === 2 ? .34 : .22, .085, .008, hz * 2);
     },
     unlockReward: reward('unlock', v => {
       if (ready(...MALLETS, ...BELLS)) {
