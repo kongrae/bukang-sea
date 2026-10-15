@@ -1,11 +1,11 @@
 // Visual fixtures are isolated saves, not evidence of human play or chapter completion.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.argv[2]||'playwright');
-process.env.HOME_QA_BASELINE='e020813';process.env.HOME_QA_NAME='home-scene';
+process.env.HOME_QA_BASELINE||='e020813';process.env.HOME_QA_NAME||='home-scene';
 const {build,out,docs,key,ready,layout}=require('./home-simple-qa');
 const {CHAPTERS,STORY_ORDER}=require('../src/levels');
 const skins=['basic','sakura','wave','maple','snow','gold','lighthouse','coral','starsea'];
-const url='http://127.0.0.1:5182/outputs/qa/home-scene/after.html';
+const url='http://127.0.0.1:5182/outputs/qa/'+process.env.HOME_QA_NAME+'/after.html';
 async function main(){
  build('after');fs.mkdirSync(docs,{recursive:true});
  const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});

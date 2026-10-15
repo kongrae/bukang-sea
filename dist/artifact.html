@@ -1035,9 +1035,10 @@ body { background: #e8f8f5; }
 .hero h1 .sea { color: inherit; }
 .hero-subtitle { margin: 7px 0 0; padding: 0; background: none; font-size: .875rem; font-weight: 500; color: #52757b; }
 .hero-scene { position: relative; display: grid; place-items: center; flex: 1 0 auto; min-height: clamp(160px, 27dvh, 228px); isolation: isolate; }
-.hero-scenery { position: absolute; inset: -12px -18px; z-index: -1; pointer-events: none; overflow: hidden; background: radial-gradient(ellipse at 50% 68%, #70d9dc99, #bcebe53d 58%, transparent 76%); mask-image: radial-gradient(ellipse at 50% 50%, #000 36%, #000b 57%, transparent 74%); }
-.hero-scenery img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 54%; opacity: 0; filter: saturate(.82); transition: opacity .24s ease-out; }
-.hero-scenery img.art-ready { opacity: .76; }
+/* Keep the scene crisp; blend only its rim into the shared sea background. */
+.hero-scenery { position: absolute; inset: -12px -18px; z-index: -1; pointer-events: none; overflow: hidden; border-radius: 28px; background: radial-gradient(ellipse at 50% 68%, #70d9dc99, #bcebe53d 58%, transparent 76%); mask-image: linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 34px), transparent), linear-gradient(to right, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-composite: intersect; }
+.hero-scenery img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 54%; opacity: 0; transition: opacity .24s ease-out; }
+.hero-scenery img.art-ready { opacity: 1; }
 .hero canvas { display: block; flex-shrink: 0; width: 100%; height: clamp(160px, 27dvh, 228px); margin: auto 0; border: 0; box-shadow: none; border-radius: 0; background: transparent; }
 .home-start { position: relative; padding: 0; gap: 10px; margin-top: 0; }
 .home-start .journey-label { margin: 0; font-size: .8125rem; }
