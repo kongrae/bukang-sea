@@ -47,7 +47,6 @@ public class MainActivity extends BridgeActivity {
                 }
             });
         });
-        Launchpad.verifyInstall(this);   // closed-test install verification (LaunchPad installs only)
     }
 
     @Override
