@@ -19,13 +19,13 @@ const PORT = 9335;
 
 // Each scene: progress to store, then a script run on the title screen. `$`, sleep, tap(x, y), swipe(dir), placed are available.
 // Saves are keyed by LEVELS index (data-i); done(n) clears the first n canals in play order, before(i) every canal ahead of i.
-// Routes come from the solver on the current boards (set nets stay), so a redesigned canal never leaves a broken scene.
+// Routes come from the solver on the current boards under the current net rule (set nets stay), so a redesigned canal never leaves a broken scene.
 const E = require('../src/engine.js');
 const { LEVELS, STORY_ORDER, STORY_POSITION } = require('../src/levels.js');
 const done = n => Object.fromEntries(STORY_ORDER.slice(0, n).map((i, k) => [i, k % 5 === 3 ? 2 : 3]));
 const before = i => done(STORY_POSITION[i]);
 const route = (i, k = Infinity) => {
-  const g = E.parseLevel(LEVELS[i]), p = E.plan(g, g.start, 0, new Set(), g.nets, true);
+  const g = E.parseLevel(LEVELS[i]), p = E.plan(g, g.start, 0, new Set(), g.nets);
   return p.steps.slice(0, k).map(step => ({ dir: step.dir, nets: step.nets.map(n => [n % g.w, Math.floor(n / g.w)]) }));
 };
 const play = steps => `for (const s of ${JSON.stringify(steps)}) {
@@ -38,7 +38,7 @@ const scenes = [
   { name: '1-title', save: { best: done(30), last: STORY_ORDER[30], owned: ['basic', 'sakura', 'wave'], skin: 'wave' }, run: `` },
   { name: '2-jets', save: { best: before(jets), last: jets }, run: open(jets) + play(route(jets, 3)) + `
     $('hintBtn').click(); await sleep(900);` },
-  { name: '3-nets', save: { best: before(nets), last: nets }, run: open(nets) + play(route(nets, 6)) },
+  { name: '3-nets', save: { best: before(nets), last: nets }, run: open(nets) + play(route(nets, 4)) },
   { name: '4-clear', save: { best: before(clear), last: clear }, run: open(clear) + play(route(clear)) + `
     await sleep(1200);` },
   { name: '5-sluice', save: { best: before(sluice), last: sluice }, run: open(sluice) + play(route(sluice, 3)) },
