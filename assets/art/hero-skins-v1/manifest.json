@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "generator": "built-in ImageGen",
+  "skins": {
+    "sakura": {
+      "source": "source/sakura.png",
+      "sourceSha256": "15c20cb9f5faccb50f193806fdc58d22cc4668625c1c3e07655f9a7e19316c13",
+      "file": "sakura-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 11,
+        "top": 6,
+        "right": 497,
+        "bottom": 505
+      },
+      "bytes": 51820,
+      "sha256": "48d0ef8a1116a3653a2fb70dd6d8b1cc5ec31f2923c38bfd1b90da54b60a8829"
+    },
+    "wave": {
+      "source": "source/wave.png",
+      "sourceSha256": "a28a9b1d0df5da39ac80bee4997bd17e716333bb747362568552c76d26cafa7d",
+      "file": "wave-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 12,
+        "top": 4,
+        "right": 497,
+        "bottom": 504
+      },
+      "bytes": 59530,
+      "sha256": "e0746b9ba3c0f2275a4165ded6c7bd2bd1560cd584c57aad6dd9daa8f34d27ca"
+    },
+    "maple": {
+      "source": "source/maple.png",
+      "sourceSha256": "b91472f8b7a9f09d8476ac444fea21cfcc3f413d32a99beb963b16faad11bbe1",
+      "file": "maple-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 11,
+        "top": 6,
+        "right": 498,
+        "bottom": 505
+      },
+      "bytes": 55822,
+      "sha256": "0e375239234b03cbddd0fe0bfceea954d0419a2264e7a7847d61d20618e7a823"
+    },
+    "snow": {
+      "source": "source/snow.png",
+      "sourceSha256": "61e9916f9b697aedd2297b591a129848ac9bd3a49b73c234fc6332d73f924285",
+      "file": "snow-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 11,
+        "top": 7,
+        "right": 496,
+        "bottom": 505
+      },
+      "bytes": 61056,
+      "sha256": "b096bfaa250608ec1fcec2d53ad75ec8dcf5b1ffadf9d0baeb319725ea5e3617"
+    },
+    "gold": {
+      "source": "source/gold.png",
+      "sourceSha256": "e03edd4b6695deed134b76e69576b547e61136ca0ae24129c4edd16515d3d431",
+      "file": "gold-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 13,
+        "top": 6,
+        "right": 497,
+        "bottom": 506
+      },
+      "bytes": 55652,
+      "sha256": "de62bb0a824a0049874835ae0c4be1b596f99801f878603946d9e8d0f9e4be64"
+    },
+    "lighthouse": {
+      "source": "source/lighthouse.png",
+      "sourceSha256": "626617b7c9283dc9866f31acf7542ef44ba33418af26171ef97bbf75b2e6ac0c",
+      "file": "lighthouse-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 11,
+        "top": 6,
+        "right": 496,
+        "bottom": 505
+      },
+      "bytes": 52878,
+      "sha256": "08faceb107304e45a384ff0597b7aa65a0cf2664452ce60952801944a691f2f2"
+    },
+    "coral": {
+      "source": "source/coral.png",
+      "sourceSha256": "ddc293d8e5fe9635ada07e40f0f0cd936bb7fdcfcf7a6cbcc6522621f6e7b1e9",
+      "file": "coral-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 13,
+        "top": 6,
+        "right": 499,
+        "bottom": 505
+      },
+      "bytes": 61848,
+      "sha256": "7accdad6103a765ed8235a1d4fc25ec7b279315fe755c857afc92c0d78bf35af"
+    },
+    "starsea": {
+      "source": "source/starsea.png",
+      "sourceSha256": "f8c31485f475bd2b15162b7ba49661749effb8cf473d2fb35950fa85525db226",
+      "file": "starsea-hero.webp",
+      "width": 512,
+      "height": 512,
+      "bounds": {
+        "left": 11,
+        "top": 6,
+        "right": 497,
+        "bottom": 505
+      },
+      "bytes": 56818,
+      "sha256": "3bd1d8c6c4f12b08cc990e86b5c769e0ffe4183a2dda57b2fad3f3013d5361d6"
+    }
+  }
+}

@@ -21,14 +21,14 @@ const SHARK_ART = (() => {
   const images = {}, tinted = new Map(), requested = new Set(), waiting = new Map();
   const urls = { hero: '@@ART_HERO@@', portrait: '@@ART_PORTRAIT@@', swim: '@@ART_SWIM@@' };
   const skinUrls = {
-    sakura: { portrait: '@@ART_SKIN_SAKURA_PORTRAIT@@', swim: '@@ART_SKIN_SAKURA_SWIM@@' },
-    wave: { portrait: '@@ART_SKIN_WAVE_PORTRAIT@@', swim: '@@ART_SKIN_WAVE_SWIM@@' },
-    maple: { portrait: '@@ART_SKIN_MAPLE_PORTRAIT@@', swim: '@@ART_SKIN_MAPLE_SWIM@@' },
-    snow: { portrait: '@@ART_SKIN_SNOW_PORTRAIT@@', swim: '@@ART_SKIN_SNOW_SWIM@@' },
-    gold: { portrait: '@@ART_SKIN_GOLD_PORTRAIT@@', swim: '@@ART_SKIN_GOLD_SWIM@@' },
-    lighthouse: { portrait: '@@ART_SKIN_LIGHTHOUSE_PORTRAIT@@', swim: '@@ART_SKIN_LIGHTHOUSE_SWIM@@' },
-    coral: { portrait: '@@ART_SKIN_CORAL_PORTRAIT@@', swim: '@@ART_SKIN_CORAL_SWIM@@' },
-    starsea: { portrait: '@@ART_SKIN_STARSEA_PORTRAIT@@', swim: '@@ART_SKIN_STARSEA_SWIM@@' },
+    sakura: { hero: '@@ART_SKIN_SAKURA_HERO@@', portrait: '@@ART_SKIN_SAKURA_PORTRAIT@@', swim: '@@ART_SKIN_SAKURA_SWIM@@' },
+    wave: { hero: '@@ART_SKIN_WAVE_HERO@@', portrait: '@@ART_SKIN_WAVE_PORTRAIT@@', swim: '@@ART_SKIN_WAVE_SWIM@@' },
+    maple: { hero: '@@ART_SKIN_MAPLE_HERO@@', portrait: '@@ART_SKIN_MAPLE_PORTRAIT@@', swim: '@@ART_SKIN_MAPLE_SWIM@@' },
+    snow: { hero: '@@ART_SKIN_SNOW_HERO@@', portrait: '@@ART_SKIN_SNOW_PORTRAIT@@', swim: '@@ART_SKIN_SNOW_SWIM@@' },
+    gold: { hero: '@@ART_SKIN_GOLD_HERO@@', portrait: '@@ART_SKIN_GOLD_PORTRAIT@@', swim: '@@ART_SKIN_GOLD_SWIM@@' },
+    lighthouse: { hero: '@@ART_SKIN_LIGHTHOUSE_HERO@@', portrait: '@@ART_SKIN_LIGHTHOUSE_PORTRAIT@@', swim: '@@ART_SKIN_LIGHTHOUSE_SWIM@@' },
+    coral: { hero: '@@ART_SKIN_CORAL_HERO@@', portrait: '@@ART_SKIN_CORAL_PORTRAIT@@', swim: '@@ART_SKIN_CORAL_SWIM@@' },
+    starsea: { hero: '@@ART_SKIN_STARSEA_HERO@@', portrait: '@@ART_SKIN_STARSEA_PORTRAIT@@', swim: '@@ART_SKIN_STARSEA_SWIM@@' },
   };
   // Every skin has four authored views; decode only the selected skin when the oblique camera is used.
   const oblique = {

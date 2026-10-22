@@ -3100,8 +3100,8 @@ function drawHero(t) {
     }
   }
   const bob = reduceMotion ? 0 : Math.sin(t * 1.6) * 3;
-  const skin = currentSkin(), themed = skin.id !== 'basic' && typeof SHARK_ART !== 'undefined' && SHARK_ART.get('portrait', skin) && SHARK_ART.hasSkin('portrait', skin);
-  if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, themed ? 'portrait' : 'hero', W * .5, H * .49 + bob, Math.min(W * .82, H * .98) * (themed ? .86 : 1), themed ? skin : undefined)) {
+  // Every skin has matching life-ring artwork at the same main-logo size.
+  if (typeof SHARK_ART === 'undefined' || !SHARK_ART.draw(hctx, 'hero', W * .5, H * .49 + bob, Math.min(W * .82, H * .98), currentSkin())) {
     drawShark(hctx, sx, sy, ang, T, t, !reduceMotion, reduceMotion ? 1 : 1.02 + heroWake * .04);
   }
   hctx.restore();
@@ -3747,7 +3747,7 @@ $('clearUnlocks').addEventListener('click', e => { const b = e.target.closest('[
 if (typeof MENU_ART !== 'undefined') MENU_ART.load();
 const boot = () => launch.run([
   document.fonts?.ready,
-  typeof SHARK_ART !== 'undefined' ? SHARK_ART.ready('hero') : null,
+  typeof SHARK_ART !== 'undefined' ? SHARK_ART.ready('hero', currentSkin()) : null,
   typeof SHARK_ART !== 'undefined' ? SHARK_ART.ready('portrait', currentSkin()) : null,
 ]);
 boot();

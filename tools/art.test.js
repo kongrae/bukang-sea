@@ -36,17 +36,32 @@ test('loaded sprites reuse skin bitmaps and notify frozen scenes to repaint', ()
   assert.notEqual(api.get('portrait', skin), first);
 });
 
-test('launch waits only for the selected portrait; completion and failure both settle without duplicate loads', async () => {
+for (const view of ['hero', 'portrait']) test(`launch waits for the selected ${view}; completion and failure settle without duplicate loads`, async () => {
   const { api, pending } = art(); api.load();
   const skin = { id: 'coral' }; let ready = false;
-  const selected = api.ready('portrait', skin).then(() => { ready = true; });
-  const second = api.ready('portrait', skin);
+  const selected = api.ready(view, skin).then(() => { ready = true; });
+  const second = api.ready(view, skin);
   assert.equal(pending.length, 4);
   pending[0].onload(); pending[1].onload(); await Promise.resolve();
-  assert.equal(ready, false, 'the base portrait does not mean the selected skin is ready');
+  assert.equal(ready, false, 'the base art does not mean the selected skin is ready');
   pending[3].onerror(); await Promise.all([selected, second]);
-  assert.equal(ready, true); await api.ready('portrait', skin);
+  assert.equal(ready, true); await api.ready(view, skin);
   assert.equal(pending.length, 4, 'a failed optional skin is not retried during launch');
+});
+
+test('skin heroes load once, preserve the life-ring fallback, and remain independent of portraits', () => {
+  const { api, pending } = art(); api.load(); pending.slice().forEach(image => image.onload());
+  const basic = api.get('hero'), sakura = { id: 'sakura', body: '#ef9dca' }, wave = { id: 'wave', body: '#52cbd6' };
+  assert.equal(api.get('hero', sakura), basic, 'loading keeps the original life ring without a tint');
+  for (let i = 0; i < 100; i++) api.get('hero', sakura);
+  assert.equal(pending.length, 4);
+  pending[3].onload();
+  assert.equal(api.get('hero', sakura), pending[3]);
+  assert.notEqual(api.url('hero', sakura), api.url('portrait', sakura));
+  api.get('hero', wave); pending[4].onerror();
+  assert.equal(api.get('hero', wave), basic, 'failed skin hero keeps the original life ring');
+  assert.equal(api.get('hero', sakura), pending[3], 'a failed skin does not replace another cached hero');
+  assert.equal(pending.length, 5, 'failed heroes do not retry every frame');
 });
 
 test('authored skins decode lazily once, keep both views separate, and supersede the tint fallback', () => {
@@ -95,6 +110,14 @@ test('all builds embed complete WebP assets without machine-local references', (
     const bytes = fs.readFileSync(path.join(root, 'assets/art/skins-v2', view.file));
     assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'), view.sha256);
     assert.ok(body.includes('data:image/webp;base64,' + bytes.toString('base64')), view.file + ' is embedded');
+  }
+  const heroes = JSON.parse(fs.readFileSync(path.join(root, 'assets/art/hero-skins-v1/manifest.json')));
+  assert.deepEqual(Object.keys(heroes.skins).sort(), Object.keys(manifest.skins).sort());
+  for (const hero of Object.values(heroes.skins)) {
+    const bytes = fs.readFileSync(path.join(root, 'assets/art/hero-skins-v1', hero.file));
+    assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'), hero.sha256);
+    assert.equal(hero.width, 512); assert.equal(hero.height, 512);
+    assert.ok(body.includes('data:image/webp;base64,' + bytes.toString('base64')), hero.file + ' is embedded');
   }
   const menu = JSON.parse(fs.readFileSync(path.join(root, 'assets/art/ui-v1/manifest.json')));
   assert.equal(Object.keys(menu.icons).length, 5);

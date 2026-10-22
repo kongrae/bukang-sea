@@ -18,7 +18,7 @@ async function main(){
   for(let i=0;i<skins.length;i++){
    const ci=i%CHAPTERS.length,done=CHAPTERS.slice(0,ci).reduce((n,ch)=>n+ch.count,0),skin=skins[i];
    const fixture={best:Object.fromEntries(STORY_ORDER.slice(0,done).map(id=>[id,3])),last:STORY_ORDER[done],owned:skins,skin,sessions:{}};
-   const p=await page();await p.addInitScript(({storageKey,fixture})=>localStorage.setItem(storageKey,JSON.stringify(fixture)),{storageKey:key('after'),fixture});
+   const p=await page();await p.addInitScript(({storageKey,fixture})=>{if(!localStorage.getItem(storageKey))localStorage.setItem(storageKey,JSON.stringify(fixture));},{storageKey:key('after'),fixture});
    await p.goto(url);await ready(p);await p.waitForFunction(()=>document.getElementById('heroScenery').naturalWidth>0);
    assert.equal(await p.locator('#heroScenery').getAttribute('data-region'),CHAPTERS[ci].region);
    assert.notEqual(await p.locator('.hero-scenery').evaluate(el=>getComputedStyle(el).maskImage),'none');
@@ -30,8 +30,17 @@ async function main(){
     await p.locator('#skinBtn').click();await p.locator('#skinGrid [data-id="sakura"]').click();await p.locator('#skinsDone').click();await p.locator('#skinsOverlay').waitFor({state:'hidden'});await p.waitForTimeout(350);
     assert.equal(await p.evaluate(k=>JSON.parse(localStorage.getItem(k)).skin,key('after')),'sakura');
     assert.equal(await p.locator('#heroScenery').getAttribute('data-region'),CHAPTERS[0].region);
-    assert.notEqual(await p.locator('#heroCanvas').evaluate(el=>el.toDataURL()),a,'equipped skin replaces the foreground');
+    assert.notEqual(await p.locator('#heroCanvas').evaluate(el=>el.toDataURL()),a,'equipping a skin changes its life-ring mascot');
+    const selected=await p.locator('#heroCanvas').evaluate(el=>el.toDataURL());
     await p.locator('#playBtn').click();await p.locator('#gameScreen').waitFor({state:'visible'});
+    await p.locator('#backBtn').click();await p.locator('#titleScreen').waitFor({state:'visible'});await p.reload();await ready(p);
+    assert.equal(await p.evaluate(k=>JSON.parse(localStorage.getItem(k)).skin,key('after')),'sakura','the actual skin selection is saved');
+    assert.equal(await p.locator('#heroCanvas').evaluate(el=>el.toDataURL()),selected,'return and reload keep the selected life-ring mascot');
+   }
+   if(i>0){
+    await p.reload();await ready(p);
+    assert.equal(await p.evaluate(k=>JSON.parse(localStorage.getItem(k)).skin,key('after')),skin);
+    assert.equal(await p.locator('#heroCanvas').evaluate(el=>el.toDataURL()),a,'reload restores the selected life-ring mascot without a size change');
    }
    report.checks.push({skin,chapter:ci+1,region:CHAPTERS[ci].region});await p.close();
   }
