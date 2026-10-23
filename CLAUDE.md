@@ -22,6 +22,7 @@ npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 
 npm run icons            # assets/icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, 적응형 전경·배경 포함) → assets/icons/*.png, icon.svg(파비콘 래퍼), 적응형/스플래시 소스 (Chrome 헤드리스 필요)
 npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 → assets/fonts/ (build:web 이 누락 글자를 경고하면 실행)
 node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
+node tools/promo-video.js # 쇼츠·릴스용 홍보 영상(1080x1920 MP4, 게임 소리 포함) → outputs/promo/ (Edge/Chrome 헤드리스, 자막 글꼴은 Google Fonts, docs/PROMO.md)
 npm run cap:sync         # 출시용 build:web + Android 동기화 + 출시 자산 검사
 npm run cap:sync:dev     # 개발용 웹 자산을 Android에 동기화
 npm run android:debug    # cap:sync:dev + 전체 해금 DEV APK (별도 앱 ID, JDK 21)
@@ -94,6 +95,7 @@ tools/
 assets/        icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, versionCode 4부터. 3d-v1은 아트 기준) → icons/*.png + icon.svg(파비콘용 PNG 래퍼, 생성물), art/(투명 상어 WebP, content-refresh-v1/ 지역·수문 아트 원본(수정 금지), regions/ 지역 카드 WebP 파생본), fonts/(서브셋 woff2 + OFL 라이선스 + chars.txt), privacy.html(개인정보처리방침)
 docs/RELEASE.md  웹/Android/iOS 출시 가이드
 docs/STORE.md    Play 등록 문구, 설문 답변 가이드 / docs/store/ 스크린샷·그래픽 이미지
+docs/PROMO.md    홍보 영상 구성, 쇼츠 문구, 커뮤니티 소개글 초안
 docs/PLAYTEST.md 실제 이용자 시험 절차 / docs/playtest/RECORDS.xlsx 빈 기록 양식 / RESULTS.md 현재 결과
 capacitor.config.json  appId kr.hongrae.sharksos, webDir=www, SystemBars(LIGHT, insets→CSS 변수)
 android/       Capacitor Android 프로젝트(커밋). 아이콘·스플래시는 @capacitor/assets로 생성, 세로 고정. 외부 전송 없음(비공개 테스트용 `Launchpad.java`는 2026-10-19 프로덕션 1.9에서 제거, 데이터 보안 '수집 없음'). 네트워크 전송을 추가하면 privacy.html·데이터 보안 선언(STORE.md)을 함께 바꾼다
