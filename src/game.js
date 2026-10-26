@@ -3543,6 +3543,20 @@ $('settingsBtn').addEventListener('click', openSettings);
 $('titleSettingsBtn').addEventListener('click', openSettings);
 $('settingsDone').addEventListener('click', closeSettings);
 $('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
+// Feedback opens the player's own mail app with the context written in. The game itself sends nothing, so the Play
+// data safety answer stays "no data collected" (docs/STORE.md). The build fills in the version token.
+const APP_VERSION = '@@APP_VERSION@@';
+function feedbackMail() {
+  const platform = { android: 'Android 앱', ios: 'iOS 앱' }[window.Capacitor?.getPlatform?.()] || '웹';
+  // A free canal's label names only its tier and count, so the generator version and map id identify it.
+  const screen = $('gameScreen').hidden ? '메인 화면' : [$('lvNum').textContent, $('lvName').textContent,
+    FREE && `v${FREE.version}-${FREE.level.puzzleId || FREE.seed}`].filter(Boolean).join(' · ');
+  const body = ['', '', '', '----------', '위 빈칸에 의견을 적어 주세요. 어려웠던 수로, 불편한 점, 버그 모두 좋아요.',
+    '아래 정보는 의견 확인에만 써요. 지워도 괜찮아요.', `앱 버전: ${APP_VERSION}`, `환경: ${platform}`, `화면: ${screen}`];
+  return `mailto:sky7700sky@naver.com?subject=${encodeURIComponent(`[상어 SOS ${APP_VERSION.split(' (')[0]}] 의견`)}`
+    + `&body=${encodeURIComponent(body.join('\r\n'))}`;   // mailto bodies break lines with CRLF (RFC 6068)
+}
+$('feedbackBtn').addEventListener('click', () => { location.href = feedbackMail(); });
 $('guideDone').addEventListener('click', advanceGuide);
 $('chapterOverlay').addEventListener('click', closeChapterCard);   // the button or anywhere on the card starts the chapter
 $('guideClose').addEventListener('click', closeGuide);
