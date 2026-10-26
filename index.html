@@ -932,7 +932,7 @@ button:disabled:active { transform: none; }
     <button class="btn" id="deviceGuideBtn" type="button">장치 안내</button>
     <button class="btn" id="feedbackBtn" type="button">의견 보내기</button>
     <button class="btn primary" id="settingsDone" type="button">닫기</button>
-    <p class="settings-about">버전 1.10 (11) · <a href="https://kongrae.github.io/bukang-sea/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="mailto:sky7700sky@naver.com">문의</a></p>
+    <p class="settings-about">버전 1.11 (12) · <a href="https://kongrae.github.io/bukang-sea/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="mailto:sky7700sky@naver.com">문의</a></p>
   </div>
 </div>
 
@@ -19043,7 +19043,7 @@ $('settingsDone').addEventListener('click', closeSettings);
 $('deviceGuideBtn').addEventListener('click', () => { closeSettings(); showDeviceGuide(); });
 // Feedback opens the player's own mail app with the context written in. The game itself sends nothing, so the Play
 // data safety answer stays "no data collected" (docs/STORE.md). The build fills in the version token.
-const APP_VERSION = '1.10 (11)';
+const APP_VERSION = '1.11 (12)';
 function feedbackMail() {
   const platform = { android: 'Android 앱', ios: 'iOS 앱' }[window.Capacitor?.getPlatform?.()] || '웹';
   // A free canal's label names only its tier and count, so the generator version and map id identify it.
