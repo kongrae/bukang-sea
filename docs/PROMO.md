@@ -78,15 +78,17 @@
 
 | 공개(19:00) | 영상 | 링크 |
 |---|---|---|
-| 10/28(화) | quiz-02 물살(8번 수로) | https://youtube.com/shorts/tZk150AFF1U |
-| 10/29(수) | quiz-03 상자(74번) | https://youtube.com/shorts/_ol6OGALM8Q |
-| 10/30(목) | quiz-04 그물(42번) | https://youtube.com/shorts/TGpxf0OT0iM |
-| 10/31(금) | quiz-05 소용돌이(71번) | https://youtube.com/shorts/zzxcGO0Y1g4 |
-| 11/1(토) | quiz-06 구조정(13번) | https://youtube.com/shorts/x8eUJQxT8c4 |
-| 11/2(일) | quiz-07 수문(62번) | https://youtube.com/shorts/DtOTZ_tEEZU |
-| 11/3(월) | quiz-08 모래톱(37번) | https://youtube.com/shorts/mr1hpnJ7CiM |
-| 11/4(화) | quiz-09 그물·숭어 3마리(31번) | https://youtube.com/shorts/XGeflhwICII |
-| 11/5(수) | quiz-10 물살·상자(83번) | https://youtube.com/shorts/kWjifs-C0Qo |
+| 10/28(수) | quiz-02 물살(8번 수로) | https://youtube.com/shorts/tZk150AFF1U |
+| 10/29(목) | quiz-03 상자(74번) | https://youtube.com/shorts/_ol6OGALM8Q |
+| 10/30(금) | quiz-04 그물(42번) | https://youtube.com/shorts/TGpxf0OT0iM |
+| 10/31(토) | quiz-05 소용돌이(71번) | https://youtube.com/shorts/zzxcGO0Y1g4 |
+| 11/1(일) | quiz-06 구조정(13번) | https://youtube.com/shorts/x8eUJQxT8c4 |
+| 11/2(월) | quiz-07 수문(62번) | https://youtube.com/shorts/DtOTZ_tEEZU |
+| 11/3(화) | quiz-08 모래톱(37번) | https://youtube.com/shorts/mr1hpnJ7CiM |
+| 11/4(수) | quiz-09 그물·숭어 3마리(31번) | https://youtube.com/shorts/XGeflhwICII |
+| 11/5(목) | quiz-10 물살·상자(83번) | https://youtube.com/shorts/kWjifs-C0Qo |
+
+- 2026-11-06(금) 09:00에 효과 점검을 예약했다(예약 작업 `sharksos-shorts-effect-check`). 쇼츠 10개 조회수와 Play Console 방문자·설치를 10/27 기준선과 비교하고, 결과를 이 절에 덧붙인다.
 
 ## 쇼츠·릴스 문구
 
