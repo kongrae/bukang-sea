@@ -74,6 +74,19 @@
   - 제목·설명은 `posts.txt` 그대로다.
   - 설정은 아동용 아님, 유료 프로모션 아니요, AI 사용 아니요다. 엔딩 카드의 상어 그림은 AI로 만들었지만, 사실처럼 보이는 장면이 아니라서 표시 대상이 아니다.
   - 같은 날 대시보드에서 첫 쇼츠는 조회수 466회, 평균 조회율 138.2%였다.
+- 2026-10-27 quiz-02~10은 하루 한 개씩 저녁 7시(한국 시간) 공개로 예약했다. 제목·설명·설정은 quiz-01과 같은 방식이다. 시간은 스튜디오의 콘텐츠 > Shorts에서 영상별로 바꿀 수 있다.
+
+| 공개(19:00) | 영상 | 링크 |
+|---|---|---|
+| 10/28(화) | quiz-02 물살(8번 수로) | https://youtube.com/shorts/tZk150AFF1U |
+| 10/29(수) | quiz-03 상자(74번) | https://youtube.com/shorts/_ol6OGALM8Q |
+| 10/30(목) | quiz-04 그물(42번) | https://youtube.com/shorts/TGpxf0OT0iM |
+| 10/31(금) | quiz-05 소용돌이(71번) | https://youtube.com/shorts/zzxcGO0Y1g4 |
+| 11/1(토) | quiz-06 구조정(13번) | https://youtube.com/shorts/x8eUJQxT8c4 |
+| 11/2(일) | quiz-07 수문(62번) | https://youtube.com/shorts/DtOTZ_tEEZU |
+| 11/3(월) | quiz-08 모래톱(37번) | https://youtube.com/shorts/mr1hpnJ7CiM |
+| 11/4(화) | quiz-09 그물·숭어 3마리(31번) | https://youtube.com/shorts/XGeflhwICII |
+| 11/5(수) | quiz-10 물살·상자(83번) | https://youtube.com/shorts/kWjifs-C0Qo |
 
 ## 쇼츠·릴스 문구
 
