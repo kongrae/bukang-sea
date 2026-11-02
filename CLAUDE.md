@@ -21,7 +21,7 @@ npm run build:web:dev    # 개발용 www/: 전체 해금, 별도 기록, DEV 표
 npm run serve            # www/ 를 http://localhost:5173 으로 띄움 (--host 붙이면 같은 Wi-Fi 휴대폰에서 접속)
 npm run icons            # assets/icon-concepts/shark-sos-android-v2/(앱 아이콘 원본, 적응형 전경·배경 포함) → assets/icons/*.png, icon.svg(파비콘 래퍼), 적응형/스플래시 소스 (Chrome 헤드리스 필요)
 npm run fonts            # src/ 에 쓰인 글자만 담은 서브셋 폰트 → assets/fonts/ (build:web 이 누락 글자를 경고하면 실행)
-node tools/shots.js      # build:web 후 스토어 스크린샷 6장 + 그래픽 이미지 → docs/store/ (Edge/Chrome 헤드리스)
+node tools/shots.js      # build:web 후 스토어 스크린샷 원본 8장 + 그래픽 이미지 → docs/store/, 문구 넣은 세트 6장 → docs/store/captioned/ (Edge/Chrome 헤드리스, 문구 글꼴은 Google Fonts, docs/STORE.md). 장면 이름이나 captioned를 붙이면 그것만
 node tools/promo-video.js # 쇼츠·릴스용 홍보 영상(1080x1920 MP4, 게임 소리 포함) → outputs/promo/ (Edge/Chrome 헤드리스, 자막 글꼴은 Google Fonts, docs/PROMO.md). --quiz는 수로별 문제·정답 쇼츠 10개 → outputs/promo/quiz/
 npm run cap:sync         # 출시용 build:web + Android 동기화 + 출시 자산 검사
 npm run cap:sync:dev     # 개발용 웹 자산을 Android에 동기화
