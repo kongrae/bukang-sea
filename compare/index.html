@@ -18026,7 +18026,7 @@ function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
   cvs.width = Math.round(CW * dpr); cvs.height = Math.round(CH * dpr);
-  cvs.dataset.tile = T; cvs.dataset.ox = OX; cvs.dataset.oy = OY;   // grid placement, read by tools/shots.js
+  cvs.dataset.tile = T; cvs.dataset.ox = OX; cvs.dataset.oy = OY; cvs.dataset.projection = q;   // grid placement, read by tools/shots.js
   causticPat = null;
   buildStatic();
 }
