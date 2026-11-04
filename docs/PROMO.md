@@ -89,6 +89,11 @@
 | 11/5(목) | quiz-10 물살·상자(83번) | https://youtube.com/shorts/kWjifs-C0Qo |
 
 - 2026-11-06(금) 09:00에 효과 점검을 예약했다(예약 작업 `sharksos-shorts-effect-check`). 쇼츠 10개 조회수와 Play Console 방문자·설치를 10/27 기준선과 비교하고, 결과를 이 절에 덧붙인다.
+- 2026-11-04 사용자 요청으로 채널 프로필에 링크를 넣었다. 그전까지 채널에는 링크가 하나도 없어서, 쇼츠를 본 사람이 누를 수 있는 길이 없었다.
+  - 제목은 '상어 SOS 설치하기 (Google Play)'다. 주소는 Play 등록정보 주소에 `referrer=utm_source=youtube&utm_medium=channel_link`(인코딩)를 붙였다. 위에 적었듯 Console 통계에는 UTM 항목이 없으니, 효과는 날짜로 본다.
+  - 공개 채널 페이지 머리글에 `play.google.com/store/apps/details`로 보인다. 누르면 YouTube 이동 안내(`/redirect`)를 거쳐 스토어로 간다. 쇼츠에서는 채널 이름 → 채널 페이지 → 링크, 두 번 눌러야 한다.
+  - 쇼츠 설명란과 댓글의 URL은 YouTube 정책상 누를 수 없다([도움말](https://support.google.com/youtube/answer/13748639)). 쇼츠에서 누를 수 있는 것은 채널 프로필 링크와 '관련 동영상' 연결이다.
+  - '관련 동영상' 연결, 긴 동영상 설명의 링크, 댓글 고정은 고급 기능이다([도움말](https://support.google.com/youtube/answer/9890437)). 11-04 quiz-08에서 '관련 동영상'을 눌러 보니 '일회성 인증 필요' 창이 떠서 취소했다. 인증(동영상 또는 신분증, 아니면 채널 기록이 쌓일 때 자동)은 사용자가 직접 한다. 인증 뒤에는 가로형 긴 동영상을 만들어 설명 첫 줄에 스토어 링크를 넣고, 쇼츠마다 그 영상을 관련 동영상으로 연결할 수 있다.
 
 ## 쇼츠·릴스 문구
 
