@@ -167,6 +167,8 @@ function quizText(q) {
     '',
     '밀면 벽까지 쭉 미끄러지는 상어 구출 퍼즐, 상어 SOS',
     "📱 구글 플레이에서 '상어 SOS' 검색",
+    '설치 링크는 @moongrae 프로필 맨 위에 있어요',
+    'https://play.google.com/store/apps/details?id=kr.hongrae.sharksos',
     '',
     '#퍼즐 #퍼즐게임 #두뇌게임 #상어 #모바일게임 #shorts',
   ].join('\n');
