@@ -11,6 +11,15 @@
 - **커밋한 뒤 GitHub Pages에도 항상 반영한다**(사용자 요청, 2026-10-08). `powershell -ExecutionPolicy Bypass -File tools/deploy-pages.ps1`(pwsh도 가능)이 `master` 푸시와 `www/` 빌드의 `gh-pages` 배포를 함께 한다. 배포 뒤 https://kongrae.github.io/bukang-sea/version.json 의 `sourceCommit`이 방금 커밋과 같은지 확인한다. 공개 저장소이므로 키·비밀번호 파일은 커밋하지 않는다.
 - `src/` 를 고쳤으면 `dist/`(build, build:artifact)도 다시 빌드해 함께 커밋한다.
 
+## 작업 장소 (2026-11-06)
+
+2026-11-06 사용자 결정으로 앞으로 이 게임의 모든 작업을 맥북에서 한다. 그전에는 Windows PC에서만 했다. Windows PC에서는 사용자가 그 PC에서 하라고 한 일만 한다. 맥에서 처음 할 때 아래를 한 번 갖추고, 바뀐 위치는 `docs/RELEASE.md`에 적는다.
+
+- **업로드 키:** `lostshark-upload.jks`와 비밀번호가 든 `android/keystore.properties`(gitignore)는 Windows PC에만 있다(`docs/RELEASE.md` '출시 전에 정할 것'). 사용자가 두 파일을 비밀번호 관리자나 USB로 맥에 옮기고, `storeFile`을 맥의 절대 경로로 고친다(Gradle은 `~`를 풀지 않는다). 옮기기 전에는 Windows PC를 초기화하지 않는다.
+- **Android 빌드:** JDK 21과 Android Studio(SDK·에뮬레이터)를 설치한다. `tools/android.js`는 JDK를 `$JAVA21_HOME` → `~/.jdks/jdk-21*`, SDK를 `$ANDROID_HOME` → Windows의 `%LOCALAPPDATA%\Android\Sdk`에서 찾으므로, 맥에서는 `export JAVA21_HOME="$(/usr/libexec/java_home -v 21)" ANDROID_HOME="$HOME/Library/Android/sdk"`를 붙이거나 기본값에 맥 경로를 더한다.
+- **Pages 배포:** `tools/deploy-pages.ps1`은 PowerShell 스크립트이고 빌드에 `npm.cmd`를 부른다. 맥에서는 PowerShell 7(`pwsh`)을 설치하고 `npm.cmd`를 운영체제에 맞게 고친 뒤 쓴다. GitHub 인증은 `git credential fill`로 읽으므로 맥 git에 kongrae 계정 인증이 있어야 한다. gh-pages 작업 사본 `outputs/pages`(gitignore)도 Windows PC에만 있다. 맥에서 첫 배포 전에 `git clone -b gh-pages https://github.com/kongrae/bukang-sea.git outputs/pages`로 받아 둔다. 없으면 스크립트가 새 기록으로 `git init`해서 push가 거절된다.
+- **헤드리스 브라우저:** `tools/icons.js`·`shots.js`·`promo-video.js`는 맥 Chrome 경로도 찾는다. `tools/*-qa.js`·`board-art-report.js`·`native-ui-browser-check.js`는 Windows Edge 경로를 쓰므로(일부는 `BROWSER`를 먼저 봄) 맥에서는 `BROWSER`에 Chrome 경로를 주고, 경로를 코드에 박은 도구는 `BROWSER`를 받게 고친다.
+
 ## 명령어
 
 ```bash
